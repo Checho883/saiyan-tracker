@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --saiyan-orange: #FF6B00;
+  --saiyan-blue: #1E90FF;
+  --saiyan-gold: #FFD700;
+  --saiyan-dark: #0A0A0F;
+  --saiyan-card: #12121A;
+  --saiyan-border: #1E1E2E;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Rajdhani', sans-serif;
+  background-color: var(--saiyan-dark);
+  color: #E0E0E0;
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--saiyan-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--saiyan-orange);
+  border-radius: 3px;
+}
+
+/* Transformation aura effects */
+.aura-base { box-shadow: none; }
+.aura-ssj { box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); }
+.aura-ssj2 { box-shadow: 0 0 25px rgba(255, 215, 0, 0.6); }
+.aura-ssj3 { box-shadow: 0 0 30px rgba(255, 215, 0, 0.8); }
+.aura-ssg { box-shadow: 0 0 30px rgba(255, 50, 50, 0.6); }
+.aura-ssb { box-shadow: 0 0 30px rgba(30, 144, 255, 0.6); }
+.aura-ui { box-shadow: 0 0 40px rgba(192, 192, 255, 0.7); }
