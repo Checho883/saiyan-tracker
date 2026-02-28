@@ -32,11 +32,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Running PRAGMA foreign_key_check on the database returns zero violations
   3. Deleting a habit cascades correctly to its logs and streaks (no orphaned rows remain)
   4. All datetime fields use timezone-aware UTC timestamps (no datetime.utcnow() calls remain)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md -- FK enforcement and orphan cleanup
+- [ ] 01-02-PLAN.md -- Cascade behavior, datetime fixes, and DB rebuild
 
 ### Phase 2: Streak and Frequency Logic
 **Goal**: Streak tracking works correctly for every habit frequency type, including edge cases around weekends, custom schedules, and recovery after missed days
@@ -155,7 +155,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Database and Model Integrity | 0/0 | Not started | - |
+| 1. Database and Model Integrity | 0/2 | Planned | - |
 | 2. Streak and Frequency Logic | 0/0 | Not started | - |
 | 3. Points, Bonuses, and Transformations | 0/0 | Not started | - |
 | 4. Habit and Core API Quality | 0/0 | Not started | - |
