@@ -21,8 +21,8 @@ Requirements for the audit milestone. Each maps to roadmap phases.
 - [ ] **BIZ-03**: Streak calculation works correctly for custom frequency habits
 - [ ] **BIZ-04**: Zenkai Recovery halves streak on missed days and applies +100% comeback bonus
 - [ ] **BIZ-05**: Consistency bonus (Kaio-ken) applies exactly once per day, no double-apply
-- [ ] **BIZ-06**: Consistency bonus tiers correct: 50%→1.1x, 80%→1.25x, 100%→1.5x
-- [ ] **BIZ-07**: Habit point calculation matches PRD formula (base × category × streak bonus)
+- [ ] **BIZ-06**: Consistency bonus tiers correct: 50%->1.1x, 80%->1.25x, 100%->1.5x
+- [ ] **BIZ-07**: Habit point calculation matches PRD formula (base x category x streak bonus)
 - [ ] **BIZ-08**: Task point calculation includes 0.5x multiplier per PRD
 - [ ] **BIZ-09**: Power level total accurately reflects sum of all awarded points
 - [ ] **BIZ-10**: Transformation thresholds trigger at correct power levels
@@ -61,8 +61,8 @@ Requirements for the audit milestone. Each maps to roadmap phases.
 
 ### End-to-End Flows
 
-- [ ] **E2E-01**: Full habit lifecycle — create, check, streak increments, points awarded, power updates
-- [ ] **E2E-02**: Habit management — edit, reorder (persists), archive, delete
+- [ ] **E2E-01**: Full habit lifecycle -- create, check, streak increments, points awarded, power updates
+- [ ] **E2E-02**: Habit management -- edit, reorder (persists), archive, delete
 - [ ] **E2E-03**: Analytics page shows accurate calendar and charts after habit activity
 - [ ] **E2E-04**: Transformation triggers when power level crosses threshold
 - [ ] **E2E-05**: Off-day creation and its effect on streaks/daily tracking
@@ -87,7 +87,7 @@ Deferred to future milestone. Not in current roadmap.
 
 | Feature | Reason |
 |---------|--------|
-| New features | Audit-only milestone — make existing work reliable |
+| New features | Audit-only milestone -- make existing work reliable |
 | Alembic migrations | Solo dev app, delete-and-rebuild approach is sufficient |
 | E2E test framework (Playwright/Cypress) | Overkill for solo-user local app |
 | Deployment/CI | Future milestone |
@@ -100,55 +100,55 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DB-01 | - | Pending |
-| DB-02 | - | Pending |
-| DB-03 | - | Pending |
-| DB-04 | - | Pending |
-| BIZ-01 | - | Pending |
-| BIZ-02 | - | Pending |
-| BIZ-03 | - | Pending |
-| BIZ-04 | - | Pending |
-| BIZ-05 | - | Pending |
-| BIZ-06 | - | Pending |
-| BIZ-07 | - | Pending |
-| BIZ-08 | - | Pending |
-| BIZ-09 | - | Pending |
-| BIZ-10 | - | Pending |
-| API-01 | - | Pending |
-| API-02 | - | Pending |
-| API-03 | - | Pending |
-| API-04 | - | Pending |
-| API-05 | - | Pending |
-| API-06 | - | Pending |
-| API-07 | - | Pending |
-| API-08 | - | Pending |
-| API-09 | - | Pending |
-| FE-01 | - | Pending |
-| FE-02 | - | Pending |
-| FE-03 | - | Pending |
-| FE-04 | - | Pending |
-| FE-05 | - | Pending |
-| UI-01 | - | Pending |
-| UI-02 | - | Pending |
-| UI-03 | - | Pending |
-| UI-04 | - | Pending |
-| UI-05 | - | Pending |
-| UI-06 | - | Pending |
-| UI-07 | - | Pending |
-| UI-08 | - | Pending |
-| UI-09 | - | Pending |
-| E2E-01 | - | Pending |
-| E2E-02 | - | Pending |
-| E2E-03 | - | Pending |
-| E2E-04 | - | Pending |
-| E2E-05 | - | Pending |
-| E2E-06 | - | Pending |
+| DB-01 | Phase 1 | Pending |
+| DB-02 | Phase 1 | Pending |
+| DB-03 | Phase 1 | Pending |
+| DB-04 | Phase 1 | Pending |
+| BIZ-01 | Phase 2 | Pending |
+| BIZ-02 | Phase 2 | Pending |
+| BIZ-03 | Phase 2 | Pending |
+| BIZ-04 | Phase 2 | Pending |
+| BIZ-05 | Phase 3 | Pending |
+| BIZ-06 | Phase 3 | Pending |
+| BIZ-07 | Phase 3 | Pending |
+| BIZ-08 | Phase 3 | Pending |
+| BIZ-09 | Phase 3 | Pending |
+| BIZ-10 | Phase 3 | Pending |
+| API-01 | Phase 4 | Pending |
+| API-02 | Phase 4 | Pending |
+| API-08 | Phase 4 | Pending |
+| API-09 | Phase 4 | Pending |
+| API-03 | Phase 5 | Pending |
+| API-04 | Phase 5 | Pending |
+| API-05 | Phase 5 | Pending |
+| API-06 | Phase 5 | Pending |
+| API-07 | Phase 5 | Pending |
+| FE-01 | Phase 6 | Pending |
+| FE-02 | Phase 6 | Pending |
+| FE-03 | Phase 6 | Pending |
+| FE-04 | Phase 6 | Pending |
+| FE-05 | Phase 6 | Pending |
+| UI-01 | Phase 7 | Pending |
+| UI-02 | Phase 7 | Pending |
+| UI-03 | Phase 7 | Pending |
+| UI-04 | Phase 7 | Pending |
+| UI-05 | Phase 7 | Pending |
+| UI-06 | Phase 7 | Pending |
+| UI-07 | Phase 7 | Pending |
+| UI-08 | Phase 7 | Pending |
+| UI-09 | Phase 7 | Pending |
+| E2E-01 | Phase 8 | Pending |
+| E2E-02 | Phase 8 | Pending |
+| E2E-03 | Phase 8 | Pending |
+| E2E-04 | Phase 8 | Pending |
+| E2E-05 | Phase 8 | Pending |
+| E2E-06 | Phase 8 | Pending |
 
 **Coverage:**
 - v1 requirements: 42 total
-- Mapped to phases: 0
-- Unmapped: 42 ⚠️
+- Mapped to phases: 42
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-01*
-*Last updated: 2026-03-01 after initial definition*
+*Last updated: 2026-03-01 after roadmap creation*
