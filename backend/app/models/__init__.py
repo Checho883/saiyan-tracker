@@ -8,3 +8,6 @@ from app.models.power_level import PowerLevel
 from app.models.off_day import OffDay
 from app.models.achievement import Achievement
 from app.models.quote import Quote
+from app.models.habit import Habit
+from app.models.habit_log import HabitLog
+from app.models.habit_streak import HabitStreak

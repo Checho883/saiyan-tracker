@@ -17,3 +17,4 @@ class TaskCategory(Base):
     
     user = relationship("User", back_populates="categories")
     tasks = relationship("Task", back_populates="category")
+    habits = relationship("Habit", back_populates="category")

@@ -22,8 +22,8 @@ class QuoteService:
         ).order_by(func.random()).first()
         
         if quote:
-            return {"character": "vegeta", "quote_text": quote.quote_text, "context": "slacking", "severity": quote.severity}
-        return {"character": "vegeta", "quote_text": "You're pathetic. Get back to work!", "context": "slacking", "severity": 1}
+            return {"character": "vegeta", "quote_text": quote.quote_text, "context": "slacking", "severity": quote.severity, "source_saga": quote.source_saga}
+        return {"character": "vegeta", "quote_text": "You're pathetic. Get back to work!", "context": "slacking", "severity": 1, "source_saga": None}
     
     @staticmethod
     def get_goku_motivation(db: Session, context: str = "motivation") -> dict:
@@ -34,8 +34,8 @@ class QuoteService:
         ).order_by(func.random()).first()
         
         if quote:
-            return {"character": "goku", "quote_text": quote.quote_text, "context": context, "severity": 0}
-        return {"character": "goku", "quote_text": "You're doing great! Keep pushing!", "context": "motivation", "severity": 0}
+            return {"character": "goku", "quote_text": quote.quote_text, "context": context, "severity": 0, "source_saga": quote.source_saga}
+        return {"character": "goku", "quote_text": "You're doing great! Keep pushing!", "context": "motivation", "severity": 0, "source_saga": None}
     
     @staticmethod
     def get_contextual_quote(db: Session, user_id: str, daily_min_met: bool, streak: int) -> dict:

@@ -22,3 +22,4 @@ class User(Base):
     power_levels = relationship("PowerLevel", back_populates="user")
     off_days = relationship("OffDay", back_populates="user")
     achievements = relationship("Achievement", back_populates="user")
+    habits = relationship("Habit", back_populates="user")

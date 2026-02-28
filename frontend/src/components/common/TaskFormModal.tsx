@@ -9,12 +9,8 @@ interface Props {
   categories: TaskCategory[];
   onClose: () => void;
   onSubmit: (data: {
-    category_id: string;
-    title: string;
-    description?: string;
-    base_points: number;
-    energy_level: string;
-    estimated_minutes?: number;
+    category_id: string; title: string; description?: string;
+    base_points: number; energy_level: string; estimated_minutes?: number;
   }) => void;
 }
 
@@ -30,144 +26,86 @@ export default function TaskFormModal({ show, categories, onClose, onSubmit }: P
     e.preventDefault();
     if (!title.trim() || !categoryId) return;
     onSubmit({
-      category_id: categoryId,
-      title: title.trim(),
-      description: description.trim() || undefined,
-      base_points: basePoints,
-      energy_level: energyLevel,
-      estimated_minutes: estimatedMinutes ? Number(estimatedMinutes) : undefined,
+      category_id: categoryId, title: title.trim(),
+      description: description.trim() || undefined, base_points: basePoints,
+      energy_level: energyLevel, estimated_minutes: estimatedMinutes ? Number(estimatedMinutes) : undefined,
     });
-    // Reset form
-    setTitle('');
-    setDescription('');
-    setBasePoints(10);
-    setEnergyLevel('medium');
-    setEstimatedMinutes('');
+    setTitle(''); setDescription(''); setBasePoints(10); setEnergyLevel('medium'); setEstimatedMinutes('');
     onClose();
   };
 
   return (
     <AnimatePresence>
       {show && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          <motion.div
-            className="bg-saiyan-card border border-saiyan-border rounded-xl p-6 w-full max-w-md mx-4"
-            initial={{ scale: 0.9, y: 20 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.9, y: 20 }}
-          >
+        <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.7)' }}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+          <motion.div className="w-full max-w-md rounded-xl p-6"
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}
+            initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
+            onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-xl font-bold text-saiyan-text" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                New Training Task
-              </h2>
-              <button onClick={onClose} className="text-saiyan-muted hover:text-saiyan-text">
-                <X size={20} />
-              </button>
+              <h2 className="text-lg font-bold font-power tracking-wide text-saiyan-blue">NEW TASK</h2>
+              <button onClick={onClose} style={{ color: 'var(--text-muted)' }}><X size={20} /></button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Title */}
               <div>
-                <label className="text-xs text-saiyan-muted uppercase tracking-wider">Task Name</label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={e => setTitle(e.target.value)}
-                  className="w-full mt-1 bg-saiyan-darker border border-saiyan-border rounded-lg px-3 py-2 text-saiyan-text focus:border-saiyan-orange focus:outline-none"
-                  placeholder="What needs to be done?"
-                  required
-                />
+                <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Task Name *</label>
+                <input type="text" value={title} onChange={e => setTitle(e.target.value)} required placeholder="What needs to be done?"
+                  className="w-full mt-1 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-saiyan-blue/50"
+                  style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }} />
               </div>
 
-              {/* Description */}
               <div>
-                <label className="text-xs text-saiyan-muted uppercase tracking-wider">Description (optional)</label>
-                <textarea
-                  value={description}
-                  onChange={e => setDescription(e.target.value)}
-                  className="w-full mt-1 bg-saiyan-darker border border-saiyan-border rounded-lg px-3 py-2 text-saiyan-text focus:border-saiyan-orange focus:outline-none resize-none"
-                  rows={2}
-                  placeholder="Any details..."
-                />
+                <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Description</label>
+                <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Details..."
+                  className="w-full mt-1 px-3 py-2 rounded-lg text-sm outline-none resize-none focus:ring-2 focus:ring-saiyan-blue/50"
+                  style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }} />
               </div>
 
-              {/* Category */}
               <div>
-                <label className="text-xs text-saiyan-muted uppercase tracking-wider">Category</label>
+                <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Category</label>
                 <div className="flex gap-2 mt-1 flex-wrap">
                   {categories.map(cat => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setCategoryId(cat.id)}
-                      className={`px-3 py-1.5 rounded-lg text-sm border-2 transition-all ${
-                        categoryId === cat.id ? 'bg-opacity-20' : 'border-saiyan-border'
-                      }`}
-                      style={categoryId === cat.id ? {
-                        borderColor: cat.color_code,
-                        backgroundColor: `${cat.color_code}15`,
-                        color: cat.color_code,
-                      } : {}}
-                    >
+                    <button key={cat.id} type="button" onClick={() => setCategoryId(cat.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${categoryId === cat.id ? 'ring-2 ring-offset-1' : 'opacity-60'}`}
+                      style={{ background: `${cat.color_code}20`, color: cat.color_code, ringColor: cat.color_code }}>
                       {cat.name} ({cat.point_multiplier}x)
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Points & Duration Row */}
               <div className="flex gap-3">
                 <div className="flex-1">
-                  <label className="text-xs text-saiyan-muted uppercase tracking-wider flex items-center gap-1">
-                    <Zap size={12} /> Base Points
+                  <label className="text-xs font-semibold uppercase tracking-wide flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                    <Zap size={10} /> Points
                   </label>
-                  <input
-                    type="number"
-                    value={basePoints}
-                    onChange={e => setBasePoints(Number(e.target.value))}
-                    className="w-full mt-1 bg-saiyan-darker border border-saiyan-border rounded-lg px-3 py-2 text-saiyan-text focus:border-saiyan-orange focus:outline-none"
-                    min={1}
-                    max={500}
-                  />
+                  <input type="number" value={basePoints} onChange={e => setBasePoints(Number(e.target.value))} min={1} max={500}
+                    className="w-full mt-1 px-3 py-2 rounded-lg text-sm outline-none"
+                    style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }} />
                 </div>
                 <div className="flex-1">
-                  <label className="text-xs text-saiyan-muted uppercase tracking-wider">Minutes</label>
-                  <input
-                    type="number"
-                    value={estimatedMinutes}
-                    onChange={e => setEstimatedMinutes(e.target.value ? Number(e.target.value) : '')}
-                    className="w-full mt-1 bg-saiyan-darker border border-saiyan-border rounded-lg px-3 py-2 text-saiyan-text focus:border-saiyan-orange focus:outline-none"
-                    placeholder="Est."
-                    min={1}
-                  />
+                  <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Minutes</label>
+                  <input type="number" value={estimatedMinutes} onChange={e => setEstimatedMinutes(e.target.value ? Number(e.target.value) : '')}
+                    placeholder="Est." min={1}
+                    className="w-full mt-1 px-3 py-2 rounded-lg text-sm outline-none"
+                    style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }} />
                 </div>
               </div>
 
-              {/* Energy Level */}
               <div>
-                <label className="text-xs text-saiyan-muted uppercase tracking-wider">Energy Required</label>
+                <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Energy</label>
                 <div className="flex gap-2 mt-1">
                   {(['low', 'medium', 'high'] as EnergyLevel[]).map(level => {
                     const config = ENERGY_CONFIG[level];
                     return (
-                      <button
-                        key={level}
-                        type="button"
-                        onClick={() => setEnergyLevel(level)}
-                        className={`flex-1 py-2 rounded-lg text-sm border-2 transition-all ${
-                          energyLevel === level ? '' : 'border-saiyan-border text-saiyan-muted'
-                        }`}
-                        style={energyLevel === level ? {
-                          borderColor: config.color,
-                          backgroundColor: `${config.color}15`,
-                          color: config.color,
-                        } : {}}
-                      >
+                      <button key={level} type="button" onClick={() => setEnergyLevel(level)}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${energyLevel === level ? '' : ''}`}
+                        style={energyLevel === level
+                          ? { border: `2px solid ${config.color}`, background: `${config.color}15`, color: config.color }
+                          : { border: '2px solid var(--border-color)', color: 'var(--text-muted)' }}>
                         {config.emoji} {level}
                       </button>
                     );
@@ -175,16 +113,10 @@ export default function TaskFormModal({ show, categories, onClose, onSubmit }: P
                 </div>
               </div>
 
-              {/* Submit */}
-              <motion.button
-                type="submit"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full py-3 bg-saiyan-orange text-white font-bold rounded-lg hover:bg-orange-600 transition-colors"
-                style={{ fontFamily: 'Orbitron, sans-serif' }}
-              >
+              <button type="submit"
+                className="w-full py-2.5 rounded-lg font-bold text-sm text-white bg-gradient-to-r from-saiyan-blue to-blue-600 hover:shadow-lg hover:shadow-saiyan-blue/30">
                 Add Task
-              </motion.button>
+              </button>
             </form>
           </motion.div>
         </motion.div>

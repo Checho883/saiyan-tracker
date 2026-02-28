@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
-import type { TransformationInfo } from '@/types';
+import type { TransformationInfo, TransformationLevel } from '@/types';
 import { TRANSFORMATION_COLORS } from '@/types';
-import type { TransformationLevel } from '@/types';
 
 interface Props {
   transformations: TransformationInfo[];
@@ -11,9 +10,9 @@ interface Props {
 
 export default function TransformationMeter({ transformations, currentLevel, totalPoints }: Props) {
   return (
-    <div className="bg-saiyan-card border border-saiyan-border rounded-xl p-5">
-      <h3 className="text-sm text-saiyan-muted uppercase tracking-wider mb-4">Transformation Path</h3>
-      <div className="space-y-3">
+    <div className="card-base p-4">
+      <h3 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>Transformation Path</h3>
+      <div className="space-y-2.5">
         {transformations.map((t, i) => {
           const isUnlocked = t.unlocked;
           const isCurrent = t.level === currentLevel;
@@ -24,54 +23,23 @@ export default function TransformationMeter({ transformations, currentLevel, tot
             : isUnlocked ? 100 : 0;
 
           return (
-            <motion.div
-              key={t.level}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className={`flex items-center gap-3 ${!isUnlocked ? 'opacity-40' : ''}`}
-            >
-              {/* Level dot */}
-              <div
-                className={`w-4 h-4 rounded-full flex-shrink-0 ${isCurrent ? 'animate-glow' : ''}`}
-                style={{
-                  backgroundColor: isUnlocked ? color : '#333',
-                  boxShadow: isCurrent ? `0 0 12px ${color}` : 'none',
-                }}
-              />
-
-              {/* Info */}
+            <motion.div key={t.level} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.08 }} className={`flex items-center gap-3 ${!isUnlocked ? 'opacity-30' : ''}`}>
+              <div className={`w-3.5 h-3.5 rounded-full flex-shrink-0 ${isCurrent ? 'animate-glow' : ''}`}
+                style={{ backgroundColor: isUnlocked ? color : 'var(--border-color)', boxShadow: isCurrent ? `0 0 12px ${color}` : 'none' }} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <span className={`text-sm font-semibold ${isCurrent ? '' : 'text-saiyan-muted'}`}
-                        style={isCurrent ? { color } : {}}>
-                    {t.name}
-                  </span>
-                  <span className="text-xs text-saiyan-muted">
-                    {t.threshold.toLocaleString()} PL
-                  </span>
+                  <span className="text-xs font-semibold" style={{ color: isCurrent ? color : 'var(--text-muted)' }}>{t.name}</span>
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t.threshold.toLocaleString()}</span>
                 </div>
-
-                {/* Progress bar for current level */}
                 {isCurrent && nextThreshold && (
-                  <div className="h-1.5 bg-saiyan-darker rounded-full mt-1 overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full"
-                      style={{ backgroundColor: color }}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${progress}%` }}
-                      transition={{ duration: 1 }}
-                    />
+                  <div className="h-1 rounded-full mt-1 overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
+                    <motion.div className="h-full rounded-full" style={{ backgroundColor: color }}
+                      initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ duration: 1 }} />
                   </div>
                 )}
               </div>
-
-              {/* Lock/Unlock indicator */}
-              {isUnlocked ? (
-                <span className="text-green-400 text-xs">✓</span>
-              ) : (
-                <span className="text-saiyan-muted text-xs">🔒</span>
-              )}
+              {isUnlocked ? <span className="text-green-400 text-xs">✓</span> : <span className="text-xs" style={{ color: 'var(--text-muted)' }}>🔒</span>}
             </motion.div>
           );
         })}

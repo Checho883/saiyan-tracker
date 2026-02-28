@@ -17,6 +17,9 @@ class DailyLog(Base):
     tasks_completed = Column(Integer, default=0)
     completion_percentage = Column(Float, default=0.0)
     login_bonus_earned = Column(Boolean, default=False)
+    habits_due = Column(Integer, default=0)
+    habits_completed = Column(Integer, default=0)
+    habit_completion_rate = Column(Float, default=0.0)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

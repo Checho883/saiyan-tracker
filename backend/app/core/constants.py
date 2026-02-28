@@ -34,3 +34,14 @@ DEFAULT_DAILY_MINIMUM = 100
 
 # Energy levels
 ENERGY_LEVELS = ["low", "medium", "high"]
+
+# Habit streak bonus: +2% per consecutive day, capped at 30%
+HABIT_STREAK_BONUS_PER_DAY = 0.02
+HABIT_STREAK_BONUS_CAP = 0.30
+
+# Consistency bonus: completing ALL habits in a day = 1.5x on that day's habit points
+CONSISTENCY_BONUS = 1.5
+
+# Days of the week for habit scheduling
+WEEKDAYS = ["mon", "tue", "wed", "thu", "fri"]
+ALL_DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]

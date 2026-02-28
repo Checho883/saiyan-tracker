@@ -61,57 +61,85 @@ def seed_default_data():
         quote_count = db.query(Quote).count()
         if quote_count == 0:
             quotes = [
-                # Vegeta roasts - mild (severity 1)
-                Quote(character="vegeta", quote_text="Is that all you've got? Even Yamcha puts in more effort!", context="slacking", severity=1),
-                Quote(character="vegeta", quote_text="You call that training? My warm-up is more intense than your entire day!", context="slacking", severity=1),
-                Quote(character="vegeta", quote_text="Hmph. At this rate, you'll never surpass your limits.", context="slacking", severity=1),
-                Quote(character="vegeta", quote_text="A true Saiyan warrior doesn't rest when there's work to be done!", context="slacking", severity=1),
-                Quote(character="vegeta", quote_text="You're slacking off? How disappointing.", context="slacking", severity=1),
-                Quote(character="vegeta", quote_text="I've seen Saibamen with more dedication than you.", context="slacking", severity=1),
-                Quote(character="vegeta", quote_text="Your power level is... embarrassing.", context="slacking", severity=1),
-                
-                # Vegeta roasts - medium (severity 2)
-                Quote(character="vegeta", quote_text="PATHETIC! You're weaker than Krillin on his worst day!", context="slacking", severity=2),
-                Quote(character="vegeta", quote_text="This is a disgrace to the Saiyan race! Get off your ass!", context="slacking", severity=2),
-                Quote(character="vegeta", quote_text="You think sitting around will make you stronger?! FOOL!", context="slacking", severity=2),
-                Quote(character="vegeta", quote_text="Kakarot would NEVER slack this much. Are you even trying?!", context="slacking", severity=2),
-                Quote(character="vegeta", quote_text="Every second you waste, your enemies grow stronger!", context="slacking", severity=2),
-                Quote(character="vegeta", quote_text="I didn't endure 150x gravity to watch YOU be lazy!", context="slacking", severity=2),
-                
-                # Vegeta roasts - savage (severity 3)
-                Quote(character="vegeta", quote_text="YOU ABSOLUTE WASTE OF SAIYAN POTENTIAL! I should have left you on Earth to rot!", context="slacking", severity=3),
-                Quote(character="vegeta", quote_text="WHAT IS THIS PATHETIC DISPLAY?! You're an embarrassment to every warrior who ever lived!", context="slacking", severity=3),
-                Quote(character="vegeta", quote_text="I'VE HAD ENOUGH! Either get up and fight or admit you're NOTHING!", context="slacking", severity=3),
-                Quote(character="vegeta", quote_text="You disgust me! Even Frieza showed more dedication, and he's a TYRANT!", context="slacking", severity=3),
-                Quote(character="vegeta", quote_text="UNACCEPTABLE! Your power level is dropping! You're going BACKWARDS!", context="slacking", severity=3),
-                Quote(character="vegeta", quote_text="At this rate, you couldn't beat a FARMER WITH A SHOTGUN!", context="slacking", severity=3),
-                
-                # Goku motivation - general
-                Quote(character="goku", quote_text="Hey! Every bit of training counts! You're doing awesome!", context="motivation", severity=0),
-                Quote(character="goku", quote_text="I always look forward to a challenge! You should too!", context="motivation", severity=0),
-                Quote(character="goku", quote_text="The more you push yourself, the stronger you get! That's the fun part!", context="motivation", severity=0),
-                Quote(character="goku", quote_text="You're getting stronger! I can feel it!", context="motivation", severity=0),
-                Quote(character="goku", quote_text="There's always room to grow! Let's keep going!", context="motivation", severity=0),
-                Quote(character="goku", quote_text="Power comes in response to a need. And right now, you need to crush those tasks!", context="motivation", severity=0),
-                Quote(character="goku", quote_text="I've learned that the more you train, the more surprises you find! Keep at it!", context="motivation", severity=0),
-                Quote(character="goku", quote_text="Giving up isn't in our vocabulary! Let's do this!", context="motivation", severity=0),
-                
-                # Goku motivation - task complete
-                Quote(character="goku", quote_text="AMAZING! You just powered up! That felt great, right?!", context="task_complete", severity=0),
-                Quote(character="goku", quote_text="Woah! Your power level just jumped! Keep it up!", context="task_complete", severity=0),
-                Quote(character="goku", quote_text="That's the spirit! Every task makes you stronger!", context="task_complete", severity=0),
-                Quote(character="goku", quote_text="You're on fire today! This is SO exciting!", context="task_complete", severity=0),
-                
-                # Goku motivation - streak
-                Quote(character="goku", quote_text="Your streak is incredible! You're training like a TRUE warrior!", context="streak", severity=0),
-                Quote(character="goku", quote_text="Look at that consistency! Even I'm impressed!", context="streak", severity=0),
-                Quote(character="goku", quote_text="You haven't missed a day! That's the kind of discipline that creates legends!", context="streak", severity=0),
-                Quote(character="goku", quote_text="This streak proves it — you've got the heart of a Saiyan!", context="streak", severity=0),
-                
-                # Goku motivation - transformation
-                Quote(character="goku", quote_text="INCREDIBLE! You've broken through your limits! A new transformation!", context="transformation", severity=0),
-                Quote(character="goku", quote_text="I felt that from across the universe! You just reached a WHOLE NEW LEVEL!", context="transformation", severity=0),
-                Quote(character="goku", quote_text="This power... it's amazing! You've ascended beyond what I thought possible!", context="transformation", severity=0),
+                # ── VEGETA ROASTS ── mild (severity 1) ──
+                Quote(character="vegeta", quote_text="You call yourself a warrior? How pathetic.", context="slacking", severity=1, source_saga="Saiyan Saga"),
+                Quote(character="vegeta", quote_text="There's no such thing as fair or unfair in battle. There is only victory, or in your case, defeat.", context="slacking", severity=1, source_saga="Saiyan Saga"),
+                Quote(character="vegeta", quote_text="Hmph. Spend less time dawdling and more time training.", context="slacking", severity=1, source_saga="Android Saga"),
+                Quote(character="vegeta", quote_text="A Saiyan always keeps his pride, even if he can't keep up with his training.", context="slacking", severity=1, source_saga="Namek Saga"),
+                Quote(character="vegeta", quote_text="Tch. I've seen better effort from Nappa.", context="slacking", severity=1, source_saga="Saiyan Saga"),
+                Quote(character="vegeta", quote_text="Your laziness is showing, and it's not a good look.", context="slacking", severity=1, source_saga="Cell Saga"),
+                Quote(character="vegeta", quote_text="Even the lowest class warriors train harder than you.", context="slacking", severity=1, source_saga="DBS: Broly"),
+
+                # ── VEGETA ROASTS ── medium (severity 2) ──
+                Quote(character="vegeta", quote_text="You are nothing but a worm! An insect!", context="slacking", severity=2, source_saga="Namek Saga"),
+                Quote(character="vegeta", quote_text="How could you let yourself be beaten by such an insignificant nothing?!", context="slacking", severity=2, source_saga="Namek Saga"),
+                Quote(character="vegeta", quote_text="Kakarot trained in 100 times gravity while you sit here doing NOTHING!", context="slacking", severity=2, source_saga="Namek Saga"),
+                Quote(character="vegeta", quote_text="I am a Super Elite! And you? You're nothing but a slacker!", context="slacking", severity=2, source_saga="Saiyan Saga"),
+                Quote(character="vegeta", quote_text="You think you can take a day off?! While I train day and night in the gravity chamber?!", context="slacking", severity=2, source_saga="Android Saga"),
+                Quote(character="vegeta", quote_text="Your weakness disgusts me! Get up and fight, coward!", context="slacking", severity=2, source_saga="Majin Buu Saga"),
+                Quote(character="vegeta", quote_text="I refuse to watch you waste the potential of a Saiyan warrior!", context="slacking", severity=2, source_saga="DBS"),
+
+                # ── VEGETA ROASTS ── savage (severity 3) ──
+                Quote(character="vegeta", quote_text="What a useless waste of energy! You don't deserve the blood of a warrior!", context="slacking", severity=3, source_saga="Namek Saga"),
+                Quote(character="vegeta", quote_text="You're an embarrassment to all Saiyans! Frieza destroyed our planet and even HE works harder than you!", context="slacking", severity=3, source_saga="Namek Saga"),
+                Quote(character="vegeta", quote_text="UNFORGIVABLE! I sacrificed EVERYTHING to become the strongest, and you can't even complete a single habit?!", context="slacking", severity=3, source_saga="Majin Buu Saga"),
+                Quote(character="vegeta", quote_text="I let myself become Majin Vegeta for power! What have YOU sacrificed?! NOTHING!", context="slacking", severity=3, source_saga="Majin Buu Saga"),
+                Quote(character="vegeta", quote_text="I WILL NOT be surpassed by a low-class warrior OR by your laziness! GET. UP.", context="slacking", severity=3, source_saga="Saiyan Saga"),
+                Quote(character="vegeta", quote_text="You are a disgrace! At this rate you couldn't even defeat Raditz!", context="slacking", severity=3, source_saga="Saiyan Saga"),
+
+                # ── VEGETA PRIDE ── push/encouragement from Vegeta ──
+                Quote(character="vegeta", quote_text="I do not fear this new challenge. Rather like a true warrior I will rise to meet it.", context="pride", severity=0, source_saga="Cell Saga"),
+                Quote(character="vegeta", quote_text="Push through it. Don't stop until you're proud.", context="pride", severity=0, source_saga="Android Saga"),
+                Quote(character="vegeta", quote_text="Every time I reach a new level of strength, I find a deeper level within!", context="pride", severity=0, source_saga="DBS"),
+                Quote(character="vegeta", quote_text="Strength is the only thing that matters in this world.", context="pride", severity=0, source_saga="Saiyan Saga"),
+                Quote(character="vegeta", quote_text="I will not give up. I will not surrender. That is my pride as a Saiyan warrior!", context="pride", severity=0, source_saga="DBS: Tournament of Power"),
+                Quote(character="vegeta", quote_text="While you were slacking, I was training. While you rested, I pushed harder. That is the difference between us.", context="pride", severity=0, source_saga="Android Saga"),
+
+                # ── GOKU MOTIVATION ── general encouragement ──
+                Quote(character="goku", quote_text="I am the hope of the universe!", context="motivation", severity=0, source_saga="Namek Saga"),
+                Quote(character="goku", quote_text="Power comes in response to a need, not a desire. You have to create that need!", context="motivation", severity=0, source_saga="Cell Saga"),
+                Quote(character="goku", quote_text="I've never really been the smartest, but I always try my hardest!", context="motivation", severity=0, source_saga="Majin Buu Saga"),
+                Quote(character="goku", quote_text="Sometimes, we have to look beyond what we want and do what's best.", context="motivation", severity=0, source_saga="Majin Buu Saga"),
+                Quote(character="goku", quote_text="Limits are meant to be broken! That's what training is all about!", context="motivation", severity=0, source_saga="DBS: Tournament of Power"),
+                Quote(character="goku", quote_text="There's always someone stronger out there. That's what makes it exciting!", context="motivation", severity=0, source_saga="DBS"),
+                Quote(character="goku", quote_text="I don't think of it as training. I think of it as getting to push myself!", context="motivation", severity=0, source_saga="DBS"),
+                Quote(character="goku", quote_text="Even the mightiest warriors experience fears. What makes them a true warrior is the courage to overcome them.", context="motivation", severity=0, source_saga="Cell Saga"),
+                Quote(character="goku", quote_text="The real fight is with yourself. And you're winning!", context="motivation", severity=0, source_saga="Majin Buu Saga"),
+                Quote(character="goku", quote_text="I like challenges! The harder it is, the more fun it becomes!", context="motivation", severity=0, source_saga="Saiyan Saga"),
+
+                # ── GOKU ── habit/task completion ──
+                Quote(character="goku", quote_text="All right! That was a great one! Your power level just shot up!", context="task_complete", severity=0, source_saga="Namek Saga"),
+                Quote(character="goku", quote_text="Wow, you finished that like it was nothing! You're getting stronger!", context="task_complete", severity=0, source_saga="Cell Saga"),
+                Quote(character="goku", quote_text="That's the spirit! One step at a time and before you know it, you're unstoppable!", context="task_complete", severity=0, source_saga="DBS"),
+                Quote(character="goku", quote_text="You did it! I knew you had it in you! Now let's keep that energy going!", context="task_complete", severity=0, source_saga="Saiyan Saga"),
+                Quote(character="goku", quote_text="Ha! You made that look easy! You've been training hard, haven't you?", context="task_complete", severity=0, source_saga="DBS"),
+                Quote(character="goku", quote_text="Nice one! Every habit you complete makes you a little bit stronger!", context="task_complete", severity=0, source_saga="Cell Saga"),
+
+                # ── GOKU ── streak milestones ──
+                Quote(character="goku", quote_text="Look at that streak! You're training like a TRUE warrior!", context="streak", severity=0, source_saga="DBS"),
+                Quote(character="goku", quote_text="You haven't missed a day! That's the kind of discipline that creates legends!", context="streak", severity=0, source_saga="Cell Saga"),
+                Quote(character="goku", quote_text="This streak proves it — you've got the heart of a Saiyan!", context="streak", severity=0, source_saga="Namek Saga"),
+                Quote(character="goku", quote_text="Day after day, you keep showing up! Even King Kai would be impressed!", context="streak", severity=0, source_saga="Saiyan Saga"),
+                Quote(character="goku", quote_text="Consistency like this is how you reach new forms! Keep it going!", context="streak", severity=0, source_saga="DBS: Tournament of Power"),
+
+                # ── GOKU ── transformation unlocks ──
+                Quote(character="goku", quote_text="I am a Super Saiyan! And you're becoming one too!", context="transformation", severity=0, source_saga="Namek Saga"),
+                Quote(character="goku", quote_text="I felt that power surge from across the universe! You just reached a WHOLE NEW LEVEL!", context="transformation", severity=0, source_saga="Cell Saga"),
+                Quote(character="goku", quote_text="This power... it's incredible! You've ascended beyond what I thought possible!", context="transformation", severity=0, source_saga="DBS"),
+                Quote(character="goku", quote_text="This is what happens when you push past your limits! A new transformation!", context="transformation", severity=0, source_saga="DBS: Tournament of Power"),
+
+                # ── TRANSFORMATION-SPECIFIC quotes ──
+                Quote(character="goku", quote_text="This is what it means to go even further beyond! SUPER SAIYAN!", context="transformation_ssj", severity=0, source_saga="Namek Saga"),
+                Quote(character="gohan", quote_text="Fight you? No, I want to kill you.", context="transformation_ssj2", severity=0, source_saga="Cell Saga"),
+                Quote(character="goku", quote_text="I'm sorry it took so much time. This is what I call... Super Saiyan 3!", context="transformation_ssj3", severity=0, source_saga="Majin Buu Saga"),
+                Quote(character="goku", quote_text="This warmth... this is the power of a Super Saiyan God!", context="transformation_ssg", severity=0, source_saga="DBS: Battle of Gods"),
+                Quote(character="vegeta", quote_text="This is the power of a Saiyan who has reached the realm of the gods... Super Saiyan Blue!", context="transformation_ssb", severity=0, source_saga="DBS: Resurrection F"),
+                Quote(character="goku", quote_text="This is the power of Ultra Instinct!", context="transformation_ui", severity=0, source_saga="DBS: Tournament of Power"),
+
+                # ── GOKU ── all habits completed (consistency bonus) ──
+                Quote(character="goku", quote_text="You completed ALL your habits today! That's what a true warrior does — no excuses!", context="all_complete", severity=0, source_saga="Cell Saga"),
+                Quote(character="goku", quote_text="Every single one! You're on a whole different level today!", context="all_complete", severity=0, source_saga="DBS"),
+                Quote(character="goku", quote_text="Wow, a perfect day! This is how Saiyans are supposed to train!", context="all_complete", severity=0, source_saga="Namek Saga"),
             ]
             db.add_all(quotes)
             db.commit()

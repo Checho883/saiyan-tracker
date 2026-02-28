@@ -7,53 +7,77 @@ interface Props {
 }
 
 export default function GokuQuote({ quote, onClose }: Props) {
-  if (!quote || quote.character !== 'goku') return null;
+  if (!quote || (quote.character !== 'goku' && quote.character !== 'gohan')) return null;
+
+  const contextLabel =
+    quote.context === 'streak' ? 'Impressed!' :
+    quote.context === 'transformation' ? 'AMAZING!' :
+    quote.context === 'all_complete' ? 'PERFECT DAY!' :
+    quote.context === 'task_complete' ? 'Nice one!' :
+    'Keep going!';
 
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed bottom-6 left-6 z-40 max-w-sm"
-        initial={{ y: 50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 50, opacity: 0 }}
-        transition={{ type: 'spring', damping: 15 }}
+        className="fixed top-16 left-1/2 z-40 w-full max-w-lg px-4"
+        style={{ transform: 'translateX(-50%)' }}
+        initial={{ y: -80, opacity: 0 }}
+        animate={{ y: 0, opacity: 1, x: '-50%' }}
+        exit={{ y: -80, opacity: 0 }}
+        transition={{ type: 'spring', damping: 20, stiffness: 300 }}
       >
-        <div className="bg-saiyan-card border-2 border-saiyan-orange rounded-xl p-5 shadow-lg shadow-saiyan-orange/10">
-          {/* Character header */}
-          <div className="flex items-center gap-3 mb-3">
+        <div
+          className="rounded-xl p-4 shadow-2xl relative overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg, rgba(255, 107, 0, 0.15), rgba(255, 215, 0, 0.1))',
+            border: '1px solid rgba(255, 107, 0, 0.3)',
+            backdropFilter: 'blur(12px)',
+          }}
+        >
+          {/* Glow effect */}
+          <div className="absolute inset-0 opacity-20 pointer-events-none"
+            style={{ background: 'radial-gradient(ellipse at center, rgba(255, 165, 0, 0.3), transparent 70%)' }}
+          />
+
+          <div className="relative z-10 flex items-start gap-3">
+            {/* Goku avatar */}
             <motion.div
-              className="w-10 h-10 rounded-full bg-orange-900 flex items-center justify-center text-lg"
-              animate={{ rotate: [0, 10, -10, 0] }}
-              transition={{ duration: 2, repeat: Infinity }}
+              className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-xl font-bold"
+              style={{ background: 'linear-gradient(135deg, #FF6B00, #FFD700)', color: 'white' }}
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
             >
-              ✊
+              G
             </motion.div>
-            <div>
-              <span className="text-sm font-bold text-saiyan-orange">Goku</span>
-              <span className="text-xs text-saiyan-muted ml-2">
-                {quote.context === 'streak' ? 'Impressed!' : quote.context === 'transformation' ? 'Amazed!' : 'Cheering'}
-              </span>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-bold text-saiyan-orange">Goku</span>
+                <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                  style={{ background: 'rgba(255, 107, 0, 0.2)', color: '#FFB366' }}>
+                  {contextLabel}
+                </span>
+              </div>
+
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+                "{quote.quote_text}"
+              </p>
+
+              {quote.source_saga && (
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                  — {quote.source_saga}
+                </p>
+              )}
             </div>
+
+            <button
+              onClick={onClose}
+              className="text-xs px-2 py-1 rounded-lg transition-colors flex-shrink-0"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              ✕
+            </button>
           </div>
-
-          {/* Quote */}
-          <motion.p
-            className="text-saiyan-text text-sm leading-relaxed"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            "{quote.quote_text}"
-          </motion.p>
-
-          {/* Dismiss */}
-          <motion.button
-            className="mt-3 text-xs text-saiyan-muted hover:text-saiyan-orange transition-colors"
-            onClick={onClose}
-            whileHover={{ scale: 1.05 }}
-          >
-            Thanks, Goku!
-          </motion.button>
         </div>
       </motion.div>
     </AnimatePresence>

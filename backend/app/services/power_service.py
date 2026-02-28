@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from app.models import TaskCompletion, DailyLog, Streak, PowerLevel, Achievement, User
+from app.models import TaskCompletion, DailyLog, Streak, PowerLevel, Achievement, User, HabitLog
 from app.core.constants import TRANSFORMATIONS, STREAK_BONUSES, LOGIN_BONUS_POINTS
 
 class PowerService:
@@ -52,9 +52,12 @@ class PowerService:
         if not user:
             return None
         
-        # Total lifetime points
-        total_points = db.query(func.coalesce(func.sum(TaskCompletion.points_awarded), 0))\
+        # Total lifetime points (tasks + habits)
+        task_points = db.query(func.coalesce(func.sum(TaskCompletion.points_awarded), 0))\
             .filter(TaskCompletion.user_id == user_id).scalar()
+        habit_points = db.query(func.coalesce(func.sum(HabitLog.points_awarded), 0))\
+            .filter(HabitLog.user_id == user_id, HabitLog.completed == True).scalar()
+        total_points = task_points + habit_points
         
         # Today's points
         today = date.today()
@@ -122,13 +125,22 @@ class PowerService:
             DailyLog.log_date == today
         ).first()
         
-        # Calculate today's totals
-        today_points = db.query(func.coalesce(func.sum(TaskCompletion.points_awarded), 0))\
+        # Calculate today's totals (tasks + habits)
+        today_task_points = db.query(func.coalesce(func.sum(TaskCompletion.points_awarded), 0))\
             .filter(
                 TaskCompletion.user_id == user_id,
                 func.date(TaskCompletion.completed_at) == today
             ).scalar()
-        
+
+        today_habit_points = db.query(func.coalesce(func.sum(HabitLog.points_awarded), 0))\
+            .filter(
+                HabitLog.user_id == user_id,
+                HabitLog.log_date == today,
+                HabitLog.completed == True,
+            ).scalar()
+
+        today_points = today_task_points + today_habit_points
+
         today_tasks = db.query(func.count(TaskCompletion.id))\
             .filter(
                 TaskCompletion.user_id == user_id,

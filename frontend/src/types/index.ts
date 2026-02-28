@@ -85,13 +85,83 @@ export interface TransformationInfo {
 
 export type EnergyLevel = 'low' | 'medium' | 'high';
 
+// ============ HABITS ============
+
+export interface Habit {
+  id: string;
+  user_id: string;
+  category_id: string;
+  title: string;
+  description: string | null;
+  icon_emoji: string;
+  base_points: number;
+  frequency: 'daily' | 'weekdays' | 'custom';
+  custom_days: string[] | null;
+  target_time: string | null;
+  is_temporary: boolean;
+  start_date: string | null;
+  end_date: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  category_name?: string;
+  category_color?: string;
+  category_multiplier?: number;
+}
+
+export interface HabitToday {
+  id: string;
+  title: string;
+  icon_emoji: string;
+  base_points: number;
+  category_id: string;
+  category_name: string | null;
+  category_color: string | null;
+  category_multiplier: number | null;
+  completed: boolean;
+  completed_at: string | null;
+  points_awarded: number;
+  current_streak: number;
+  best_streak: number;
+}
+
+export interface HabitCheckResult {
+  habit_id: string;
+  completed: boolean;
+  points_awarded: number;
+  base_points: number;
+  streak_bonus_points: number;
+  habit_streak: number;
+  new_total_power: number;
+  daily_points: number;
+  daily_minimum_met: boolean;
+  all_habits_completed: boolean;
+  consistency_bonus_applied: boolean;
+  new_transformation: TransformationEvent | null;
+}
+
+export interface HabitCalendarDay {
+  date: string;
+  habits_due: number;
+  habits_completed: number;
+  completion_rate: number;
+  total_points: number;
+}
+
+export interface HabitCalendarResponse {
+  year: number;
+  month: number;
+  days: HabitCalendarDay[];
+}
+
 // ============ QUOTES ============
 
 export interface Quote {
-  character: 'vegeta' | 'goku';
+  character: 'vegeta' | 'goku' | 'gohan';
   quote_text: string;
   context: string;
   severity: number;
+  source_saga?: string;
 }
 
 // ============ ANALYTICS ============

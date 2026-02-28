@@ -1,7 +1,8 @@
 from fastapi import APIRouter
-from app.api.v1 import tasks, completions, power, quotes, off_days, analytics, settings, categories
+from app.api.v1 import tasks, completions, power, quotes, off_days, analytics, settings, categories, habits
 
 api_router = APIRouter()
+api_router.include_router(habits.router, prefix="/habits", tags=["habits"])
 api_router.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
 api_router.include_router(categories.router, prefix="/categories", tags=["categories"])
 api_router.include_router(completions.router, prefix="/completions", tags=["completions"])

@@ -4,12 +4,54 @@ import type {
   PowerLevel, TransformationInfo, PowerHistoryEntry,
   Quote, WeeklyAnalytics, CategoryBreakdown,
   OffDay, UserSettings,
+  Habit, HabitToday, HabitCheckResult, HabitCalendarResponse,
 } from '@/types';
 
 const api = axios.create({
   baseURL: '/api/v1',
   headers: { 'Content-Type': 'application/json' },
 });
+
+// ============ HABITS ============
+
+export const habitApi = {
+  list: (includeInactive = false) =>
+    api.get<Habit[]>('/habits/', { params: { include_inactive: includeInactive } }).then(r => r.data),
+
+  create: (data: {
+    category_id: string;
+    title: string;
+    description?: string;
+    icon_emoji?: string;
+    base_points?: number;
+    frequency?: string;
+    custom_days?: string[];
+    target_time?: string;
+    is_temporary?: boolean;
+    end_date?: string;
+  }) => api.post<Habit>('/habits/', data).then(r => r.data),
+
+  update: (id: string, data: Partial<Habit>) =>
+    api.put<Habit>(`/habits/${id}`, data).then(r => r.data),
+
+  delete: (id: string) =>
+    api.delete(`/habits/${id}`).then(r => r.data),
+
+  today: () =>
+    api.get<HabitToday[]>('/habits/today/list').then(r => r.data),
+
+  check: (id: string) =>
+    api.post<HabitCheckResult>(`/habits/${id}/check`).then(r => r.data),
+
+  calendar: (year?: number, month?: number) =>
+    api.get<HabitCalendarResponse>('/habits/calendar/all', { params: { year, month } }).then(r => r.data),
+
+  stats: (id: string) =>
+    api.get(`/habits/${id}/stats`).then(r => r.data),
+
+  reorder: (habits: { id: string; sort_order: number }[]) =>
+    api.put('/habits/reorder', { habits }).then(r => r.data),
+};
 
 // ============ TASKS ============
 
