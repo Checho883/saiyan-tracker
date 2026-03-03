@@ -1,67 +1,71 @@
-# Saiyan Tracker — Full Stack Audit
+# Saiyan Tracker v3 — The Dopamine Edition
 
 ## What This Is
 
-A Dragon Ball Z themed daily habit tracker built for Sergio (solo user with ADHD). It uses gamification — power levels, transformations, per-habit streaks, consistency bonuses, and real anime quotes — to create the dopamine loop needed for daily habit consistency. Backend is FastAPI + SQLite, frontend is React 19 + TypeScript + Tailwind.
+A Dragon Ball Z-themed daily habit tracker built exclusively for Sergio. It weaponizes ADHD dopamine-seeking behavior through percentage-based daily completion, sound effects on every interaction, randomized loot boxes, screen-shaking 100% explosions, and a Dragon Ball collection macro-reward loop. No tasks, no punishment — only habits and positive reinforcement.
 
 ## Core Value
 
-Every feature that was built in Phases 1-5 works correctly end-to-end — habits can be created, checked off, tracked with streaks, managed (edit/reorder/archive/delete), and visualized in analytics.
+Every habit check must feel like something happened — a sound, a visual pulse, a number going up. If the app is silent and still, it has failed.
 
 ## Requirements
 
 ### Validated
 
-- ✓ Habit CRUD — create, read, update, delete habits — existing
-- ✓ Habit check/uncheck — toggle daily completion with points — existing
-- ✓ Per-habit streaks — track current and best streaks — existing
-- ✓ Dragon Ball quotes — 55 real quotes with source saga — existing
-- ✓ Dark/light theme — CSS variable theming with system preference — existing
-- ✓ Scouter-style power level display — existing
-- ✓ HabitCard with ki-burst animation — existing
-- ✓ HabitFormModal (create + edit) — existing
-- ✓ Calendar heatmap with month navigation — existing
-- ✓ Context menu (edit, move up/down, archive, delete) — existing
-- ✓ Habit reordering via API — existing
+(None yet — ship to validate)
 
 ### Active
 
-- [ ] Full backend API audit — all endpoints respond correctly, no errors
-- [ ] Full frontend UI audit — all components render, interactions work, theme consistent
-- [ ] End-to-end flow verification — create/edit/complete/delete habits, streaks track, analytics display
-- [ ] Code cleanup — remove dead code, fix inconsistencies, ensure reliability
+- [ ] Percentage-based daily aura (all habits equal weight toward 100%)
+- [ ] Saiyan attributes (STR/VIT/INT/KI) with per-habit XP
+- [ ] Kaio-ken tiered completion bonuses (50%/80%/100%)
+- [ ] Capsule Corp loot boxes (25% drop chance, user-configured rewards)
+- [ ] Dragon Ball collection (7 Perfect Days = Shenron wish)
+- [ ] Full-screen 100% Perfect Day explosion with audio
+- [ ] Saiyan avatar with visual transformation (10 forms: Base through Beast)
+- [ ] Sound effects on every interaction (scouter beep, ki charge, explosions)
+- [ ] Forgiving Zenkai streaks (halved, never reset, +50% comeback bonus)
+- [ ] Character quote system (Goku, Vegeta, Piccolo, Whis, Beerus)
+- [ ] Calendar heatmap with gold/blue/red/gray color coding
+- [ ] Attribute progression charts and per-habit contribution graphs
+- [ ] Settings: capsule reward CRUD, Shenron wish CRUD, sound toggle, theme
 
 ### Out of Scope
 
-- New features — this milestone is about making existing features solid, not adding new ones
-- Deployment — no VPS/Docker/CI setup
-- Mobile/PWA — future consideration
-- Task system overhaul — tasks are secondary, focus is habits
+- Task management — habits only, no one-off tasks
+- Multi-user / authentication — single tenant, Sergio only
+- Mobile app — web-first (PWA later)
+- Real-time sync — local SQLite, no cloud
+- Social features — solo tracker, no leaderboards with others
 
 ## Context
 
-- 5 phases were completed in the v2 redesign (habits backend, quotes, UI redesign, analytics calendar, habit management)
-- Phase 6 (Update PRD) was listed but PRD is already updated
-- Backend runs on Python 3.14, FastAPI, SQLAlchemy, SQLite at `backend/data/saiyan_tracker.db`
-- Frontend runs on React 19, Vite 7, TypeScript, Tailwind CSS, Framer Motion, Zustand
-- Single user app — DEFAULT_USER_ID = "default-user", no auth
-- Database must be deleted when schema changes (kill python process first)
-- Backend: `cd backend && source venv/Scripts/activate && uvicorn app.main:app --port 8000`
-- Frontend: `cd frontend && node node_modules/vite/bin/vite.js`
+- Sergio has ADHD and needs immediate, visceral feedback on every action
+- Past habit trackers failed due to boredom — invisible points don't create dopamine
+- Competitive personality means the 100% target becomes an obsession (by design)
+- 4-6 daily habits is the realistic scope (each = 16-25% of daily aura)
+- Building custom eliminates paying for apps that don't fit his brain
+- PRD v3 (PRD.md) contains the complete detailed specification
+- Dragon Ball Z theme is non-negotiable — real images, real quotes, real sounds
 
 ## Constraints
 
-- **Tech stack**: Must use existing stack (FastAPI + React + SQLite) — no migrations
-- **Solo user**: No auth system, single DEFAULT_USER_ID throughout
-- **Local dev**: SQLite database, localhost only
-- **No new features**: Audit and fix only — don't add capabilities
+- **Tech stack**: React 19 + Vite 7 + TypeScript frontend, Python 3.14 + FastAPI backend, SQLite database, Zustand state, Framer Motion animations, Tailwind CSS
+- **Quality**: Build it right the first time — solid architecture over speed
+- **Depth**: Comprehensive coverage — the PRD is detailed and every mechanic matters
+- **Solo user**: No auth system needed, single default user
+- **Audio**: Every interaction must have a sound effect (use-sound or Howler.js)
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Audit-only milestone | Make existing work reliable before adding more | — Pending |
-| Full stack scope | Backend + frontend + end-to-end flows all need verification | — Pending |
+| Pure habits, no tasks | Tasks compete with habits and enable hyperfocus exploits | — Pending |
+| Equal % weight per habit | Prevents gaming importance levels to skip habits | — Pending |
+| Importance affects XP only | Still rewards harder habits without breaking the 100% loop | — Pending |
+| Zenkai halve (not reset) streaks | Punishment kills ADHD motivation; forgiveness keeps you coming back | — Pending |
+| 25% capsule drop rate | High enough to feel frequent, low enough to stay exciting | — Pending |
+| 7 non-consecutive Perfect Days for Shenron | Achievable without requiring perfection streaks | — Pending |
 
 ---
-*Last updated: 2026-02-28 after initialization*
+*Last updated: 2026-03-03 after initialization*
