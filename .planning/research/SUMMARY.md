@@ -1,17 +1,17 @@
 # Project Research Summary
 
-**Project:** Saiyan Tracker — Full Stack Audit
-**Domain:** Gamified habit tracker (FastAPI + React + SQLite), audit and code quality milestone
-**Researched:** 2026-02-28
-**Confidence:** HIGH (all findings based on direct codebase analysis)
+**Project:** Saiyan Tracker v2 (GSD rebuild)
+**Domain:** Gamified habit tracker — Dragon Ball Z theme, RPG progression, ADHD-optimized, animation-heavy, single-user
+**Researched:** 2026-03-03
+**Confidence:** HIGH
 
 ## Executive Summary
 
-Saiyan Tracker v2 is a feature-complete, single-user habit tracker gamified with a Dragon Ball Z theme. The application runs locally with a FastAPI/SQLAlchemy/SQLite backend and a React 19/Vite 7/Tailwind frontend. All five planned feature phases have shipped: habit CRUD, streak tracking with Zenkai Recovery, tiered Kaio-ken consistency bonuses, Dragon Ball transformations, real anime quotes, analytics with a calendar heatmap, and habit management (edit, reorder, archive, delete). The primary goal of this milestone is a thorough audit — validating correctness, fixing bugs, and hardening the codebase — not adding new features.
+Saiyan Tracker is an ADHD-optimized gamified habit tracker built on a React 19 + Vite 7 frontend and a FastAPI + SQLite backend. The product's core differentiation is not RPG mechanics in isolation — Habitica, LifeUp, and Finch all have those — but the specific combination of audio-first design (sound on every single action), a forgiving streak model (Zenkai halving instead of reset), a user-controlled reward economy (user defines capsule loot and Shenron wishes), and a visceral full-screen climax at 100% daily completion. Research confirms this combination is unique in the competitive space. The recommended build approach is a React SPA served locally against a FastAPI backend, with SQLite as the database. No auth, no multi-user, no cloud sync for v1.
 
-The recommended approach is a dependency-ordered audit that works bottom-up: database and models first, then service-layer business logic, then API endpoints, then frontend stores and API client, then UI components, and finally end-to-end flows. This order prevents chasing phantom bugs caused by foundational issues. The testing stack is well-settled for this environment: pytest + httpx for the backend, Vitest + Testing Library + msw for the frontend, and Ruff for Python code quality. No greenfield stack decisions are needed.
+The most important architectural pattern is the composite `/habits/{id}/check` endpoint: a single atomic transaction that computes all game-state side effects (XP, streak, transformation, Dragon Ball, capsule drop, quote selection) and returns them in one response. The frontend stores never recompute game logic — the backend is the sole source of truth for all XP values, transformation thresholds, and rarity weights. On the frontend, the animation queue pattern in uiStore sequences multiple concurrent events (XP popup, tier change, perfect day explosion, capsule reveal) so each reward fires distinctly rather than simultaneously, maximizing dopamine impact per habit check.
 
-The key risks are concentrated in the service layer and data integrity: a foreign key enforcement bug silently allows orphaned records, the consistency bonus can double-apply through a fragile string-flag hack, streak logic breaks for non-daily habits on weekends, and the frontend habit store has zero error handling. These are not cosmetic — they corrupt stored data and break the core gamification loop. Every one of them was found by reading actual source files, not by inference, so confidence in these findings is high.
+The two highest-risk pitfalls are both data-contract decisions that must be made before any frontend is built: XP calculation must live exclusively in the backend (frontend drift is silent and compounds for weeks), and streak date logic must use client-provided `local_date` in every request rather than server-side `datetime.now()` (server timezone mismatches cause midnight streak breaks that are invisible in development). Both are prevented entirely by establishing the correct contract in Phase 1 and writing tests that enforce it.
 
 ---
 
@@ -19,127 +19,196 @@ The key risks are concentrated in the service layer and data integrity: a foreig
 
 ### Recommended Stack
 
-The stack is fixed — this is an audit, not a greenfield project. The recommended additions are pure tooling for testing and code quality. For the backend: pytest (>=8.3) with pytest-asyncio (>=0.24) and the already-installed httpx as the ASGI test client. For the frontend: Vitest (>=3.0, native Vite integration, zero config) with @testing-library/react (>=16.0, React 19 compatible), @testing-library/user-event, jsdom, and msw (>=2.0) for API mocking. For linting: Ruff on the backend (replaces flake8 + black + isort), ESLint already present on the frontend.
+The stack is validated and version-specific. React 19 with Vite 7 handles the animation-heavy UI; framer-motion 12.x is the correct animation library (not react-spring, not GSAP) because its declarative variant model fits the transformation animation chain. Zustand 5 manages client state in four domain stores (habitStore, powerStore, rewardStore, uiStore). Tailwind CSS v4 (not v3 — v4 is the 2026 standard with a completely different CSS-first config model) handles styling. FastAPI 0.135+ with Pydantic v2 and SQLAlchemy 2.0 (sync, not async) handles the backend. SQLite with aiosqlite is sufficient for single-user local use — no PostgreSQL needed for v1.
 
-**Core testing and quality technologies:**
-- pytest + pytest-asyncio: Backend test runner — FastAPI official recommendation, fixture system handles DB setup/teardown
-- httpx AsyncClient: ASGI test client — already in requirements.txt, no install needed
-- Vitest: Frontend test runner — shares Vite config, zero additional setup, designed for Vite projects
-- @testing-library/react: Component testing — React team's recommendation, tests user behavior not internals
-- msw (v2): API mocking — intercepts at network level, tests actual HTTP layer
-- Ruff: Python linting and formatting — replaces 3+ tools in one, 10-100x faster
+Two libraries require explicit attention: `use-sound` 5.0.0 is semi-maintained (flag for maintenance risk at implementation time); `@tsparticles/react` 3.0.0 was last published two years ago and should only be added if `react-canvas-confetti` cannot cover ambient particle effects. The Tailwind v4 configuration breaking change is significant: there is no `tailwind.config.js` file; all customization is done via `@theme` directive in `index.css`.
 
-**Version note:** Specific version numbers are training-data estimates. Pin to actual latest after install. Ruff's Python 3.14 compatibility is MEDIUM confidence — verify after install.
+**Core technologies:**
+- React 19 + Vite 7: UI framework — concurrent rendering handles animation-heavy UIs without jank
+- framer-motion 12.x: All animated elements — declarative variants for the transformation sequence
+- Zustand 5.x: Client state — four domain stores; `useSyncExternalStore` eliminates React 19 tearing
+- FastAPI 0.135+ + Pydantic v2: REST API — automatic validation, async-first, single composite check endpoint
+- SQLAlchemy 2.0 (sync) + SQLite: Persistence — zero-config, file-based, single-user appropriate
+- Tailwind CSS v4 + `@tailwindcss/vite`: Styling — CSS-first config, 100x faster incremental builds
+- use-sound 5.0.0 + Howler.js 2.x: Audio — hook-based for event sounds; direct Howler for looping ki-charge
+- Recharts 3.x: Analytics charts — declarative React, 3.6M weekly downloads, React 19 compatible
 
 ### Expected Features
 
-The feature landscape is fully built. The audit must verify all flows work correctly, not implement new ones. See `.planning/research/FEATURES.md` for full details.
+The feature dependency graph is complex. The daily habit check is the root dependency of the entire system: XP, streaks, transformations, Dragon Ball collection, and capsule drops all derive from it. The Perfect Day 100% explosion is the most downstream feature — it has five upstream dependencies and should not be built until all of them are stable.
 
-**Must verify (P0 — data integrity):**
-- Point calculation accuracy — formulas for base x multiplier, streak bonus, Zenkai boost, consistency tier
-- Streak increment/decrement — consecutive day detection, halving on gap (not reset), best_streak updates
-- Consistency bonus application — tier thresholds, applies to all logs for the day, no double-apply on toggle
-- Zenkai Recovery — triggers on comeback after gap only, halves streak to max(1, old//2), +100% bonus
-- Transformation threshold detection — old_total vs new_total comparison, exact threshold values
+**Must have (table stakes):**
+- Habit CRUD with attribute (STR/VIT/INT/KI), importance, and frequency — foundation of everything
+- Daily habit checklist with toggle — primary daily interaction
+- Streak tracking with Zenkai recovery (halve, not reset) — design pillar; absence would make the app feel punishing for ADHD users
+- Off-day mechanic (sick/vacation/rest) — needed before first real use to prevent day-1 streak breaks
+- XP formula with Kaio-ken tiers and streak bonus — numbers must go up
+- Calendar heatmap (Gold/Blue/Red/Gray) — retroactive progress visibility
+- Sound effects on every interaction with global toggle — non-negotiable per PRD and differentiation
+- Settings page: sound toggle, rewards CRUD, wishes CRUD — user controls the reward loops
 
-**Must verify (P1 — user experience):**
-- Today's habits filtering — correct habits by frequency, custom days, date range, is_active status
-- Habit check/uncheck toggle — points update both directions, UI updates immediately
-- Calendar heatmap accuracy — completion rates match log data, month navigation, today highlighted
-- Power level display — total power matches all completions, progress to next transformation is correct
-- Habit form modal — create with all field combos, edit pre-fills correctly, validation prevents bad data
+**Should have (competitive differentiators):**
+- Full-screen Perfect Day 100% explosion (screen shake + scream + XP reveal + Dragon Ball) — the single most memorable UX moment
+- Transformation system (10 forms, SSJ1 at ~4 days) — long-term visual identity investment
+- Capsule Corp loot drop (25% per check, user-configured rewards, 3 rarity tiers) — variable reward schedule
+- Dragon Ball collection → Shenron ceremony animation + wish grant — macro reward cycle
+- Character quote system (100+ quotes, 5 characters, 7 trigger events) — personality layer
+- RPG attributes (STR/VIT/INT/KI) with independent leveling and dashboard charts
+- Daily aura % bar — the progress centerpiece; equal weight per habit prevents gaming
 
-**Defer (out of scope for audit):**
-- Social features, notifications, data export, multi-user support — all intentionally excluded
+**Defer (v1.x and v2+):**
+- Vegeta escalating roast system — enhancement on top of working quote system; add after quotes verified
+- Contribution graph per habit (GitHub-style 90-day grid) — add when user asks about specific habit consistency
+- Calendar day drill-down popover — add when heatmap is in use
+- Tournament mode vs past self — requires weeks of data to be meaningful
+- Mobile PWA, cloud sync, VPS deployment — v2 concerns
+
+**Explicit anti-features (do not build):**
+- Task/to-do list — dilutes the daily aura model
+- HP loss / punitive streak resets — abandonment driver per research; Zenkai is the correct replacement
+- Multi-user, auth, leaderboards, cloud sync — scope creep with zero value for a solo personal tool
 
 ### Architecture Approach
 
-The architecture is a clean layered stack: SQLite database accessed only via SQLAlchemy ORM, service layer containing all business logic, thin FastAPI route handlers delegating to services, Zustand stores on the frontend calling a centralized API service, and React components reading from stores. The audit order follows this dependency chain bottom-up. The architecture is appropriate for a single-user local app and should not be over-engineered (no caching, no message queues, no microservices).
+The architecture is layered: React pages compose from Zustand stores, stores call a typed `services/api.ts` client, which talks to FastAPI routes, which delegate all logic to service functions, which operate on SQLAlchemy models backed by SQLite. The key constraint is that all game logic (XP formulas, capsule RNG, transformation detection, Dragon Ball award) lives exclusively in the service layer and is tested as plain Python functions — never in routes, never in the frontend. The frontend is a pure display layer that renders what the backend returns.
 
 **Major components:**
-1. Service layer (HabitService, PowerService, QuoteService, AnalyticsService) — all business logic, point calculation, streak math; this is where most audit bugs live
-2. API route handlers (9 modules under /api/v1) — currently bypass Pydantic response_model serialization, build response dicts manually; four identical dict construction blocks in habits.py
-3. Zustand stores (habitStore, taskStore, powerStore, uiStore) — habitStore has no error handling, unlike taskStore which does; Dashboard.tsx fires 7+ parallel requests on mount
+1. `habit_service.check_habit()` — the composite transaction function that runs all 10 sequential game-state operations atomically in one DB commit
+2. `uiStore.animationQueue` — the sequential animation queue that ensures each reward event (XP popup, tier change, perfect day, Dragon Ball, capsule) fires distinctly rather than simultaneously
+3. `SoundProvider` (context) — a singleton at the app root that manages all Howler.js instances; components call `play(soundId)`, never instantiate Howler directly
+4. `services/api.ts` — the single typed HTTP client; all fetch calls live here; no raw fetch in stores or components
+5. `constants.py` — all XP values, transformation thresholds, and rarity weights; the single source of truth for tunable game balance numbers
 
 ### Critical Pitfalls
 
-These are verified bugs found in actual source files, not theoretical risks.
+1. **XP calculation drift** — Frontend must never independently compute XP, transformation thresholds, or tier multipliers. Backend returns all computed values in the `/check` response. Frontend stores set values from responses (`power_level = response.power_level`), never derive them. Establish this contract in Phase 1 with backend tests that assert exact integer formula output.
 
-1. **Foreign keys disabled on file-based SQLite** — `PRAGMA foreign_keys=ON` is inside an `if ":memory:"` conditional in `session.py`, so it never fires for the real database. Fix: move the pragma outside the conditional. Run `PRAGMA foreign_key_check` to find existing orphaned rows.
+2. **Streak timezone / midnight bug** — Every `/check` request body must include `local_date: "YYYY-MM-DD"` (client's local calendar date). Backend streak logic uses this value, never `datetime.now()` on the server. SQLite `DATE` columns store `YYYY-MM-DD` strings; never use DATETIME for streak date comparison. Test explicitly with simulated midnight boundary cases.
 
-2. **Consistency bonus double-application** — `_apply_consistency_bonus` uses a string prefix on the `notes` field (`log.notes.startswith("consistency_bonus_applied")`) as a state flag. This breaks if `notes` is None (AttributeError) and stacks multiplicatively when a user toggles a habit off and on within the same day. Fix: add a `consistency_bonus_applied` boolean column to HabitLog; requires a migration strategy since there is no Alembic setup.
+3. **Animation avalanche (jank)** — Never fire multiple Framer Motion overlays simultaneously. Use the uiStore animation queue; each overlay's `onAnimationComplete` calls `advanceQueue()`. Animate only `transform` and `opacity` — never `width`, `height`, `backgroundColor`, or `boxShadow` (layout/paint triggers). The aura bar fill must be a CSS `scaleX` transition, not a Framer Motion value, because it runs on every habit check.
 
-3. **Streak breaks for non-daily habits on weekends** — `_increment_streak` checks if `last_completed_date == yesterday` without awareness of the habit's frequency. A weekday-only habit completed Friday and then Monday correctly will trigger Zenkai Recovery because Monday is not "yesterday." Fix: make `_increment_streak` find the previous *scheduled* day based on the habit's frequency before comparing.
+4. **Audio autoplay restriction** — `AudioContext` starts suspended in all major browsers. The `SoundProvider` must call `audioContext.resume()` inside the first user interaction. The `play()` call for habit-check sound must happen directly in the click handler, not in a `useEffect` or `setTimeout` triggered by state change. Test cold-load behavior (open new tab, first click plays sound) every time a new sound event is added.
 
-4. **habitStore has no error handling** — zero try/catch blocks; any backend 500 or network drop leaves `loading: true` forever and breaks the dashboard silently. Fix: add try/catch with `finally { set({ loading: false }) }` and an `error` state field matching taskStore's pattern.
+5. **Overlapping audio on rapid habit checks** — ADHD users naturally rapid-check habits. Use `interrupt: true` in use-sound for short per-event sounds (scouter beep). Implement a sound priority queue: transformation/explosion (tier 1, interrupts all), capsule/achievement (tier 2), habit beep (tier 3). Gate the perfect-day explosion behind an `isAnimating` ref to prevent re-entrant triggers.
 
-5. **datetime.utcnow() deprecation and timezone mismatch** — all models use `datetime.utcnow` (deprecated since Python 3.12), while `date.today()` in habit_service.py uses local time. On a non-UTC machine (this is Windows), habits completed near midnight could be logged with the wrong date, breaking streaks. Fix: use `datetime.now(timezone.utc)` for timestamps and be consistent about local vs UTC throughout.
+6. **Capsule reward saturation** — 25% drop rate on 6 habits = statistically ~1.5 capsules/day. By week 3, this feels spammy. Use a "pending capsule" notification badge, not an immediate popup interrupt. The capsule opening animation must be skippable and under 2 seconds.
 
 ---
 
 ## Implications for Roadmap
 
-Based on the architecture's dependency order and the pitfalls found, the audit should proceed in 6 phases.
-
 ### Phase 1: Database and Model Integrity
 
-**Rationale:** Everything downstream depends on the database layer being correct. The foreign key bug (Pitfall 1) and timezone issue (Pitfall 5) must be fixed before any other checks, or bugs in services could be caused by corrupt underlying data.
-**Delivers:** Enforced foreign key constraints, correct timestamps, verified schema consistency between models / Pydantic schemas / TypeScript types, a migration strategy before any column additions.
-**Addresses:** Data integrity table-stakes for all gamification features.
-**Avoids:** Silent orphaned records (Pitfall 1), midnight date boundary errors (Pitfall 5), data destruction from schema changes (Pitfall 9).
+**Rationale:** Every other phase depends on correct data models. XP drift and streak timezone bugs are impossible to prevent after the frontend is built against a flawed contract. The data schema, the `local_date` contract, and the XP formula tests must exist before any service or UI layer is built on top of them.
 
-### Phase 2: Service Layer and Business Logic
+**Delivers:** SQLAlchemy models (User, Habit, HabitLog, HabitStreak, DailyLog, Streak, PowerLevel, Reward, CapsuleDrop, Wish, WishLog, OffDay, Achievement, Quote), Alembic migrations, UniqueConstraints on `(habit_id, log_date)` and `(user_id, log_date)`, indexes on `(habit_id, log_date)` and `(user_id, log_date)`, `constants.py` with all XP values and transformation thresholds, backend tests asserting exact XP formula output and streak date arithmetic with explicit midnight boundary cases.
 
-**Rationale:** The service layer is where all gamification math lives. Bugs here corrupt stored data and cascade into every UI element. This is the highest-risk phase and must come before API or UI verification.
-**Delivers:** Verified point calculation formulas, correct streak increment/decrement, working Zenkai Recovery, consistency bonus that cannot double-apply, frequency-aware streak logic for non-daily habits, unified power total calculation.
-**Addresses:** P0 audit priorities — point accuracy, streak integrity, consistency bonus, Zenkai, transformation thresholds.
-**Avoids:** Consistency bonus double-application (Pitfall 2), streak breaks for weekday habits (Pitfall 7), power total mismatch between task and habit code paths (Pitfall 6).
+**Addresses:** Habit CRUD data foundation, streak system data foundation
+**Avoids:** XP calculation drift (Pitfall 4), streak timezone bug (Pitfall 5)
 
-### Phase 3: API Endpoints
+---
 
-**Rationale:** With the service layer verified, API contracts can be confirmed. This phase checks that every endpoint responds correctly, error codes are appropriate, and response shapes match what the frontend expects.
-**Delivers:** All 9 route modules verified, Pydantic response_model used instead of manual dict construction, N+1 query problem resolved with eager loading, consistent DEFAULT_USER_ID usage.
-**Addresses:** P1 audit priorities — today's habits filtering, API error handling.
-**Avoids:** Dict construction drift from TypeScript types (Anti-Pattern 1), N+1 query sluggishness (Pitfall 3 / Anti-Pattern 2).
+### Phase 2: Core Game Logic Services
 
-### Phase 4: Frontend API Client and Stores
+**Rationale:** The service layer is testable as plain Python without HTTP. Building and testing `habit_service.check_habit()` before routes or frontend exist means the game logic is verified correct before it becomes load-bearing.
 
-**Rationale:** With a verified backend, the frontend can be tested in isolation. This phase fixes the error handling gap in habitStore and verifies that stores re-fetch the right data after mutations.
-**Delivers:** habitStore with full error handling (try/catch, error state, loading reset), verified store re-fetch patterns, TypeScript interface alignment with actual API responses, HabitToday type updated with sort_order and frequency fields.
-**Addresses:** Dashboard loading states, type safety.
-**Avoids:** Infinite spinner on backend error (Pitfall 4), reorder index vs sort_order mismatch (Pitfall 10), missing fields causing runtime errors (Pitfall 12).
+**Delivers:** `habit_service.py` (complete 10-step `check_habit()` transaction), `power_service.py` (transformation detection, attribute leveling), `reward_service.py` (capsule RNG, wish grant), `quote_service.py` (trigger-based selection), `analytics_service.py` (aggregation queries), pytest coverage of all service functions including edge cases (rapid check at XP threshold, Dragon Ball 7th collection, capsule drop with empty rewards pool).
 
-### Phase 5: UI Components and Interactions
+**Addresses:** XP formula, Kaio-ken tier calculation, Zenkai streak recovery logic, Dragon Ball award, capsule RNG
+**Avoids:** Business logic in routes (Architecture Anti-Pattern 1), XP calculation drift (Pitfall 4)
 
-**Rationale:** With data layer and state management verified, UI correctness can be checked meaningfully. Component bugs are now isolated from data bugs.
-**Delivers:** All HabitCard interactions working (check, edit, archive, delete, move up/down), HabitFormModal create and edit flows verified, theme consistency (no hardcoded colors), animation triggers correct.
-**Addresses:** P2 polish priorities — ki-burst, quotes, theme, reorder.
-**Avoids:** Empty catch blocks hiding UI errors (Pitfall 11), edit habit unnecessary full-list fetch (Pitfall 13).
+---
 
-### Phase 6: End-to-End Flow Verification
+### Phase 3: FastAPI Routes and API Schemas
 
-**Rationale:** Unit and integration checks can pass while integration breaks. This phase walks the complete user journeys to confirm the full stack works together.
-**Delivers:** Verified core loop (create habit → check → streak increments → transformation unlocks), consistency bonus tier system working across a full day, calendar heatmap reflecting real completions, all P3 edge cases.
-**Addresses:** Full gamification loop integrity.
-**Avoids:** Cross-phase integration issues that only appear at runtime (Pitfall 8 — 7+ parallel requests may be addressed here or deferred).
+**Rationale:** Thin route wrappers over completed services. At this phase the API is testable via Swagger UI and curl before any frontend is built, which validates integration assumptions early.
+
+**Delivers:** All FastAPI route modules (`habits.py`, `power.py`, `rewards.py`, `wishes.py`, `categories.py`, `quotes.py`, `off_days.py`, `analytics.py`, `settings.py`), Pydantic request/response schemas including `CheckHabitResponse` (the 15-field composite response), CORS configuration, FastAPI app factory with router includes, httpx integration tests against all endpoints.
+
+**Addresses:** Habit CRUD API, daily habit check endpoint, off-day API, settings API
+**Avoids:** Multiple sequential API calls from frontend (Architecture Anti-Pattern 2), partial-state race conditions
+
+---
+
+### Phase 4: Frontend State Layer and API Client
+
+**Rationale:** The Zustand stores and typed API client must be established before any component renders real data. Getting the store-to-API contract correct here prevents XP optimistic-update drift bugs from entering the component layer.
+
+**Delivers:** `services/api.ts` (typed fetch wrapper for all endpoints), `habitStore.ts` (today's habits, daily progress, check action), `powerStore.ts` (power level, attributes, dragon balls), `rewardStore.ts` (rewards CRUD, wishes CRUD, capsule history), `uiStore.ts` (animation queue, active modal, sound toggle, quote display), TypeScript types in `types/index.ts` matching backend schemas exactly.
+
+**Addresses:** State management for all dashboard data, animation queue scaffolding
+**Avoids:** XP display optimistic drift (Pitfall 4), Zustand full-dashboard re-render on XP change (Performance Trap — use selectors)
+
+---
+
+### Phase 5: Core Dashboard UI
+
+**Rationale:** The base UI layer that all animations overlay. Build with real data from stores, no placeholder data. The dashboard must be functionally correct (habit checking works, aura bar updates, streaks display) before the animation layer is added on top.
+
+**Delivers:** `Dashboard.tsx`, `SaiyanAvatar` (transformation-aware), `DailyAuraBar` (CSS `scaleX` transition, not Framer Motion), `HabitCard` (attribute badge, importance label, streak display, check toggle), `AttributeBars` (STR/VIT/INT/KI independent progress), `DragonBallTracker` (7 balls with fill state), `StreakDisplay`, `PowerLevelBar`, Zustand selector isolation so individual habit cards don't trigger full-dashboard re-renders.
+
+**Addresses:** Habit CRUD UI, daily checklist, daily aura %, RPG attributes display, Dragon Ball tracker
+**Avoids:** Aura bar using Framer Motion (would add JS animation budget to every habit check), N+1 habit-streak loading (use `selectinload` in backend habits query)
+
+---
+
+### Phase 6: Audio Foundation and Animation Layer
+
+**Rationale:** Audio architecture must be established as a single pattern before individual sounds are wired. The SoundProvider singleton, gesture-resume pattern, and priority queue logic must exist before any `play()` call is added anywhere in the app. Animation overlays build on the working dashboard and use the established queue.
+
+**Delivers:** `SoundProvider.tsx` (singleton Howler context, gesture-resume on first interaction, priority queue, `interrupt: true` on per-event sounds), `PerfectDayAnimation.tsx` (screen shake, SSJ aura overlay, XP counter, staggered sequence), `ShenronAnimation.tsx` (thunder + roar + wish selection), `TransformationAnimation.tsx` (per-form power-up sequence), `CapsuleDropPopup.tsx` (short, skippable, rarity reveal), `PointsPopup.tsx` (floats up from habit card on check), `AnimationOrchestrator` logic in uiStore consuming the animation queue with `advanceQueue()` callbacks, all 7 sound files mapped in SOUND_MAP, sound toggle respected in SoundProvider.
+
+**Addresses:** Sound on every interaction, Perfect Day climax, transformation unlock animation, Shenron ceremony, capsule reveal
+**Avoids:** Audio autoplay restriction (Pitfall 2), overlapping audio soup (Pitfall 3), animation avalanche jank (Pitfall 1), simultaneous overlay rendering (Architecture Anti-Pattern 5)
+
+---
+
+### Phase 7: Analytics and Settings Pages
+
+**Rationale:** Read-only analytics depend on data generated by Phases 1-6. Settings require the reward/wish CRUD APIs from Phase 3 and stores from Phase 4. Both pages are lower risk than the game mechanics and can be built with confidence once the data layer is established.
+
+**Delivers:** `Analytics.tsx` (calendar heatmap Gold/Blue/Red/Gray, summary stats, attribute progression Recharts line chart, capsule/wish history table), `Settings.tsx` (sound toggle, theme toggle, habits management, rewards CRUD, wishes CRUD, categories management), `CalendarHeatmap` component, `AttributeChart` component, `WeeklyChart` component.
+
+**Addresses:** Calendar heatmap, analytics summary stats, settings management, rewards CRUD, wishes CRUD
+**Avoids:** Analytics with stale cached state (Off day declared today must immediately reflect; use store invalidation, not a stale GET)
+
+---
+
+### Phase 8: Polish and Quote System
+
+**Rationale:** The character quote system (100+ quotes, 5 characters, 7 trigger events) and Vegeta roast escalation are personality layers. They require the underlying trigger events (habit check, perfect day, streak milestone, transformation) to exist before quotes can be wired to them. This is the final enhancement pass.
+
+**Delivers:** Quote database seeding (100+ quotes with character, trigger, and severity fields), `GokuQuote` and `VegetaDialog` components wired to uiStore `activeQuote`, Vegeta roast escalation (triggers on session start after missed days, not mid-session), streak milestone badges (7 milestones with character-specific quotes), transformation form visuals for all 10 forms (real art assets per PRD), `constants.py` game balance tuning pass (XP values, threshold calibration, Dragon Ball / Shenron timing).
+
+**Addresses:** Character quote system, Vegeta roast escalation, streak milestone badges, transformation visuals
+**Avoids:** Vegeta roast interrupting active habit-check session (trigger only on app open after missed day), transformation firing twice at XP boundary (gate behind `isAnimating` ref)
+
+---
 
 ### Phase Ordering Rationale
 
-- Bottom-up order (DB → services → API → stores → UI → E2E) prevents phantom bugs: a corrupted model would make service bugs impossible to distinguish from model bugs.
-- Pitfalls 1, 5, and 9 (foreign keys, timezone, no migrations) are prerequisites for Phase 1 because any schema change made without addressing them risks data loss.
-- Pitfalls 2, 6, and 7 (consistency bonus, power total, weekday streaks) are grouped in Phase 2 because they all live in the service layer and interact with each other.
-- Pitfalls 4, 10, 12 (habitStore error handling, reorder index, missing types) are grouped in Phase 4 because they share the same frontend state management layer.
+- Phases 1-2 establish the data contract and game logic before anything else exists. This is non-negotiable: XP drift and timezone bugs are architectural — they cannot be refactored cheaply after the frontend is built against wrong assumptions.
+- Phases 3-4 build the API and state layer in sequence: routes require services (Phase 2), stores require routes (Phase 3). The API is testable via Swagger at the end of Phase 3 before any component is built.
+- Phase 5 (dashboard UI) requires Phase 4 (stores with real data). Building UI against placeholder data creates integration surprises; building against real stores validates the full stack incrementally.
+- Phase 6 (audio + animations) builds on a working Phase 5 dashboard. Animations cannot be meaningfully tested without real data flowing through real components.
+- Phase 7 (analytics) is read-only and depends on data from Phases 1-6 being generated. No data = no meaningful chart to validate.
+- Phase 8 (polish + quotes) is additive — it enhances existing trigger events and does not modify core game logic.
 
 ### Research Flags
 
 Phases likely needing deeper research during planning:
-- **Phase 2 (Service Layer):** Point calculation formulas should be cross-referenced against PRD.md v2.0 for every scenario before writing tests. The consistency bonus fix requires a migration approach to be settled first.
-- **Phase 1 (Database):** The migration strategy (Alembic vs manual backup script) needs a decision before any model column additions. Alembic with SQLite has known limitations worth reviewing.
+
+- **Phase 6 (Animation + Audio):** The animation queue sequencing and per-animation `onComplete` → `advanceQueue()` wiring is the most complex frontend integration. The exact Framer Motion patterns for `AnimatePresence` with dynamic `key` props on overlays need verified implementation examples before coding begins. Audio priority queue implementation in Howler.js should be designed explicitly before wiring individual sounds.
+- **Phase 8 (Quote System):** The 100+ quote database and 7 trigger event routing need explicit schema design (trigger field, character field, severity field for Vegeta escalation). The escalation tiers for Vegeta roasts need calibration decisions before implementation.
 
 Phases with standard patterns (skip research-phase):
-- **Phase 3 (API Endpoints):** FastAPI + pytest + httpx patterns are well-documented. Standard route testing with no unusual requirements.
-- **Phase 4 (Frontend Stores):** Adding try/catch and error state to Zustand stores is straightforward — taskStore.ts is the reference implementation already in the codebase.
-- **Phase 5 (UI Components):** Vitest + Testing Library patterns are well-established. The test targets (HabitCard, HabitFormModal, context menu) are standard React component testing.
+
+- **Phase 1 (Database):** SQLAlchemy 2.0 `mapped_column()` patterns are well-documented; Alembic migration setup is standard.
+- **Phase 2 (Services):** Plain Python functions with pytest; no novel patterns.
+- **Phase 3 (FastAPI Routes):** Thin wrapper pattern is standard FastAPI; Pydantic v2 schema shapes are well-understood.
+- **Phase 4 (Zustand Stores):** Zustand 5 slice pattern is documented; the store interfaces are fully defined in the architecture research.
+- **Phase 5 (Dashboard UI):** Standard React component composition; Tailwind v4 utility classes.
+- **Phase 7 (Analytics):** Recharts declarative API is well-documented; calendar heatmap is a standard grid pattern.
 
 ---
 
@@ -147,19 +216,20 @@ Phases with standard patterns (skip research-phase):
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | MEDIUM | Tool recommendations are well-established consensus; specific version numbers are training-data estimates (up to Aug 2025 / May 2025 for some packages). Pin after install. Ruff + Python 3.14 is LOW confidence specifically. |
-| Features | HIGH | Based on direct codebase analysis + PRD.md v2.0. Feature status (built/not built) is verified by reading source files. |
-| Architecture | HIGH | Based entirely on direct source file reads. Component responsibilities and data flows are documented from actual code, not inference. |
-| Pitfalls | HIGH | Every pitfall includes a specific file and line number verified by reading source. These are not theoretical — they are confirmed bugs. |
+| Stack | HIGH | All library versions verified via npm/PyPI as of March 2026; compatibility matrix confirmed; Tailwind v4 breaking change fully documented |
+| Features | HIGH | Competitor analysis against Habitica, LifeUp, Finch, Streaks; ADHD UX research from multiple studies; gamification research from Cohorty real-user data and ResearchGate |
+| Architecture | HIGH | Patterns drawn from official SQLAlchemy 2.0 docs, FastAPI best practices (zhanymkanov), Framer Motion and Zustand official docs; composite endpoint pattern well-established for single-user apps |
+| Pitfalls | MEDIUM-HIGH | Audio autoplay from Chrome official docs (HIGH); XP drift and streak timezone from implementation experience and community sources (MEDIUM); animation jank from reactlibraries.com benchmark (MEDIUM) |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Ruff compatibility with Python 3.14:** Could not verify against live PyPI. Install and run before committing to Ruff as the linter — if it fails on 3.14 syntax, fall back to flake8 + black.
-- **Migration strategy for schema changes:** No Alembic setup exists. Before Phase 2 fixes that require adding columns (e.g., `consistency_bonus_applied`), decide whether to set up Alembic or use a manual backup-and-recreate approach. This decision gates Phase 2 work.
-- **Timezone behavior on this machine:** The UTC vs local time bug (Pitfall 5) has varying severity depending on the server timezone. Verify with `import time; print(time.tzname)` before deciding fix priority.
-- **Existing database state:** Run `PRAGMA foreign_key_check` on `backend/data/saiyan_tracker.db` to determine if orphaned rows already exist from the foreign key bug. If they do, a cleanup script is needed before re-enabling enforcement.
+- **tsParticles ambient particles:** `@tsparticles/react` 3.0.0 was last published two years ago. At implementation time: start with `react-canvas-confetti` for burst effects; only add tsParticles if the ambient aura field requires persistent looping particles that confetti cannot produce. Evaluate at Phase 6 start.
+- **use-sound maintenance:** `use-sound` 5.0.0 is semi-maintained. At Phase 6: verify it still works with React 19 and Howler.js 2.x before committing to it. Fallback is direct Howler.js usage for all sounds.
+- **Capsule drop rate calibration:** The 25% rate is specified by PRD and is correct. The saturation risk (Pitfall 6) must be monitored after 2-3 weeks of real use. The "notification badge, open when ready" UX pattern must be built from the start — do not build popup-first and retrofit.
+- **10 transformation form assets:** The actual Dragon Ball Z art assets for all 10 transformation forms are not addressed in research. These must be sourced or created before Phase 8. Confirm asset availability and licensing before that phase begins.
+- **Shenron wish gate:** When 7 Dragon Balls are collected and `dragon_balls_collected` resets to 0, the Shenron animation requires at least 1 active wish in the database. A guard must be implemented in the backend that prevents the Dragon Ball reset (and therefore the Shenron trigger) if the wishes table is empty. This is a correctness bug waiting to happen — address in Phase 2 service layer.
 
 ---
 
@@ -167,23 +237,35 @@ Phases with standard patterns (skip research-phase):
 
 ### Primary (HIGH confidence)
 
-- Direct codebase analysis — `backend/app/services/habit_service.py`, `backend/app/api/v1/completions.py`, `backend/app/database/session.py`, `backend/app/core/constants.py`, `backend/app/models/`, `frontend/src/store/habitStore.ts`, `frontend/src/store/taskStore.ts`, `frontend/src/pages/Dashboard.tsx`, `frontend/src/types/index.ts`, `frontend/src/services/api.ts`, `backend/app/schemas/habit.py`
-- PRD.md v2.0 (February 28, 2026) — feature specifications and point formulas
-- SQLite foreign key enforcement docs — per-connection PRAGMA required (well-established SQLite behavior)
-- FastAPI official docs — pytest + httpx test pattern recommendation
+- [framer-motion npm](https://www.npmjs.com/package/framer-motion) + [motion.dev docs](https://motion.dev/docs/react) — version 12.34.4, React 19 support, animation patterns
+- [Vite releases](https://vite.dev/releases) — version 7.3.1 confirmed
+- [Zustand GitHub](https://github.com/pmndrs/zustand/releases) — version 5.0.11, useSyncExternalStore
+- [Tailwind CSS v4 announcement](https://tailwindcss.com/blog/tailwindcss-v4) — CSS-first config, breaking changes
+- [FastAPI GitHub releases](https://github.com/fastapi/fastapi/releases) — version 0.135.1, Pydantic v2 requirement
+- [SQLAlchemy 2.0 Basic Relationship Patterns](https://docs.sqlalchemy.org/en/20/orm/basic_relationships.html) — ORM design
+- [SQLAlchemy 2.0 Relationship Loading](https://docs.sqlalchemy.org/en/20/orm/queryguide/relationships.html) — selectinload patterns
+- [FastAPI Best Practices — zhanymkanov](https://github.com/zhanymkanov/fastapi-best-practices) — service layer architecture
+- [Web Audio Autoplay Policy — Chrome for Developers](https://developer.chrome.com/blog/web-audio-autoplay) — AudioContext restriction
+- [MDN Autoplay Guide](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay) — cross-browser policy
+- [How to Build a Streaks Feature — Trophy](https://trophy.so/blog/how-to-build-a-streaks-feature) — DST and midnight edge cases
+- [use-sound GitHub — Josh W. Comeau](https://github.com/joshwcomeau/use-sound) — interrupt option
 
 ### Secondary (MEDIUM confidence)
 
-- Training data knowledge of Vitest/Testing Library/msw ecosystem — version numbers approximate
-- Training data knowledge of Ruff adoption in Python ecosystem — Python 3.14 compatibility unverified
-- ADHD gamification patterns — behavioral psychology basis, not 2026-specific research
-- Competitor feature analysis (Habitica, Streaks, HabitBear) — products may have changed since training cutoff
+- [FastAPI Service Layer Architecture 2025 — Medium](https://medium.com/@abhinav.dobhal/building-production-ready-fastapi-applications-with-service-layer-architecture-in-2025-f3af8a6ac563) — service pattern
+- [Gamification in Habit Tracking — Cohorty](https://blog.cohorty.app/gamification-in-habit-tracking-does-it-work-research-real-user-data) — 67% abandonment by week 4, variable reward calibration
+- [Framer Motion vs Motion One Mobile Performance 2025 — reactlibraries.com](https://reactlibraries.com/blog/framer-motion-vs-motion-one-mobile-animation-performance-in-2025) — JS engine vs WAAPI, jank causes
+- [Variable Rewards — Nir Eyal/NirAndFar](https://www.nirandfar.com/want-to-hook-your-users-drive-them-crazy/) — slot-machine psychology
+- [Counterproductive Effects of Gamification — ResearchGate](https://www.researchgate.net/publication/327451529_Counterproductive_effects_of_gamification_An_analysis_on_the_example_of_the_gamified_task_manager_Habitica) — HP loss / punishment abandonment
+- [Neurodiversity in UX — AufaitUX](https://www.aufaitux.com/blog/neuro-inclusive-ux-design/) — ADHD design principles
+- [Gamification+ Best Gamified Habit App 2026](https://gamificationplus.uk/which-gamified-habit-building-app-do-i-think-is-best-in-2026/) — competitor landscape
 
-### Tertiary (LOW confidence)
+### Tertiary (LOW confidence / evaluate at implementation)
 
-- Specific npm/PyPI version numbers — based on training data up to May/Aug 2025; verify with actual package registries before pinning
+- [@tsparticles/react npm](https://www.npmjs.com/package/@tsparticles/react) — 3.0.0, last published 2 years ago; maintenance status uncertain
+- [use-sound npm](https://www.npmjs.com/package/use-sound) — 5.0.0, semi-maintained; verify React 19 compatibility at Phase 6
 
 ---
 
-*Research completed: 2026-02-28*
+*Research completed: 2026-03-03*
 *Ready for roadmap: yes*

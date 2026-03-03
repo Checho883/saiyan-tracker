@@ -1,155 +1,278 @@
-# Domain Pitfalls
+# Pitfalls Research
 
-**Domain:** Gamified habit tracker (FastAPI + React + SQLite) full stack audit
-**Researched:** 2026-02-28
+**Domain:** Gamified habit tracker (DBZ-theme, ADHD-targeted, animation-heavy, audio-driven)
+**Researched:** 2026-03-03
+**Confidence:** MEDIUM-HIGH — web search + official docs verified; single-user scope reduces some concerns
+
+---
 
 ## Critical Pitfalls
 
-Mistakes that cause rewrites, data corruption, or broken core flows.
+### Pitfall 1: Animation Avalanche — Simultaneous Framer Motion Components Causing Jank
 
-### Pitfall 1: Foreign Keys Disabled on File-Based SQLite
+**What goes wrong:**
+Every major event in Saiyan Tracker triggers a visual animation: habit check pulses the aura bar, a PointsPopup floats up, the DragonBallTracker might glow, and the transformation meter updates — all at the same moment. When 4-6 animations fire simultaneously on a React component tree, Framer Motion's JavaScript-driven animation engine becomes the bottleneck. On mid-range hardware, this manifests as dropped frames (jank), stuttering aura fills, and audio falling out of sync with visuals.
 
-**What goes wrong:** The `PRAGMA foreign_keys=ON` listener in `session.py` only fires for in-memory databases (`if ":memory:" in DATABASE_URL`), but the app uses a file-based SQLite database at `backend/data/saiyan_tracker.db`. This means foreign key constraints are silently never enforced. Deleting a category that habits reference, or a habit that logs reference, will leave orphaned rows instead of raising errors.
-**Why it happens:** The conditional was likely copied from a template or written for tests and never updated for file-based SQLite.
-**Consequences:** Orphaned `HabitLog`, `HabitStreak`, and `TaskCompletion` rows when parent records are deleted. Data inconsistencies accumulate silently. Queries that join on these relationships return unexpected results or crash.
-**Prevention:** Move the `foreign_keys=ON` pragma outside the `if ":memory:"` conditional so it applies to all SQLite connections. Test by attempting to delete a category that has habits referencing it.
-**Detection:** Run `PRAGMA foreign_key_check;` on the existing database. Any output means orphaned rows already exist. Also check `PRAGMA foreign_keys;` at runtime -- if it returns 0, enforcement is off.
-**Audit phase:** Backend API audit -- verify and fix in the first phase.
-**Confidence:** HIGH (verified by reading `session.py` lines 13-18 and `config.py`)
+**Why it happens:**
+Framer Motion does not use the Web Animations API (WAAPI) by default — it runs its own JS-driven timing engine. Each `<motion.div>` executing simultaneous property interpolations blocks or competes on the main thread. The perfect-day explosion sequence (screen shake + full-screen overlay + XP counter animate + Dragon Ball appear + quote fade-in) is the worst-case scenario: 5+ animated components firing concurrently.
 
-### Pitfall 2: Consistency Bonus Applied Multiple Times or Incorrectly
+**How to avoid:**
+- Sequence the perfect-day explosion using Framer Motion's `AnimatePresence` and staggered `delay` props rather than firing all components at once.
+- Animate only `transform` and `opacity` — never `width`, `height`, `top`, `backgroundColor`, or `boxShadow` directly; these trigger layout/paint, not just composite.
+- Avoid applying `willChange` broadly; use it only on the one element that will animate immediately. Blanket `willChange: transform` on habit list items promotes unnecessary GPU layers.
+- The aura bar fill animation (the most frequent event) must be a CSS transition on `scaleX` transform, not a Framer Motion value, to avoid adding to the JS animation budget on every single habit check.
+- The `PerfectDayAnimation` overlay should unmount when complete — use `AnimatePresence` with `mode="wait"` so it releases GPU layers after the sequence ends.
+- Test on a mid-range Android browser (the target "worst-case" device) early — jank invisible on a dev machine becomes obvious on a 3-year-old phone.
 
-**What goes wrong:** The `_apply_consistency_bonus` method in `habit_service.py` uses a `notes` field hack (`log.notes.startswith("consistency_bonus_applied")`) to track whether the bonus was already applied. This is brittle: (1) if a log has no `notes` attribute or `notes` is None, the `startswith` check will fail with AttributeError, (2) the bonus modifies `points_awarded` in-place on existing logs, making it impossible to audit what the original points were, (3) toggling habits off and on within the same day can cause the bonus to be recalculated on already-boosted values, compounding multiplicatively.
-**Why it happens:** Using a data field as a state flag instead of a proper boolean column or separate tracking record.
-**Consequences:** Points inflation over time. Once a user toggles habits on/off during the same day, the bonus can stack, making the gamification feel unfair and undermining trust in the point system.
-**Prevention:** Add a `consistency_bonus_applied` boolean column to `HabitLog` or a `daily_bonus` table. Store original base points separately from boosted points. Recalculate from base on every toggle rather than modifying in-place.
-**Detection:** Compare `points_awarded` values in `habit_logs` against what `base_points * multiplier` should produce. If any log's points are more than 1.5x the expected base (the max tier), the bonus was double-applied.
-**Audit phase:** Backend API audit -- this is a data integrity issue in the core point calculation.
-**Confidence:** HIGH (verified by reading `habit_service.py` lines 297-313)
+**Warning signs:**
+- Chrome DevTools Performance tab shows long paint/composite tasks (>16ms frame budget) during habit check
+- Audio plays before the visual completes (misaligned feedback)
+- The aura bar "jumps" instead of smoothly growing
+- `console.log` timings inside animation callbacks show delayed execution
 
-### Pitfall 3: N+1 Query Problem in get_today_habits
+**Phase to address:** Animation & Feedback Phase (whichever phase implements `PerfectDayAnimation` and `ShenronAnimation` — treat these as performance-constrained from day one, not as "optimize later" components)
 
-**What goes wrong:** `get_today_habits` loops through every active habit and issues 3 separate queries per habit (category, log, streak). With 10 habits, that is 30+ queries per dashboard load. No eager loading (`joinedload`, `selectinload`) is used anywhere in the codebase.
-**Why it happens:** SQLAlchemy defaults to lazy loading, and the service builds dict results manually rather than using relationship attributes.
-**Consequences:** For a single-user local app this causes ~50-100ms delays that feel sluggish, especially on the dashboard which is the most-visited page. The same pattern exists in `get_today_completions` (queries task + category per completion) and `get_habit_stats` (queries a log per day for 90 days in a loop).
-**Prevention:** Batch-load categories, logs, and streaks with 3 bulk queries using `in_()` filters, then build the response from in-memory dicts. Or use SQLAlchemy `joinedload`/`selectinload` on the relationships.
-**Detection:** Add SQLAlchemy query logging (`echo=True` on engine) and count queries on a dashboard load. Anything over 5-6 queries for a single endpoint is a red flag.
-**Audit phase:** Backend API audit -- performance fix.
-**Confidence:** HIGH (verified by reading `habit_service.py` lines 47-90 and confirmed no eager loading exists via grep)
+---
 
-### Pitfall 4: Habit Store Has No Error Handling
+### Pitfall 2: Audio Firing on App Load — Browser Autoplay Policy Silencing Everything
 
-**What goes wrong:** `habitStore.ts` has zero try/catch blocks. Every function (`fetchHabits`, `fetchTodayHabits`, `createHabit`, `checkHabit`, etc.) directly awaits the API call with no error handling. If the backend returns a 500 or the network drops, the promise rejects unhandled, `loading` stays `true` forever (set to true in `fetchTodayHabits` but never set back to false on error), and the UI shows an infinite spinner.
-**Why it happens:** `taskStore.ts` has error handling with try/catch and an `error` state field. `habitStore.ts` was added later and the pattern was not carried over.
-**Consequences:** Any backend error on habit endpoints permanently breaks the dashboard until page refresh. No user feedback about what went wrong. The `loading: true` state never resets.
-**Prevention:** Add try/catch with `set({ loading: false })` in finally blocks. Add an `error` state field matching the pattern in `taskStore.ts`. Surface errors to the user via toast or inline messages.
-**Detection:** Kill the backend server and try to load the dashboard. The habit section will show a spinner indefinitely.
-**Audit phase:** Frontend UI audit.
-**Confidence:** HIGH (verified by reading `habitStore.ts` -- no try/catch blocks present)
+**What goes wrong:**
+The app starts, loads the user's daily state, and immediately plays a "welcome back" sound or queues the aura charging sound. The browser blocks it. The AudioContext is in `suspended` state until the user performs a gesture (click, tap, keypress). All audio calls before that first gesture are silently swallowed. The user never hears the scouter beep on their first habit check of the session if they opened the app without clicking anything first.
 
-### Pitfall 5: datetime.utcnow() Deprecation and Timezone Naivety
+**Why it happens:**
+All major browsers (Chrome, Firefox, Safari) enforce an autoplay policy: `AudioContext` starts suspended, and `context.resume()` must be called from inside a user-initiated event. `use-sound` and Howler.js both rely on Web Audio API and hit this restriction identically. Safari is strictest — it will not play audio unless the resume call is in the same synchronous call stack as the user gesture.
 
-**What goes wrong:** Every model in the backend uses `datetime.utcnow` as the default for `created_at` and `updated_at` columns. `datetime.utcnow()` has been deprecated since Python 3.12 and produces timezone-naive datetimes. The entire app treats all times as naive UTC, but `date.today()` in `habit_service.py` uses the server's local timezone, creating a mismatch: streak calculations and "today's habits" use local time, while `completed_at` timestamps are in UTC.
-**Why it happens:** `datetime.utcnow()` was the standard pattern for years. The deprecation is relatively new.
-**Consequences:** If the server timezone is not UTC (likely, since this is a local Windows dev machine), habits completed near midnight could be logged with a different date than expected. Streaks could break or double-count across the date boundary. The frontend displays `completed_at` times that are offset from the user's actual local time.
-**Prevention:** Use `datetime.now(timezone.utc)` for timestamps. Use a consistent `get_today()` utility that explicitly uses the user's timezone (or at minimum, be consistent about UTC everywhere). For a solo local app, using local time everywhere is simpler than UTC.
-**Detection:** Check the system timezone (`time.tzname`). If it is not UTC, complete a habit at 11:55 PM local time and verify the log date matches expectations.
-**Audit phase:** Backend API audit -- affects streak calculation correctness.
-**Confidence:** HIGH (verified: 12 files use `datetime.utcnow`, habit service uses `date.today()` which is local time)
+**How to avoid:**
+- Implement a `SoundProvider` context that calls `audioContext.resume()` on the first user interaction anywhere in the app (a click/touch on the habit checkbox immediately satisfies this).
+- Do NOT try to pre-warm or pre-play audio on `useEffect` or component mount.
+- Store the `AudioContext` in a singleton (Howler.js does this automatically), not one per component — multiple contexts compound the permission problem.
+- For the habit check sound specifically: the `play()` call must happen in the click handler directly, not in a `setTimeout` or `useEffect` triggered by a state change.
+- Test the audio flow on first app load in a new browser tab every time a new sound event is added.
 
-## Moderate Pitfalls
+**Warning signs:**
+- First habit check of the day is silent; subsequent ones have sound
+- Console shows `AudioContext was not allowed to start` warning
+- Sounds work in development (localhost often has fewer restrictions) but fail in production
+- Transformation sounds don't play when triggered by a state change (XP threshold crossed) rather than a direct click
 
-### Pitfall 6: Total Power Calculation Ignores Habit Points in Task Completions
+**Phase to address:** Audio Foundation Phase — establish the `SoundProvider` singleton and gesture-resume pattern before wiring up any individual sounds. Every sound added later inherits the correct pattern.
 
-**What goes wrong:** In `completions.py` (line 37-38), `old_total` only sums `TaskCompletion.points_awarded` when checking for transformations, but `_get_total_power` in `habit_service.py` sums both task completions AND habit log points. This means the task completion endpoint uses a lower `old_total` than reality, potentially re-triggering transformation events that already fired from habit completions.
-**Prevention:** Use the same `_get_total_power` method (or equivalent) in the task completion endpoint. Extract power calculation to a single shared utility.
-**Detection:** Accumulate points from habits until near a transformation threshold, then complete a task. If the transformation fires when total power was already past the threshold, this bug is confirmed.
-**Audit phase:** Backend API audit.
-**Confidence:** HIGH (verified by comparing `completions.py` lines 37-38 with `habit_service.py` lines 224-237)
+---
 
-### Pitfall 7: Streak Logic Does Not Account for Non-Daily Habits
+### Pitfall 3: Overlapping Audio on Rapid Habit Checks
 
-**What goes wrong:** `_increment_streak` checks if `last_completed_date == yesterday` to continue a streak. But for a weekday-only habit (Mon-Fri), completing on Friday and then Monday means `last_completed_date` is Friday, and Monday is not "yesterday." The streak resets (or halves via Zenkai) even though the user completed every scheduled day.
-**Prevention:** `_increment_streak` needs to check the habit's schedule: find the previous *scheduled* day, not just yesterday. Only break the streak if the user missed a day the habit was actually due.
-**Detection:** Create a weekday-only habit, complete it Friday, skip Saturday/Sunday, complete it Monday. Check if the streak incremented or reset.
-**Audit phase:** Backend API audit -- this is a core gamification correctness issue.
-**Confidence:** HIGH (verified by reading `_increment_streak` in `habit_service.py` lines 240-257 -- no frequency awareness)
+**What goes wrong:**
+Sergio checks habit 1 (scouter beep), then immediately checks habit 2 before the first sound finishes. Two scouter beeps stack. He checks 3-4 habits quickly (ADHD rapid-fire behavior) and 4 beeps are layered over each other. The capsule-drop sound overlaps the habit sound. The Kaio-ken tier-up sound fires on top of both. The dashboard sounds like audio soup.
 
-### Pitfall 8: Dashboard Fires 7+ Parallel API Calls on Mount
+**Why it happens:**
+`use-sound` and Howler.js both allow multiple instances of the same sound to play simultaneously by default. Each `play()` call creates a new audio sprite instance. When a user with ADHD rapid-checks habits (the most natural behavior for the target user), the sound queue accumulates faster than sounds complete.
 
-**What goes wrong:** `Dashboard.tsx` `useEffect` fires `fetchCategories`, `fetchTasks`, `fetchTodayCompletions`, `fetchTodayHabits`, `fetchPower`, `fetchTransformations`, and `loadContextualQuote` all simultaneously on mount. Each of these is an independent HTTP request. Combined with the N+1 backend queries, a single dashboard load produces 30-50 database queries.
-**Prevention:** Consider a single `/api/v1/dashboard` endpoint that returns all needed data in one request: today's habits, power level, transformations, and contextual quote. This reduces 7 HTTP round-trips to 1.
-**Detection:** Open browser DevTools Network tab. Count the requests fired on dashboard load. If it is more than 3-4, consolidation is warranted.
-**Audit phase:** End-to-end flow verification -- but may be deferred to a future optimization milestone if "audit only, no new features" is strict.
-**Confidence:** HIGH (verified by reading `Dashboard.tsx` lines 40-48)
+**How to avoid:**
+- For short, per-event sounds (scouter beep): use `interrupt: true` in `use-sound` so each new play stops the previous instance. The beep is <1 second; interrupting is imperceptible.
+- For the aura-charging ambient hum (grows with %): use a single Howler.js instance, adjust its `rate` or `volume` over time, never spawn new instances.
+- For the perfect-day explosion: gate behind a flag so it cannot be triggered while already playing. A `ref` tracking `isAnimating` prevents re-entrant triggers.
+- Implement a global sound priority queue: at most 2 sounds playing simultaneously (foreground event sound + possible background ambient). Queue additional sounds with a 200ms gap.
+- Assign sound priority tiers: explosion/transformation (tier 1, interrupts everything), capsule/achievement (tier 2), habit-check beep (tier 3, lowest).
 
-### Pitfall 9: SQLite Database Must Be Deleted on Schema Changes
+**Warning signs:**
+- Audio sounds muddy or distorted during rapid habit checks
+- Users report "it plays the sound twice sometimes"
+- The perfect-day explosion is drowned out by leftover habit sounds
 
-**What goes wrong:** Per project notes, the database file must be manually deleted when schema changes occur. There is no migration system (Alembic or otherwise). This means any audit fix that touches models will destroy all existing habit data, streaks, and points.
-**Prevention:** Before making any model changes, export the current database contents. Better: set up Alembic migrations even for SQLite so schema changes can be applied incrementally. At minimum, write a backup script that dumps data before any schema change.
-**Detection:** Check if `alembic/` directory exists (it does not). Any model change during the audit that requires a schema alteration will trigger data loss.
-**Audit phase:** Must be addressed before any backend model changes. If the audit adds columns (e.g., `consistency_bonus_applied` boolean), this is a prerequisite.
-**Confidence:** HIGH (confirmed in PROJECT.md: "Database must be deleted when schema changes")
+**Phase to address:** Audio Foundation Phase — build the priority queue and interrupt logic before any individual sounds are wired. Retrofitting audio architecture is painful.
 
-### Pitfall 10: Reorder Logic Uses Array Index Not sort_order
+---
 
-**What goes wrong:** In `Dashboard.tsx` `handleMoveHabit`, the reorder payload sends array indices as `sort_order` values (lines 164-167). But the `todayHabits` array only contains habits due today, not all habits. If a user has 5 habits but only 3 are due today, swapping two of them sets `sort_order` to 0, 1, or 2, potentially conflicting with the sort_orders of habits not shown today.
-**Prevention:** Use the actual `sort_order` values from the habit objects when computing new positions, not the array indices of the filtered `todayHabits` list.
-**Detection:** Create 5 habits, make 2 of them weekday-only, then reorder on a weekend when those 2 are hidden. Check if their sort_order values got overwritten.
-**Audit phase:** Frontend UI audit.
-**Confidence:** HIGH (verified by reading `Dashboard.tsx` lines 157-172 -- uses `idx`/`swapIdx` not habit.sort_order)
+### Pitfall 4: XP Calculation Drift Between Frontend and Backend
 
-## Minor Pitfalls
+**What goes wrong:**
+The frontend Zustand store calculates and displays XP optimistically (before the API responds). The backend calculates XP authoritatively. They use slightly different rounding, slightly different streak multiplier values, or slightly different tier boundaries. After 30 days, the displayed power level is 47 XP higher than the database value. The user sees a transformation milestone fire in the UI at 1,000 XP, but the backend hasn't crossed 1,000 yet. A page refresh "uncrosses" the transformation. This is invisible for weeks and then confusing when discovered.
 
-### Pitfall 11: Empty Catch Blocks Swallow Errors Silently
+**Why it happens:**
+The XP formula has multiple multiplication steps with `floor()` calls: `floor(base_daily_xp * completion_rate * tier_multiplier * (1 + streak_bonus))`. Floating-point arithmetic in Python and JavaScript can produce different results at the sub-integer boundary. If the frontend recalculates on state change and the backend recalculates on receipt, one rounding call difference compounds over hundreds of days.
 
-**What goes wrong:** `Dashboard.tsx` has multiple `catch {}` blocks (lines 54, 73, 79, 85) that silently swallow quote API errors. While quote failures are non-critical, the pattern normalizes error swallowing and makes debugging harder.
-**Prevention:** At minimum log errors with `console.warn` in catch blocks. For the audit, add structured error logging so issues surface during testing.
-**Audit phase:** Frontend UI audit -- low priority but easy to fix.
-**Confidence:** HIGH (verified in source)
+**How to avoid:**
+- The backend is the single source of truth for all XP values. The frontend NEVER independently calculates XP — it only displays what the backend returns.
+- The `POST /habits/{id}/check` response already returns `daily_xp_so_far`, `attribute_xp_awarded`, `completion_tier` — use these directly, do not recalculate them in the store.
+- The `powerStore` sets values from API responses, never derives them locally. `power_level = response.power_level`, not `power_level += calculated_xp`.
+- For optimistic UI: show a loading/pending state on the XP counter during the API call rather than optimistically incrementing by a client-calculated amount.
+- Write a backend endpoint test that runs the XP formula 1,000 times with edge-case inputs (streak=0, streak=20, completion=0.5, completion=1.0) and asserts exact integer output. This becomes the source of truth for any frontend display logic.
 
-### Pitfall 12: HabitToday Type Missing sort_order and frequency
+**Warning signs:**
+- Displayed power level after refresh differs from displayed power level before refresh
+- Transformation animation fires on frontend but backend still shows previous form
+- Streak bonus percentages displayed in UI don't match analytics summary stats
+- The XP counter "corrects" visibly after API response arrives (jerk from optimistic to real value)
 
-**What goes wrong:** The `HabitToday` TypeScript interface does not include `sort_order` or `frequency` fields, even though the backend returns habits in sort_order and the frontend uses ordering logic. The reorder and move-up/move-down features work on index position without knowing the actual `sort_order`.
-**Prevention:** Add `sort_order` and `frequency` to the `HabitTodayResponse` schema and `HabitToday` TypeScript type. Use `sort_order` values for reorder calculations.
-**Audit phase:** End-to-end flow verification.
-**Confidence:** HIGH (verified: `HabitToday` in `types/index.ts` lacks sort_order; backend `HabitTodayResponse` in `schemas/habit.py` also lacks it)
+**Phase to address:** Database & Model Integrity Phase — establish the calculation-authority contract before any UI is built. The backend service tests must exist before the frontend store is implemented.
 
-### Pitfall 13: Edit Habit Fetches Full Habit List Just to Find One
+---
 
-**What goes wrong:** `handleEditHabit` in `Dashboard.tsx` (lines 126-137) calls `habitApi.list()` to fetch ALL habits, then filters by ID client-side. This is wasteful when there is already a `habitApi.stats(id)` endpoint and the habit data is likely already in the store.
-**Prevention:** Either use the already-fetched `habits` from the habit store, or add a `habitApi.get(id)` endpoint that returns a single habit.
-**Detection:** Click edit on a habit and check Network tab -- a full list fetch fires unnecessarily.
-**Audit phase:** Frontend UI audit -- minor optimization.
-**Confidence:** HIGH (verified in source)
+### Pitfall 5: Streak Breaking at Midnight / Timezone Boundary
 
-## Phase-Specific Warnings
+**What goes wrong:**
+Sergio completes all habits at 11:58 PM. The backend records the completion with the server's local date. He opens the app at 12:02 AM — the frontend sends today's date (now the next calendar day) when checking daily state. The backend compares `last_active_date` to "today" using the server clock. If the server is in UTC and the user is UTC-6, "today" on the server became the next day 6 hours ago. The streak incorrectly breaks even though the user completed habits on both "their" days.
 
-| Phase Topic | Likely Pitfall | Mitigation |
-|-------------|---------------|------------|
-| Backend API audit | Foreign keys disabled (Pitfall 1) | Fix pragma before any other changes; run `PRAGMA foreign_key_check` to find existing orphans |
-| Backend API audit | Consistency bonus double-application (Pitfall 2) | Add proper tracking column; requires migration strategy (Pitfall 9) |
-| Backend API audit | Streak breaks on weekends for weekday habits (Pitfall 7) | Make `_increment_streak` frequency-aware; test with weekday and custom schedules |
-| Backend API audit | Power total mismatch between task/habit code paths (Pitfall 6) | Extract `_get_total_power` to a shared utility used by both endpoints |
-| Backend API audit | UTC vs local time mismatch (Pitfall 5) | Decide on one approach (local time recommended for solo app) and apply consistently |
-| Frontend UI audit | Habit store has no error handling (Pitfall 4) | Add try/catch and error state matching taskStore pattern |
-| Frontend UI audit | Reorder uses array index not sort_order (Pitfall 10) | Pass actual sort_order values in reorder payload |
-| End-to-end flow | Schema changes destroy data (Pitfall 9) | Set up Alembic or at least a backup script before any model changes |
-| End-to-end flow | Dashboard fires 7+ parallel requests (Pitfall 8) | Consider a combined dashboard endpoint (may be out of audit scope) |
+A related failure: Daylight Saving Time transition creates a 23-hour day. If `last_active_date` was yesterday at 11:30 PM and "today" is only 23 hours later due to DST, naive date arithmetic (`today - last_date == 1`) can fail, breaking the streak.
+
+**Why it happens:**
+Streak logic that uses `date.today()` on the server computes the date in the server's timezone, not the user's. SQLite's `DATE` type stores dates as `YYYY-MM-DD` strings, which are inherently timezone-naive. When the app is used near midnight in any timezone other than the server's, date comparisons produce off-by-one errors.
+
+**How to avoid:**
+- All `log_date` values must be stored using the **client's local date** in `YYYY-MM-DD` format, sent explicitly in the API request body, not derived from `datetime.now()` on the server.
+- The `POST /habits/{id}/check` request body must include `local_date: "2026-03-03"` (the user's local calendar date).
+- Streak evaluation compares `last_active_date` to the client-provided `local_date`, never to `datetime.now(tz=UTC).date()`.
+- Off day logic must also accept `local_date` for the same reason.
+- DST safety: all date arithmetic uses Python's `datetime.date` subtraction (pure date objects, no time component) — never convert DATE to DATETIME for comparison.
+- Add a backend test: simulate a habit check submitted with `local_date = "2026-03-04"` when `last_active_date = "2026-03-03"` and assert streak increments; simulate `local_date = "2026-03-05"` and assert streak breaks.
+
+**Warning signs:**
+- Users report streaks breaking "when I'm sure I completed all my habits yesterday"
+- The streak shows "(paused)" for an off day that was never declared
+- Streak resets consistently happen around midnight or on DST transition dates
+- `last_active_date` in the database shows UTC date, not local date
+
+**Phase to address:** Database & Model Integrity Phase — this is a data contract decision. Once habits are being checked in production with the wrong date authority, correcting historical streak data is high-effort.
+
+---
+
+### Pitfall 6: Reward System Saturation — 25% Capsule Rate Feels Spammy by Week 3
+
+**What goes wrong:**
+The 25% capsule drop rate feels exciting on day 1. By week 3, Sergio has accumulated 15 unclaimed capsules in the history. The popup interrupts habit checking every third check. The slot-machine thrill habituates. Opening capsules becomes a chore rather than a delight. He stops caring about capsules entirely, which removes a core motivation layer. The variable reward circuit needs variability — if rewards come too frequently, they lose their power.
+
+**Why it happens:**
+25% per habit check on 6 habits = statistically ~1.5 capsules per day. In a week, that's 10+ common rewards. Research on variable reward schedules (slot machine psychology) shows that reward frequency must be calibrated to the specific reward type: micro-rewards (common capsules) can be frequent, but the excitement of "opening" requires that the reward feels genuinely surprising, which habituates fast at 25%.
+
+**How to avoid:**
+- The 25% rate is correct for the PRD. Do NOT inflate it further during testing to make the demo feel exciting.
+- Implement a "pending capsule" notification badge rather than an immediate popup interrupt. The user opens capsules when they want to, not mid-habit-check flow.
+- The capsule opening animation must be short (<2 seconds) and skippable. If it feels like work to open, the mechanic collapses.
+- Monitor: if unclaimed capsules in history > 5 for a single day, the rate or UX needs adjustment.
+- The Shenron wish loop (7 Dragon Balls = 1 wish) must be calibrated separately: 7 non-consecutive perfect days is achievable in 2 weeks. If it takes too long, motivation drops. If it happens too fast (1 week), the macro-reward loop loses meaning.
+
+**Warning signs:**
+- Capsule history shows large unclaimed backlog
+- User disables the capsule popup in settings
+- The habit-check flow feels interrupted and annoying rather than exciting
+
+**Phase to address:** Reward System Phase — establish the UX pattern of "notification badge, open when ready" from the start. Do not build an intrusive popup-first design and retrofit it later.
+
+---
+
+## Technical Debt Patterns
+
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Calculate XP in frontend Zustand store | Instant UI without waiting for API | XP drift, inconsistent transformation triggers, rollback complexity | Never — the backend must own all XP math |
+| Use `date.today()` server-side for streak date | Simpler code, no client date required | Streaks break near midnight for non-server-timezone users | Never — client must send local_date |
+| Animate `backgroundColor` and `boxShadow` directly | Simpler code, fewer transform workarounds | Browser paint on every frame, jank on mid-range hardware | Never for high-frequency animations (aura bar) |
+| One `AudioContext` per component | Simpler sound wiring | Exceeds browser limits (6 concurrent contexts), permission issues | Never |
+| Skip `interrupt: true` on short sounds | Simpler sound setup | Audio soup during rapid habit checks | Never |
+| Pre-populate all 10 transformation animations on load | No lazy-load delay during transformation unlock | Bundle size doubles; animations 8-10 never seen by week-1 users | Only if transformation unlock latency is perceptible |
+| Hard-code the "today" date in tests | Faster test setup | Tests break on real date boundaries, DST | Never for date-sensitive logic |
+
+---
+
+## Integration Gotchas
+
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| Framer Motion + React 19 | Using deprecated `motion` component import paths from v10 — v11 changed exports | Import from `motion/react`, not `framer-motion` (v11 renamed the package) |
+| use-sound + AudioContext | Calling `play()` before user gesture (app load, useEffect) | Call `play()` only inside click/tap handlers; implement `SoundProvider` that resume()s context on first interaction |
+| SQLite + date arithmetic | Using `DATETIME` type for streak date comparison instead of `DATE` | Use bare `DATE` columns; SQLite `DATE` subtraction returns integer days cleanly |
+| FastAPI + SQLite | Not closing sessions between requests; SQLite single-writer issue under concurrent requests | Use `scoped_session` pattern; SQLite is fine for single-user but session leaks create file locks |
+| Framer Motion + `AnimatePresence` | Not setting a unique `key` prop on animated overlays — same key means the exit animation doesn't fire | Every overlay component (`PerfectDayAnimation`, `ShenronAnimation`) needs a unique key that changes when re-triggered |
+
+---
+
+## Performance Traps
+
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| Animating all 6 habit cards simultaneously on load | Dashboard load causes visible card stagger lag; main thread blocks | Stagger with `delay: index * 0.05` so cards animate in sequence | Immediately visible with 6+ habits |
+| `motion.div` on every habit card list item | React DevTools shows 6x `motion` wrappers re-rendering on any state change | Only animate the specific property that changes (the checkbox state); use CSS for static card layout | Noticeable on slower hardware; invisible on dev machine |
+| Howler.js loading all audio files at startup | First paint is delayed 1-2 seconds while audio buffers load | Lazy-load audio files; only preload the most frequent sounds (habit-check beep) | At page load, especially on slower connections |
+| SQLite full-table scan for today's habits | `GET /habits/today/list` becomes slow as habit_logs grows over months | Index `(habit_id, log_date)` on `habit_logs` table; index `(user_id, log_date)` on `daily_logs` | Noticeable after 6+ months of daily use (~1000+ rows) |
+| Zustand store re-rendering all dashboard components on any XP change | Every habit check causes the entire dashboard to re-render | Use Zustand selectors — subscribe each component only to the specific slice it needs | Immediately, as component tree grows |
+
+---
+
+## UX Pitfalls
+
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| Animation plays, then locks UI during it | ADHD users cannot check the next habit until the previous animation finishes; frustration, abandonment | Animations must be non-blocking. The aura fill plays while the next habit is already checkable |
+| Screen shake on every habit check (not just 100%) | Overstimulation by habit 3; screen shake becomes noise, not reward | Reserve screen shake exclusively for 100% perfect day and transformation unlocks |
+| Vegeta roast appears mid-session when user opens app | User is actively trying to complete habits; a roast interrupts flow and feels punishing | Vegeta roast triggers only at session start (opening the app) when previous day was missed, never during an active habit-check session |
+| No visual distinction between "completed this session" and "completed earlier today" | User cannot tell if an undo/recheck is happening or if they're confused about state | Completed habits show time of completion on hover; recently completed (this session) have a brief highlight that fades |
+| Sound volume not calibrated across events | Habit beep is quiet; perfect-day explosion is window-shaking loud | All sounds normalized to the same peak volume in editing; the explosion is dramatic through animation, not decibel level |
+| Too many visible numbers at once (Power Level + 4 attributes + streak + completion % + XP earned) | ADHD cognitive overload; decision paralysis about what to focus on | The dashboard hierarchy must be clear: completion % is huge and primary; everything else is secondary, smaller, less prominent |
+| Capsule popup interrupts habit check flow | User is in "check habits" mode; a popup demanding interaction breaks the flow | Queue capsule notification, show badge; user opens capsule drawer intentionally after completing habits |
+
+---
+
+## "Looks Done But Isn't" Checklist
+
+- [ ] **Streak calculation:** Verify streak increments correctly when `local_date` is provided by client, not server clock — test at 11:59 PM and 12:01 AM explicitly
+- [ ] **XP display:** Verify the power level displayed after page refresh matches the power level displayed after habit check (no drift)
+- [ ] **Audio on cold load:** Open a new browser tab, do NOT click anything before checking a habit — verify the sound plays (SoundProvider resume pattern works)
+- [ ] **Rapid habit checks:** Check all 6 habits within 5 seconds — verify no audio stacking/soup, no jank in aura bar fill
+- [ ] **Perfect day sequence:** Trigger 100% completion — verify the full sequence (screen darken → explosion → XP counter → Dragon Ball → quote) plays in order without any step being skipped or overlapping the next
+- [ ] **Off day declared today:** Verify that marking today as an off day immediately removes habits from the due list and shows "(paused)" streak — not a stale cached state
+- [ ] **Transformation unlock:** Cross an XP threshold — verify transformation animation fires exactly once even if the user rapidly checks habits right at the boundary
+- [ ] **Dragon Ball 7th collection:** Collect the 7th Dragon Ball — verify Shenron animation fires and `dragon_balls_collected` resets to 0 in the database (not just the UI)
+- [ ] **Capsule RNG at 0 rewards configured:** Open the app with the capsule reward list empty — verify habit check doesn't crash when capsule drop triggers but no rewards exist
+- [ ] **Habit with frequency=weekdays on weekend:** Open app on Saturday — verify no weekday habits appear in today's list and daily% calculates from remaining habits correctly
+
+---
+
+## Recovery Strategies
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| XP drift discovered after weeks of use | HIGH | Audit `daily_logs.xp_earned` vs. sum of expected formula output per day; recalculate correct values; UPDATE database; clear Zustand persistence |
+| Streak data corrupted by wrong date authority | HIGH | Reconstruct streaks from `habit_logs` table (source of truth); add `PATCH /streaks/recalculate` admin endpoint for recovery |
+| Audio architecture missing interrupt/priority | MEDIUM | Add `SoundManager` singleton with queue; replace all direct `play()` calls with `SoundManager.play(soundId, priority)` |
+| Animation jank discovered in production | MEDIUM | Profile with Chrome DevTools; convert worst offenders from `motion.div` to CSS transitions; takes 1-2 days per component |
+| Capsule popup UX is too intrusive | LOW | Change popup trigger from immediate to badge notification; UI-only change, no backend work |
+| Reward inflation / saturation | LOW | Adjust capsule drop rate in a constants file; no schema change required |
+
+---
+
+## Pitfall-to-Phase Mapping
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| XP calculation drift | Database & Model Integrity | Backend formula tests assert exact integer output; frontend store never derives XP |
+| Streak timezone bug | Database & Model Integrity | Tests simulate habit check at 11:59 PM and 12:02 AM local time with UTC server; streak increments correctly |
+| Off-by-one streak date | Database & Model Integrity | Client sends `local_date`; backend uses it; both tested with explicit date payloads |
+| Audio autoplay restriction | Audio Foundation | First-load test: no pre-gesture sounds; first habit check in new tab plays audio |
+| Overlapping sounds | Audio Foundation | Rapid-check test: 6 habits in 5 seconds; audio sounds clean, not stacked |
+| Animation avalanche (jank) | Animation & Feedback | Chrome DevTools frame budget during perfect-day sequence; all frames <16ms |
+| will-change over-promotion | Animation & Feedback | Layers panel in DevTools; no unexpected GPU layers on static habit cards |
+| XP display/optimistic drift | State Management | Page-refresh test: displayed XP before and after refresh is identical |
+| Reward saturation | Reward System | Week-3 simulation: 15 capsule drops in history; UX still feels rewarding, not spammy |
+| Capsule crash (empty rewards) | Reward System | Test: capsule drops with 0 configured rewards; no 500 error, graceful no-op |
+| Transformation fires twice | Animation & Feedback | Rapid habit check at XP boundary; transformation animation fires exactly once |
+| UI blocks during animation | Animation & Feedback | Habit checkbox is interactive during all animations including perfect-day sequence |
+
+---
 
 ## Sources
 
-- Direct codebase analysis (PRIMARY):
-  - `backend/app/database/session.py` -- foreign keys conditional
-  - `backend/app/services/habit_service.py` -- streak logic, consistency bonus, N+1 queries
-  - `backend/app/api/v1/completions.py` -- power total calculation mismatch
-  - `backend/app/core/config.py` -- database URL configuration
-  - `backend/app/models/habit.py` -- datetime.utcnow usage
-  - `frontend/src/store/habitStore.ts` -- missing error handling
-  - `frontend/src/store/taskStore.ts` -- error handling pattern (reference)
-  - `frontend/src/pages/Dashboard.tsx` -- reorder logic, parallel requests, empty catches
-  - `frontend/src/types/index.ts` -- missing fields on HabitToday
-  - `frontend/src/services/api.ts` -- API client structure
-  - `backend/app/schemas/habit.py` -- response schemas
-- Python 3.12 deprecation of `datetime.utcnow()`: [Python docs](https://docs.python.org/3/library/datetime.html#datetime.datetime.utcnow) -- MEDIUM confidence (training data, aligns with Python 3.14 being used)
-- SQLite foreign key enforcement requires per-connection pragma: [SQLite docs](https://www.sqlite.org/foreignkeys.html) -- HIGH confidence (well-established SQLite behavior)
+- [Motion.dev Performance Guide](https://motion.dev/docs/performance) — MEDIUM confidence (content was CSS-only on fetch; guidance sourced from search + known architecture)
+- [Framer Motion vs Motion One Mobile Performance 2025 — reactlibraries.com](https://reactlibraries.com/blog/framer-motion-vs-motion-one-mobile-animation-performance-in-2025) — MEDIUM confidence (verified via WebFetch: JS engine vs WAAPI architecture confirmed)
+- [Web Audio Autoplay Policy — Chrome for Developers](https://developer.chrome.com/blog/web-audio-autoplay) — HIGH confidence (official Google Chrome docs, verified via WebFetch)
+- [MDN Autoplay Guide](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay) — HIGH confidence (MDN official documentation)
+- [How to Build a Streaks Feature — Trophy](https://trophy.so/blog/how-to-build-a-streaks-feature) — HIGH confidence (verified via WebFetch; specific DST/midnight edge cases confirmed)
+- [Howler.js Overlapping Sounds — GitHub Issues #686, #1227](https://github.com/goldfire/howler.js/issues/686) — HIGH confidence (direct issue tracker, specific to this library)
+- [use-sound — GitHub](https://github.com/joshwcomeau/use-sound) — HIGH confidence (`interrupt` option confirmed in official README)
+- [Counterproductive Effects of Gamification: Habitica Analysis — ScienceDirect](https://www.sciencedirect.com/science/article/abs/pii/S1071581918305135) — MEDIUM confidence (paywalled; abstract and secondary summaries accessed)
+- [Gamification in Habit Tracking: Does It Work? — Cohorty](https://www.cohorty.app/blog/gamification-in-habit-tracking-does-it-work-research-real-user-data) — MEDIUM confidence (WebSearch summary; 67% abandonment by week 4 statistic cited)
+- [Solving Eventual Consistency in Frontend — LogRocket](https://blog.logrocket.com/solving-eventual-consistency-frontend/) — MEDIUM confidence (optimistic update rollback patterns verified)
+- [Zustand Optimistic Persist Discussion](https://github.com/pmndrs/zustand/discussions/2497) — MEDIUM confidence (community discussion on persistence inconsistency)
+
+---
+*Pitfalls research for: Gamified habit tracker (Saiyan Tracker v3)*
+*Researched: 2026-03-03*
