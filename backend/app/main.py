@@ -29,6 +29,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title=settings.APP_TITLE, lifespan=lifespan)
 
+# Wire API routes
+from app.api.router import api_router  # noqa: E402
+
+app.include_router(api_router)
+
 
 @app.get("/health")
 def health_check():

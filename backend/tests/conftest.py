@@ -3,6 +3,7 @@
 import uuid
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
@@ -106,3 +107,35 @@ def sample_wish(db, sample_user):
     db.add(wish)
     db.flush()
     return wish
+
+
+@pytest.fixture()
+def client(db, sample_user):
+    """Yield a TestClient with dependency overrides for get_db and get_current_user."""
+    from fastapi.testclient import TestClient
+
+    from app.api.deps import get_current_user, get_db
+    from app.main import app
+
+    def override_get_db():
+        yield db
+
+    def override_get_current_user():
+        return sample_user
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
+
+    with TestClient(app) as c:
+        yield c
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def seeded_db(db):
+    """Seed quotes and default data into the test database."""
+    from app.database.seed import seed_all
+
+    seed_all(db)
+    return db
