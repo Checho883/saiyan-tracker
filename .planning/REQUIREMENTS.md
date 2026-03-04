@@ -9,14 +9,14 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Database & Models
 
-- [ ] **DB-01**: SQLAlchemy 2.0 models for all 15 tables (Users, Categories, Habits, HabitLogs, HabitStreaks, DailyLogs, Streaks, PowerLevels, Rewards, CapsuleDrops, Wishes, WishLogs, OffDays, Achievements, Quotes)
-- [ ] **DB-02**: User model stores cumulative attribute XP (str_xp, vit_xp, int_xp, ki_xp), power_level, current_transformation, dragon_balls_collected, wishes_granted, sound_enabled
-- [ ] **DB-03**: Habit model has importance (normal/important/critical) and attribute (str/vit/int/ki) fields — no base_points
-- [ ] **DB-04**: HabitLog stores attribute_xp_awarded and capsule_dropped per completion
-- [ ] **DB-05**: DailyLog stores is_perfect_day, completion_tier, xp_earned, streak_multiplier, zenkai_bonus_applied, dragon_ball_earned
-- [ ] **DB-06**: All date-based logic uses client-supplied local_date (not server datetime) to prevent timezone/midnight bugs
+- [x] **DB-01**: SQLAlchemy 2.0 models for all 15 tables (Users, Categories, Habits, HabitLogs, HabitStreaks, DailyLogs, Streaks, PowerLevels, Rewards, CapsuleDrops, Wishes, WishLogs, OffDays, Achievements, Quotes)
+- [x] **DB-02**: User model stores cumulative attribute XP (str_xp, vit_xp, int_xp, ki_xp), power_level, current_transformation, dragon_balls_collected, wishes_granted, sound_enabled
+- [x] **DB-03**: Habit model has importance (normal/important/critical) and attribute (str/vit/int/ki) fields — no base_points
+- [x] **DB-04**: HabitLog stores attribute_xp_awarded and capsule_dropped per completion
+- [x] **DB-05**: DailyLog stores is_perfect_day, completion_tier, xp_earned, streak_multiplier, zenkai_bonus_applied, dragon_ball_earned
+- [x] **DB-06**: All date-based logic uses client-supplied local_date (not server datetime) to prevent timezone/midnight bugs
 - [ ] **DB-07**: Seed 100+ quotes with character, source_saga, trigger_event, transformation_level, and severity fields
-- [ ] **DB-08**: Category model is visual-only (name, color, icon) — no point_multiplier
+- [x] **DB-08**: Category model is visual-only (name, color, icon) — no point_multiplier
 
 ### Core Game Logic
 
@@ -157,14 +157,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DB-01 | Phase 1 | Pending |
-| DB-02 | Phase 1 | Pending |
-| DB-03 | Phase 1 | Pending |
-| DB-04 | Phase 1 | Pending |
-| DB-05 | Phase 1 | Pending |
-| DB-06 | Phase 1 | Pending |
+| DB-01 | Phase 1 | Complete |
+| DB-02 | Phase 1 | Complete |
+| DB-03 | Phase 1 | Complete |
+| DB-04 | Phase 1 | Complete |
+| DB-05 | Phase 1 | Complete |
+| DB-06 | Phase 1 | Complete |
 | DB-07 | Phase 1 | Pending |
-| DB-08 | Phase 1 | Pending |
+| DB-08 | Phase 1 | Complete |
 | GAME-01 | Phase 2 | Pending |
 | GAME-02 | Phase 2 | Pending |
 | GAME-03 | Phase 2 | Pending |
