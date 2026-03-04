@@ -37,19 +37,19 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### API
 
-- [ ] **API-01**: POST /habits/{id}/check returns: attribute_xp_awarded, completion_rate, completion_tier, capsule_drop (with reward details), is_perfect_day, dragon_ball_earned, new_transformation, streak, daily_xp_so_far, quote
-- [ ] **API-02**: Habit CRUD (GET/POST/PUT/DELETE /habits/) with importance and attribute fields
-- [ ] **API-03**: GET /habits/today/list returns today's habits with completion status, streaks, attribute, importance
-- [ ] **API-04**: GET /habits/calendar/all returns monthly heatmap with is_perfect_day, completion_tier, xp_earned per day
+- [x] **API-01**: POST /habits/{id}/check returns: attribute_xp_awarded, completion_rate, completion_tier, capsule_drop (with reward details), is_perfect_day, dragon_ball_earned, new_transformation, streak, daily_xp_so_far, quote
+- [x] **API-02**: Habit CRUD (GET/POST/PUT/DELETE /habits/) with importance and attribute fields
+- [x] **API-03**: GET /habits/today/list returns today's habits with completion status, streaks, attribute, importance
+- [x] **API-04**: GET /habits/calendar/all returns monthly heatmap with is_perfect_day, completion_tier, xp_earned per day
 - [x] **API-05**: Reward CRUD (GET/POST/PUT/DELETE /rewards/) for Capsule Corp loot box items
 - [x] **API-06**: Wish CRUD (GET/POST/PUT/DELETE /wishes/) plus POST /wishes/grant for Shenron claiming
-- [ ] **API-07**: GET /power/current returns power level, transformation, attribute levels with XP, dragon_balls_collected
-- [ ] **API-08**: GET /attributes/ returns current attribute levels, titles, XP breakdown
+- [x] **API-07**: GET /power/current returns power level, transformation, attribute levels with XP, dragon_balls_collected
+- [x] **API-08**: GET /attributes/ returns current attribute levels, titles, XP breakdown
 - [x] **API-09**: Category CRUD (GET/POST/PUT/DELETE /categories/)
 - [x] **API-10**: Off day management (GET/POST/DELETE /off-days/)
-- [ ] **API-11**: GET /analytics/summary?period=week|month|all with perfect days, avg %, total XP, longest streak
-- [ ] **API-12**: GET /analytics/capsule-history and GET /analytics/wish-history
-- [ ] **API-13**: GET /habits/{id}/contribution-graph?days=90 for per-habit GitHub-style grid
+- [x] **API-11**: GET /analytics/summary?period=week|month|all with perfect days, avg %, total XP, longest streak
+- [x] **API-12**: GET /analytics/capsule-history and GET /analytics/wish-history
+- [x] **API-13**: GET /habits/{id}/contribution-graph?days=90 for per-habit GitHub-style grid
 - [x] **API-14**: GET /quotes/random?trigger_event=X for trigger-filtered quotes
 - [x] **API-15**: GET/PUT /settings/ for user preferences (sound, theme, display_name)
 
@@ -179,19 +179,19 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GAME-12 | Phase 2 | Complete |
 | GAME-13 | Phase 2 | Complete |
 | GAME-14 | Phase 2 | Complete |
-| API-01 | Phase 3 | Pending |
-| API-02 | Phase 3 | Pending |
-| API-03 | Phase 3 | Pending |
-| API-04 | Phase 3 | Pending |
+| API-01 | Phase 3 | Complete |
+| API-02 | Phase 3 | Complete |
+| API-03 | Phase 3 | Complete |
+| API-04 | Phase 3 | Complete |
 | API-05 | Phase 3 | Complete |
 | API-06 | Phase 3 | Complete |
-| API-07 | Phase 3 | Pending |
-| API-08 | Phase 3 | Pending |
+| API-07 | Phase 3 | Complete |
+| API-08 | Phase 3 | Complete |
 | API-09 | Phase 3 | Complete |
 | API-10 | Phase 3 | Complete |
-| API-11 | Phase 3 | Pending |
-| API-12 | Phase 3 | Pending |
-| API-13 | Phase 3 | Pending |
+| API-11 | Phase 3 | Complete |
+| API-12 | Phase 3 | Complete |
+| API-13 | Phase 3 | Complete |
 | API-14 | Phase 3 | Complete |
 | API-15 | Phase 3 | Complete |
 | STATE-01 | Phase 4 | Pending |
