@@ -33,11 +33,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. constants.py contains all XP values, tier multipliers, and 10 transformation thresholds as importable Python values
   4. Quote seed data populates 100+ quotes with character, source_saga, trigger_event, transformation_level, and severity fields
   5. All date columns store YYYY-MM-DD strings (not DATETIME) and models accept local_date from external input
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md — Database infrastructure, config, constants, and all 15 SQLAlchemy models
+- [ ] 01-02-PLAN.md — Seed data (100+ quotes, defaults) and comprehensive test suite
 
 ### Phase 2: Core Game Logic Services
 **Goal**: All game mechanics work as tested Python functions -- XP formulas, Kaio-ken tiers, Zenkai streaks, capsule RNG, Dragon Ball awards, transformations, and the composite check_habit() transaction
