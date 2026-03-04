@@ -2,11 +2,12 @@
 
 ## Overview
 
-This roadmap delivers a Dragon Ball Z-themed habit tracker optimized for ADHD dopamine loops. The build follows a strict bottom-up dependency chain: database models and game constants first, then service-layer game logic, then API routes, then frontend state/stores, then the data-connected dashboard UI, then audio and animation layered on top, then analytics and settings pages, and finally the quote system and polish pass. Every phase delivers a verifiable capability that the next phase builds on. The architectural centerpiece is `check_habit()` -- a single atomic transaction that computes all game-state side effects -- and everything else radiates outward from it.
+This roadmap delivers a Dragon Ball Z-themed habit tracker optimized for ADHD dopamine loops. The build follows a strict bottom-up dependency chain: database models and game constants first, then service-layer game logic, then API routes, then frontend state/stores, then the data-connected dashboard UI, then audio and animation layered on top, then analytics and settings pages. Every phase delivers a verifiable capability that the next phase builds on. The architectural centerpiece is `check_habit()` -- a single atomic transaction that computes all game-state side effects -- and everything else radiates outward from it.
 
 ## Milestones
 
 - ✅ **v1.0 Backend Foundation** — Phases 1-3 (shipped 2026-03-04)
+- 🚧 **v1.1 The Dopamine Layer** — Phases 4-8 (in progress)
 
 ## Phases
 
@@ -25,89 +26,88 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 </details>
 
-### Unassigned Phases (Next Milestone TBD)
+### 🚧 v1.1 The Dopamine Layer (Phases 4-8)
 
-- [ ] **Phase 4: Frontend State Layer** - Zustand stores, typed API client, TypeScript types matching backend schemas
-- [ ] **Phase 5: Dashboard UI** - Data-connected dashboard with habit cards, aura bar, avatar, attributes, Dragon Balls, streaks
-- [ ] **Phase 6: Audio and Animation Layer** - SoundProvider, animation queue, Perfect Day explosion, Shenron ceremony, all sound effects
-- [ ] **Phase 7: Analytics and Settings Pages** - Calendar heatmap, progression charts, summary stats, rewards/wishes/category management
-- [ ] **Phase 8: Quote System and Polish** - 100+ seeded quotes, trigger routing, Vegeta escalation, streak milestones, transformation visuals
+**Milestone Goal:** Build the complete frontend experience -- every habit check triggers sound, visual feedback, and dopamine-rewarding animations on top of the v1.0 backend.
+
+- [ ] **Phase 4: Project Setup & Foundation** - React 19 + Vite 7 scaffold, TypeScript types, API client, Zustand stores, dark theme, routing
+- [ ] **Phase 5: Dashboard Core & Habit Management** - Habit list with check/uncheck, aura bar, attributes, Dragon Balls, avatar, streaks, quotes, XP popup, habit CRUD
+- [ ] **Phase 6: Audio System** - SoundProvider with Howler.js sprite sheet, sound effects on every interaction, global mute toggle
+- [ ] **Phase 7: Animation Layer** - Animation queue, tier-change flash, Perfect Day explosion, capsule reveal, Dragon Ball trajectory, transformation, Shenron ceremony
+- [ ] **Phase 8: Analytics & Settings** - Calendar heatmap, progression charts, summary stats, rewards/wishes/categories CRUD, off-day management, preferences
 
 ## Phase Details
 
-### Phase 4: Frontend State Layer
-**Goal**: Zustand stores and typed API client establish the frontend data contract, so components render real backend data without computing game logic client-side
+### Phase 4: Project Setup & Foundation
+**Goal**: A working React 19 SPA scaffold with typed API client, Zustand stores, dark theme, and routing -- so all subsequent phases build components on a verified foundation
 **Depends on**: Phase 3
 **Requirements**: STATE-01, STATE-02, STATE-03, STATE-04, STATE-05, STATE-06
 **Success Criteria** (what must be TRUE):
-  1. services/api.ts provides typed functions for every backend endpoint; no raw fetch calls exist outside this file
-  2. habitStore exposes today's habits, daily progress, and a checkHabit action that updates state from backend response (no client-side XP calculation)
-  3. powerStore exposes power level, current transformation, attribute levels with XP, and dragon_balls_collected -- all set from API responses
-  4. uiStore manages animation queue with enqueue/dequeue, active modal state, sound toggle, and quote display
-  5. Dark mode theme is applied with #050510 background, glowing borders, and orange/blue accents via Tailwind CSS v4 CSS-first config
+  1. Running `npm run dev` serves a React 19 SPA at localhost:5173 with Vite 7 hot reload, Tailwind CSS v4 styling, and working page routing between Dashboard, Analytics, and Settings views
+  2. TypeScript types in `types/index.ts` match all backend API response schemas and the API client layer successfully calls all 9 backend endpoints with typed request/response (verified by fetching today's habits from a running backend)
+  3. Four Zustand stores (habitStore, powerStore, rewardStore, uiStore) hold client state with selector discipline -- `useShallow` used for multi-value selections, no bare `useStore()` calls
+  4. Dark theme is applied by default with DBZ color tokens (deep space background, glowing borders, orange/blue accents) via CSS custom properties in Tailwind v4 `@theme` config
 **Plans**: TBD
 
 Plans:
 - [ ] 04-01: TBD
 - [ ] 04-02: TBD
 
-### Phase 5: Dashboard UI
-**Goal**: Users can view their daily habits, check them off, and see all game state (aura %, attributes, Dragon Balls, streaks, transformation) update from real backend data
+### Phase 5: Dashboard Core & Habit Management
+**Goal**: Users can view all their habits, check them off with optimistic UI, and see every game-state display (aura %, attributes, Dragon Balls, avatar, streaks, quotes, XP popup) update from real backend data -- plus create, edit, and delete habits
 **Depends on**: Phase 4
-**Requirements**: DASH-01, DASH-02, DASH-03, DASH-04, DASH-05, DASH-06, DASH-07, DASH-08, DASH-09, DASH-10
+**Requirements**: DASH-01, DASH-02, DASH-03, DASH-04, DASH-05, DASH-06, DASH-07, DASH-08, DASH-09, DASH-10, DASH-11, DASH-12, DASH-13
 **Success Criteria** (what must be TRUE):
-  1. Checking a habit updates the Daily Aura bar percentage, the habit's streak counter, and the attribute XP bars -- all from the backend response
-  2. Saiyan avatar displays the current transformation form image with an aura that visually grows as completion % increases
-  3. Dragon Ball tracker shows 7 slots that fill as Perfect Days are achieved, and streak display shows current/best overall streak with XP bonus %
-  4. Habit cards display attribute tag (STR/VIT/INT/KI), importance badge (Normal/Important/Critical), streak flame, and a functional check toggle
-  5. User can create/edit habits via modal with importance selector and attribute selector, and mark today as an off day
+  1. User can see all active habits grouped by category, check/uncheck a habit with optimistic UI toggle (instant visual feedback with rollback on API error), and see an XP popup float up from the habit card showing "+N [ATTR] XP" in attribute color
+  2. Daily aura progress bar animates from 0% to current completion with spring physics and displays tier label (Kaio-ken x3/x10/x20) updating at 50%/80%/100% thresholds
+  3. Four RPG attribute bars (STR/VIT/INT/KI) display current level and XP fill, Dragon Ball tracker shows 7 slots with glowing filled balls, and streak display shows current/best streak with visual scaling
+  4. Saiyan avatar displays the current transformation form with form-appropriate aura effect, shows power level in scouter-style display, and shows progress bar to next form
+  5. User can create a new habit via modal (title, description, importance, attribute, frequency, category), edit and delete existing habits, and see a character quote with avatar and attribution after each habit check
 **Plans**: TBD
 
 Plans:
 - [ ] 05-01: TBD
 - [ ] 05-02: TBD
+- [ ] 05-03: TBD
 
-### Phase 6: Audio and Animation Layer
-**Goal**: Every habit interaction produces sound and visual feedback; major events (Perfect Day, transformation, Shenron, capsule drop) play sequential cinematic animations
+### Phase 6: Audio System
+**Goal**: Every user interaction produces a sound effect -- the app is never silent when something happens
 **Depends on**: Phase 5
-**Requirements**: ANIM-01, ANIM-02, ANIM-03, ANIM-04, ANIM-05, ANIM-06, ANIM-07, ANIM-08, ANIM-09, ANIM-10, ANIM-11, ANIM-12
+**Requirements**: AUDIO-01, AUDIO-02, AUDIO-03, AUDIO-04, AUDIO-05, AUDIO-06, AUDIO-07, AUDIO-08, AUDIO-09
 **Success Criteria** (what must be TRUE):
-  1. Every habit check plays a scouter beep sound; ki charging hum loops and grows with completion %; tier change triggers power-up burst sound
-  2. Perfect Day (100%) triggers the full cinematic sequence: screen darkens, aura + screen shake, power-up scream, "100% COMPLETE" banner, XP reveal, Dragon Ball earned, quote, wind-down
-  3. Capsule drops show a popup with pop sound, tap-to-open interaction, rarity reveal chime, and reward display
-  4. Shenron ceremony plays when 7 Dragon Balls are collected: sky darkens, thunder + roar, Shenron animation, wish selection, Dragon Balls scatter
-  5. Animation queue ensures events play sequentially (XP popup, tier change, perfect day, dragon ball, capsule) -- never simultaneously; sound toggle in settings mutes all audio
+  1. SoundProvider context wraps the app with a single Howler.js sprite sheet loaded at mount, providing a `useAudio().play(soundId)` hook and a global sound toggle that mutes/unmutes all audio
+  2. Habit check plays scouter beep, tier change plays power-up burst, capsule drop plays capsule pop + reveal chime, and Perfect Day plays explosion/SSJ scream -- each sound fires at the correct moment
+  3. Dragon Ball earned plays radar ping, Shenron ceremony plays thunder + roar, transformation plays power-up sequence, and all sounds use playbackRate variation (0.9-1.1) to prevent monotony on repeated interactions
 **Plans**: TBD
 
 Plans:
 - [ ] 06-01: TBD
-- [ ] 06-02: TBD
 
-### Phase 7: Analytics and Settings Pages
-**Goal**: Users can review their history via calendar heatmap and progression charts, and manage all configurable items (rewards, wishes, categories, preferences)
-**Depends on**: Phase 5
-**Requirements**: ANLYT-01, ANLYT-02, ANLYT-03, ANLYT-04, ANLYT-05, ANLYT-06, ANLYT-07, SET-01, SET-02, SET-03, SET-04, SET-05, SET-06, SET-07
+### Phase 7: Animation Layer
+**Goal**: Major game events (tier change, Perfect Day, capsule drop, Dragon Ball earned, transformation, Shenron) play choreographed sequential animations that make the app feel like a game
+**Depends on**: Phase 6
+**Requirements**: ANIM-01, ANIM-02, ANIM-03, ANIM-04, ANIM-05, ANIM-06, ANIM-07, ANIM-08, ANIM-09
 **Success Criteria** (what must be TRUE):
-  1. Calendar heatmap displays days with correct color coding: gold (100%), blue (75-99%), red (50-74%), gray (<50%), blue outline (off day)
-  2. Clicking a calendar day shows a popover with per-habit breakdown and XP earned for that day
-  3. Attribute progression charts (STR/VIT/INT/KI over time) and per-habit contribution graph (90-day GitHub-style grid) render with real data
-  4. Settings page provides working CRUD for capsule rewards (with rarity), Shenron wishes, categories (name/color/icon), and habit management
-  5. Sound toggle, theme toggle (dark/light), and warrior display name are editable and persist across sessions
+  1. Animation queue in uiStore enforces sequential playback -- when a habit check triggers multiple events (XP popup, tier change, capsule, transformation), they play one after another via AnimatePresence mode="wait", never simultaneously
+  2. Perfect Day (100%) plays a choreographed 2-3s full-screen sequence (overlay, screen shake, particles, "100% COMPLETE" text, XP counter, quote, fadeout) and tier change flashes a brief banner ("Kaio-ken x3!") at 50%/80% thresholds
+  3. Capsule drop bounces in with scale spring and pulses to invite tap; capsule reveal plays 3D card flip (rotateY) showing reward with rarity-appropriate glow (white/blue/purple for common/rare/epic)
+  4. New Dragon Ball earned flies into tracker slot with trajectory animation; transformation unlock plays form-specific visual (golden flash SSJ, lightning SSJ2, red SSG, blue SSB, silver UI) with avatar swap
+  5. Shenron ceremony plays full-screen sequence (sky darkens, lightning, Shenron scales up, wish prompt, balls scatter, reset) and enforces minimum 1 active wish before allowing completion
 **Plans**: TBD
 
 Plans:
 - [ ] 07-01: TBD
 - [ ] 07-02: TBD
 
-### Phase 8: Quote System and Polish
-**Goal**: The app has personality -- character quotes fire on the right triggers, Vegeta roasts escalate based on missed days, streak milestones have fanfare, and all 10 transformation forms have unique visuals
-**Depends on**: Phase 6, Phase 7
-**Requirements**: QUOTE-01, QUOTE-02, QUOTE-03, QUOTE-04, QUOTE-05
+### Phase 8: Analytics & Settings
+**Goal**: Users can review their habit history through visual analytics and manage all app configuration (rewards, wishes, categories, preferences, off-days)
+**Depends on**: Phase 5
+**Requirements**: ANLYT-01, ANLYT-02, ANLYT-03, ANLYT-04, ANLYT-05, SET-01, SET-02, SET-03, SET-04, SET-05, SET-06, SET-07
 **Success Criteria** (what must be TRUE):
-  1. Quotes from 6 characters (Goku, Vegeta, Gohan, Piccolo, Whis, Beerus) display in context based on 7 trigger events (habit_complete, perfect_day, streak_milestone, transformation, zenkai, roast, welcome_back)
-  2. Vegeta roast quotes escalate in severity based on consecutive missed days (mild at 1, medium at 2, savage at 3+)
-  3. Streak milestones at 3, 7, 21, 30, 60, 90, and 365 days trigger character-specific celebration quotes with fanfare sound
-  4. Transformation unlocks display unique per-form full-screen animations with character quotes and power-up audio for all 10 forms
+  1. Calendar heatmap displays days with 4-color coding (gold 100%, blue 75-99%, red 50-74%, gray <50%) with blue outline for off-days, and user can navigate by month with prev/next controls
+  2. Attribute progression area chart shows STR/VIT/INT/KI growth over time with period selector (week/month/all), power level line chart shows cumulative XP progression, and summary stat cards display perfect days count, average %, total XP, and longest streak
+  3. User can toggle sound effects on/off, switch between dark and light theme, set display name, and mark an off-day with reason selection -- all persisted via backend
+  4. User can CRUD capsule rewards with rarity assignment and distribution stats, CRUD Shenron wishes with active toggle and times-wished count, and manage categories (name, color, emoji)
 **Plans**: TBD
 
 Plans:
@@ -117,16 +117,16 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
-Note: Phase 7 depends on Phase 5 (not Phase 6), so Phases 6 and 7 could theoretically overlap, but sequential execution is simpler.
+Phases execute in numeric order: 4 → 5 → 6 → 7 → 8
+Note: Phase 8 depends on Phase 5 (not Phase 7), so Phases 6/7 and 8 could theoretically overlap, but sequential execution is simpler.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1. Database and Model Integrity | v1.0 | 2/2 | Complete | 2026-03-04 |
 | 2. Core Game Logic Services | v1.0 | 3/3 | Complete | 2026-03-04 |
 | 3. API Routes and Schemas | v1.0 | 2/2 | Complete | 2026-03-04 |
-| 4. Frontend State Layer | TBD | 0/? | Not started | - |
-| 5. Dashboard UI | TBD | 0/? | Not started | - |
-| 6. Audio and Animation Layer | TBD | 0/? | Not started | - |
-| 7. Analytics and Settings Pages | TBD | 0/? | Not started | - |
-| 8. Quote System and Polish | TBD | 0/? | Not started | - |
+| 4. Project Setup & Foundation | v1.1 | 0/? | Not started | - |
+| 5. Dashboard Core & Habit Management | v1.1 | 0/? | Not started | - |
+| 6. Audio System | v1.1 | 0/? | Not started | - |
+| 7. Animation Layer | v1.1 | 0/? | Not started | - |
+| 8. Analytics & Settings | v1.1 | 0/? | Not started | - |
