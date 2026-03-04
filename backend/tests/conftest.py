@@ -55,3 +55,54 @@ def sample_user(db):
     db.add(user)
     db.flush()
     return user
+
+
+@pytest.fixture()
+def sample_habit(db, sample_user):
+    """Create and return a test Habit."""
+    from app.models.habit import Habit
+
+    habit = Habit(
+        id=uuid.uuid4(),
+        user_id=sample_user.id,
+        title="Test Habit",
+        attribute="str",
+        importance="normal",
+        start_date="2026-01-01",
+    )
+    db.add(habit)
+    db.flush()
+    return habit
+
+
+@pytest.fixture()
+def sample_reward(db, sample_user):
+    """Create and return a test Reward."""
+    from app.models.reward import Reward
+
+    reward = Reward(
+        id=uuid.uuid4(),
+        user_id=sample_user.id,
+        title="Test Reward",
+        rarity="common",
+        is_active=True,
+    )
+    db.add(reward)
+    db.flush()
+    return reward
+
+
+@pytest.fixture()
+def sample_wish(db, sample_user):
+    """Create and return a test Wish."""
+    from app.models.wish import Wish
+
+    wish = Wish(
+        id=uuid.uuid4(),
+        user_id=sample_user.id,
+        title="Test Wish",
+        is_active=True,
+    )
+    db.add(wish)
+    db.flush()
+    return wish
