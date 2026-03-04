@@ -64,6 +64,9 @@ Recent decisions affecting current work:
 - [01-02]: Seed functions use check-before-insert pattern for idempotency
 - [01-02]: Test conftest uses connection-level transactions with rollback for test isolation
 - [01-02]: 118 quotes with Vegeta savage roasts referencing specific saga moments for authenticity
+- [02-01]: Pure functions with no DB dependency -- composable by check_habit orchestrator in Plan 02-03
+- [02-01]: math.floor for all XP outputs -- consistent integer XP throughout the system
+- [02-01]: KeyError propagation for invalid importance -- validation at API layer
 - [02-02]: Services do NOT commit or add to session -- caller manages transaction boundaries
 - [02-02]: Capsule drop uses fallback order (epic -> rare -> common) when rolled tier has no rewards
 - [02-02]: Power level is purely additive (sum of all DailyLog.xp_earned), never decreases
@@ -81,5 +84,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed 02-02-PLAN.md (Game mechanic services)
-Resume file: .planning/phases/02-core-game-logic-services/02-02-SUMMARY.md
+Stopped at: Completed 02-01-PLAN.md (XP and attribute calculation services)
+Resume file: .planning/phases/02-core-game-logic-services/02-01-SUMMARY.md
