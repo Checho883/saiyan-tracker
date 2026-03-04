@@ -66,11 +66,11 @@ Plans:
   3. GET /habits/today/list returns today's habits with completion status, streaks, attribute, and importance
   4. Reward CRUD, Wish CRUD, Category CRUD, Off-day management, and Settings endpoints all accept and return valid data
   5. GET /analytics endpoints return summary stats, capsule history, wish history, and per-habit contribution data
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [ ] 03-01-PLAN.md -- Infrastructure + all Pydantic schemas + simple CRUD routes (categories, rewards, wishes, off-days, settings, quotes) + test fixtures
+- [ ] 03-02-PLAN.md -- Habit endpoints (CRUD, check, today/list, calendar, contribution-graph) + power/attributes + analytics + tests
 
 ### Phase 4: Frontend State Layer
 **Goal**: Zustand stores and typed API client establish the frontend data contract, so components render real backend data without computing game logic client-side

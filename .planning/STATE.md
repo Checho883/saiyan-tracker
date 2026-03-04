@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-03-04T15:36:15.425Z"
+status: in-progress
+last_updated: "2026-03-04T20:18:08Z"
 progress:
-  total_phases: 2
+  total_phases: 3
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 7
+  completed_plans: 6
 ---
 
 # Project State
@@ -18,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Every habit check must feel like something happened -- a sound, a visual pulse, a number going up. If the app is silent and still, it has failed.
-**Current focus:** Phase 2 complete -- All 7 game logic services built and tested (163 tests). Ready for Phase 3 (API Routes).
+**Current focus:** Phase 3 in progress -- API routes and Pydantic schemas. Plan 03-01 complete (6 CRUD routers, all schemas). Plan 03-02 next (habits, power, analytics).
 
 ## Current Position
 
-Phase: 2 of 8 (Core Game Logic Services) -- COMPLETE
-Plan: 3 of 3 in current phase
-Status: Phase Complete
-Last activity: 2026-03-04 -- Completed 02-03 (check_habit orchestrator, streak, off-day services)
+Phase: 3 of 8 (API Routes and Schemas)
+Plan: 1 of 2 in current phase
+Status: In Progress
+Last activity: 2026-03-04 -- Completed 03-01 (API infrastructure, 6 CRUD routers, all Pydantic schemas)
 
-Progress: [███░░░░░░░] ~25%
+Progress: [████░░░░░░] ~30%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: 6 min
-- Total execution time: 0.5 hours
+- Total plans completed: 6
+- Average duration: 6.5 min
+- Total execution time: 0.65 hours
 
 **By Phase:**
 
@@ -42,10 +42,11 @@ Progress: [███░░░░░░░] ~25%
 |-------|-------|-------|----------|
 | 01-database | 2 | 12 min | 6 min |
 | 02-game-logic | 3 | 17 min | 5.7 min |
+| 03-api-routes | 1/2 | 9 min | 9 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (6 min), 01-02 (6 min), 02-02 (5 min), 02-01 (6 min), 02-03 (6 min)
-- Trend: Consistent
+- Last 5 plans: 01-02 (6 min), 02-02 (5 min), 02-01 (6 min), 02-03 (6 min), 03-01 (9 min)
+- Trend: Slight increase (API plan has more files)
 
 *Updated after each plan completion*
 
@@ -74,6 +75,9 @@ Recent decisions affecting current work:
 - [02-03]: Zenkai check only runs on first habit log of the day (was_new_log guard)
 - [02-03]: Capsule drops guarded by capsule_dropped flag -- re-checking never re-rolls RNG
 - [02-03]: Off-day service loads habit relationship via log.habit for attribute XP clawback
+- [03-01]: StaticPool + check_same_thread=False for TestClient SQLite thread safety
+- [03-01]: join_transaction_mode=create_savepoint so route commit() uses savepoints in tests
+- [03-01]: CRUD router pattern: model_dump(exclude_unset=True) for partial updates, 201/204 status codes
 
 ### Pending Todos
 
@@ -88,5 +92,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed 02-03-PLAN.md (check_habit orchestrator, streak, off-day services)
-Resume file: .planning/phases/02-core-game-logic-services/02-03-SUMMARY.md
+Stopped at: Completed 03-01-PLAN.md (API infrastructure, 6 CRUD routers, all Pydantic schemas)
+Resume file: .planning/phases/03-api-routes-and-schemas/03-01-SUMMARY.md
