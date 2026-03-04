@@ -1,47 +1,85 @@
-# Category point multipliers
-CATEGORY_MULTIPLIERS = {
-    "side_business": 1.5,
-    "work": 1.0,
-    "personal": 0.7,
-    "recreational": 0.5,
+"""Game constants — single source of truth for all XP, tier, and progression values."""
+
+# --- Per-Habit Attribute XP ---
+IMPORTANCE_XP = {
+    "normal": 15,
+    "important": 22,
+    "critical": 30,
 }
 
-# Transformation thresholds (cumulative total power)
-TRANSFORMATIONS = [
-    {"level": "base", "name": "Base Form", "threshold": 0},
-    {"level": "ssj", "name": "Super Saiyan", "threshold": 500},
-    {"level": "ssj2", "name": "Super Saiyan 2", "threshold": 1500},
-    {"level": "ssj3", "name": "Super Saiyan 3", "threshold": 3500},
-    {"level": "ssg", "name": "Super Saiyan God", "threshold": 7000},
-    {"level": "ssb", "name": "Super Saiyan Blue", "threshold": 12000},
-    {"level": "ui", "name": "Ultra Instinct", "threshold": 20000},
+# --- Kaio-ken Completion Tiers ---
+COMPLETION_TIERS = [
+    {"min_rate": 1.0, "multiplier": 2.0, "name": "kaio_x20", "label": "Kaio-ken x20"},
+    {"min_rate": 0.8, "multiplier": 1.5, "name": "kaio_x10", "label": "Kaio-ken x10"},
+    {"min_rate": 0.5, "multiplier": 1.2, "name": "kaio_x3", "label": "Kaio-ken x3"},
+    {"min_rate": 0.0, "multiplier": 1.0, "name": "base", "label": "Base"},
 ]
 
-# Streak bonuses
-STREAK_BONUSES = {
-    7: 0.05,   # +5% at 7 days
-    14: 0.08,  # +8% at 14 days
-    30: 0.10,  # +10% at 30 days
-    60: 0.15,  # +15% at 60 days
-    90: 0.20,  # +20% at 90 days
+# --- Daily XP ---
+BASE_DAILY_XP = 100
+
+# --- Streak ---
+STREAK_BONUS_PER_DAY = 0.05
+STREAK_BONUS_CAP = 1.0
+STREAK_MIN_COMPLETION = 0.8  # 80% needed for overall streak
+ZENKAI_BONUS = 0.5  # +50% on comeback
+
+# --- Capsule Drop ---
+CAPSULE_DROP_CHANCE = 0.25
+CAPSULE_RARITY_WEIGHTS = {
+    "common": 0.60,
+    "rare": 0.30,
+    "epic": 0.10,
 }
 
-# Daily login bonus points
-LOGIN_BONUS_POINTS = 10
+# --- Transformations (10 thresholds) ---
+TRANSFORMATIONS = [
+    {"key": "base", "name": "Base Saiyan", "threshold": 0},
+    {"key": "ssj", "name": "Super Saiyan", "threshold": 1_000},
+    {"key": "ssj2", "name": "Super Saiyan 2", "threshold": 3_000},
+    {"key": "ssj3", "name": "Super Saiyan 3", "threshold": 7_500},
+    {"key": "ssg", "name": "Super Saiyan God", "threshold": 15_000},
+    {"key": "ssb", "name": "Super Saiyan Blue", "threshold": 30_000},
+    {"key": "ui_sign", "name": "Ultra Instinct Sign", "threshold": 50_000},
+    {"key": "mui", "name": "Mastered Ultra Instinct", "threshold": 75_000},
+    {"key": "ue", "name": "Ultra Ego", "threshold": 110_000},
+    {"key": "beast", "name": "Beast Form", "threshold": 150_000},
+]
 
-# Default daily minimum
-DEFAULT_DAILY_MINIMUM = 100
+# --- Attribute Leveling ---
+ATTRIBUTE_LEVEL_FORMULA_EXPONENT = 1.5
+ATTRIBUTE_LEVEL_BASE_XP = 100  # xp_needed = 100 * level^1.5
 
-# Energy levels
-ENERGY_LEVELS = ["low", "medium", "high"]
+ATTRIBUTE_TITLES = {
+    "str": {5: "Fighter", 10: "Warrior", 25: "Elite Warrior", 50: "Super Elite", 100: "Legendary"},
+    "vit": {5: "Survivor", 10: "Guardian", 25: "Defender", 50: "Immortal", 100: "Eternal"},
+    "int": {5: "Student", 10: "Tactician", 25: "Strategist", 50: "Mastermind", 100: "Supreme"},
+    "ki": {5: "Beginner", 10: "Apprentice", 25: "Ki Adept", 50: "Ki Master", 100: "Ultra"},
+}
 
-# Habit streak bonus: +2% per consecutive day, capped at 30%
-HABIT_STREAK_BONUS_PER_DAY = 0.02
-HABIT_STREAK_BONUS_CAP = 0.30
+# --- Dragon Balls ---
+DRAGON_BALLS_REQUIRED = 7
 
-# Consistency bonus: completing ALL habits in a day = 1.5x on that day's habit points
-CONSISTENCY_BONUS = 1.5
+# --- Streak Milestones ---
+STREAK_MILESTONES = [3, 7, 21, 30, 60, 90, 365]
 
-# Days of the week for habit scheduling
-WEEKDAYS = ["mon", "tue", "wed", "thu", "fri"]
-ALL_DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+# --- Valid Enums ---
+VALID_IMPORTANCES = ["normal", "important", "critical"]
+VALID_ATTRIBUTES = ["str", "vit", "int", "ki"]
+VALID_FREQUENCIES = ["daily", "weekdays", "custom"]
+VALID_TRANSFORMATIONS = [t["key"] for t in TRANSFORMATIONS]
+VALID_OFF_DAY_REASONS = ["sick", "vacation", "rest", "injury", "other"]
+VALID_RARITIES = ["common", "rare", "epic"]
+VALID_CHARACTERS = ["goku", "vegeta", "gohan", "piccolo", "whis", "beerus"]
+VALID_TRIGGER_EVENTS = [
+    "habit_complete",
+    "perfect_day",
+    "streak_milestone",
+    "transformation",
+    "zenkai",
+    "roast",
+    "welcome_back",
+]
+VALID_SEVERITIES = ["mild", "medium", "savage"]
+VALID_THEMES = ["dark", "light"]
+VALID_COMPLETION_TIERS = ["base", "kaio_x3", "kaio_x10", "kaio_x20"]
