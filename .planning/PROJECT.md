@@ -44,6 +44,23 @@ Every habit check must feel like something happened — a sound, a visual pulse,
 - Real-time sync — local SQLite, no cloud
 - Social features — solo tracker, no leaderboards with others
 
+## Current Milestone: v1.1 The Dopamine Layer
+
+**Goal:** Build the complete frontend experience — every habit check triggers sound, visual feedback, and dopamine-rewarding animations on top of the v1.0 backend.
+
+**Target features:**
+- Percentage-based daily aura (all habits equal weight toward 100%)
+- Saiyan attributes (STR/VIT/INT/KI) with per-habit XP visualization
+- Capsule Corp loot boxes with visual drop/reveal animations
+- Dragon Ball tracker UI (7 slots with glow effects)
+- Full-screen 100% Perfect Day explosion with audio
+- Saiyan avatar with visual transformation (10 forms: Base through Beast)
+- Sound effects on every interaction (scouter beep, ki charge, explosions)
+- Character quote system with trigger routing and Vegeta escalation
+- Calendar heatmap with gold/blue/red/gray color coding
+- Attribute progression charts and per-habit contribution graphs
+- Settings: capsule reward CRUD, Shenron wish CRUD, sound toggle, theme
+
 ## Context
 
 Shipped v1.0 Backend Foundation with 5,967 LOC Python (3,292 app + 2,675 tests).
@@ -77,4 +94,4 @@ Next milestone covers Phases 4-8: frontend state, dashboard UI, audio/animations
 | 8-phase bottom-up build order | DB → Services → API → Frontend → UI → Audio → Analytics → Polish | ✓ Good |
 
 ---
-*Last updated: 2026-03-04 after v1.0 milestone*
+*Last updated: 2026-03-04 after v1.1 milestone start*
