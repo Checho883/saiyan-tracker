@@ -157,13 +157,96 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (Populated during roadmap creation) | | |
+| DB-01 | Phase 1 | Pending |
+| DB-02 | Phase 1 | Pending |
+| DB-03 | Phase 1 | Pending |
+| DB-04 | Phase 1 | Pending |
+| DB-05 | Phase 1 | Pending |
+| DB-06 | Phase 1 | Pending |
+| DB-07 | Phase 1 | Pending |
+| DB-08 | Phase 1 | Pending |
+| GAME-01 | Phase 2 | Pending |
+| GAME-02 | Phase 2 | Pending |
+| GAME-03 | Phase 2 | Pending |
+| GAME-04 | Phase 2 | Pending |
+| GAME-05 | Phase 2 | Pending |
+| GAME-06 | Phase 2 | Pending |
+| GAME-07 | Phase 2 | Pending |
+| GAME-08 | Phase 2 | Pending |
+| GAME-09 | Phase 2 | Pending |
+| GAME-10 | Phase 2 | Pending |
+| GAME-11 | Phase 2 | Pending |
+| GAME-12 | Phase 2 | Pending |
+| GAME-13 | Phase 2 | Pending |
+| GAME-14 | Phase 2 | Pending |
+| API-01 | Phase 3 | Pending |
+| API-02 | Phase 3 | Pending |
+| API-03 | Phase 3 | Pending |
+| API-04 | Phase 3 | Pending |
+| API-05 | Phase 3 | Pending |
+| API-06 | Phase 3 | Pending |
+| API-07 | Phase 3 | Pending |
+| API-08 | Phase 3 | Pending |
+| API-09 | Phase 3 | Pending |
+| API-10 | Phase 3 | Pending |
+| API-11 | Phase 3 | Pending |
+| API-12 | Phase 3 | Pending |
+| API-13 | Phase 3 | Pending |
+| API-14 | Phase 3 | Pending |
+| API-15 | Phase 3 | Pending |
+| STATE-01 | Phase 4 | Pending |
+| STATE-02 | Phase 4 | Pending |
+| STATE-03 | Phase 4 | Pending |
+| STATE-04 | Phase 4 | Pending |
+| STATE-05 | Phase 4 | Pending |
+| STATE-06 | Phase 4 | Pending |
+| DASH-01 | Phase 5 | Pending |
+| DASH-02 | Phase 5 | Pending |
+| DASH-03 | Phase 5 | Pending |
+| DASH-04 | Phase 5 | Pending |
+| DASH-05 | Phase 5 | Pending |
+| DASH-06 | Phase 5 | Pending |
+| DASH-07 | Phase 5 | Pending |
+| DASH-08 | Phase 5 | Pending |
+| DASH-09 | Phase 5 | Pending |
+| DASH-10 | Phase 5 | Pending |
+| ANIM-01 | Phase 6 | Pending |
+| ANIM-02 | Phase 6 | Pending |
+| ANIM-03 | Phase 6 | Pending |
+| ANIM-04 | Phase 6 | Pending |
+| ANIM-05 | Phase 6 | Pending |
+| ANIM-06 | Phase 6 | Pending |
+| ANIM-07 | Phase 6 | Pending |
+| ANIM-08 | Phase 6 | Pending |
+| ANIM-09 | Phase 6 | Pending |
+| ANIM-10 | Phase 6 | Pending |
+| ANIM-11 | Phase 6 | Pending |
+| ANIM-12 | Phase 6 | Pending |
+| ANLYT-01 | Phase 7 | Pending |
+| ANLYT-02 | Phase 7 | Pending |
+| ANLYT-03 | Phase 7 | Pending |
+| ANLYT-04 | Phase 7 | Pending |
+| ANLYT-05 | Phase 7 | Pending |
+| ANLYT-06 | Phase 7 | Pending |
+| ANLYT-07 | Phase 7 | Pending |
+| SET-01 | Phase 7 | Pending |
+| SET-02 | Phase 7 | Pending |
+| SET-03 | Phase 7 | Pending |
+| SET-04 | Phase 7 | Pending |
+| SET-05 | Phase 7 | Pending |
+| SET-06 | Phase 7 | Pending |
+| SET-07 | Phase 7 | Pending |
+| QUOTE-01 | Phase 8 | Pending |
+| QUOTE-02 | Phase 8 | Pending |
+| QUOTE-03 | Phase 8 | Pending |
+| QUOTE-04 | Phase 8 | Pending |
+| QUOTE-05 | Phase 8 | Pending |
 
 **Coverage:**
-- v1 requirements: 75 total
-- Mapped to phases: 0
-- Unmapped: 75
+- v1 requirements: 84 total
+- Mapped to phases: 84
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-03*
-*Last updated: 2026-03-03 after initial definition*
+*Last updated: 2026-03-03 after roadmap creation*
