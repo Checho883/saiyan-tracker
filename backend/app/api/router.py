@@ -8,6 +8,7 @@ from app.api.v1.wishes import router as wishes_router
 from app.api.v1.off_days import router as off_days_router
 from app.api.v1.settings import router as settings_router
 from app.api.v1.quotes import router as quotes_router
+from app.api.v1.habits import router as habits_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -17,8 +18,4 @@ api_router.include_router(wishes_router)
 api_router.include_router(off_days_router)
 api_router.include_router(settings_router)
 api_router.include_router(quotes_router)
-
-# Plan 03-02 will add:
-# api_router.include_router(habits_router)
-# api_router.include_router(power_router)
-# api_router.include_router(analytics_router)
+api_router.include_router(habits_router)

@@ -1,269 +1,375 @@
-from datetime import date
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+"""Habit endpoints — CRUD, check/uncheck, today/list, calendar, contribution-graph."""
+
+import uuid
+from datetime import date, timedelta
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
-from app.database.session import get_db
+
+from app.api.deps import get_current_user, get_db
+from app.models.daily_log import DailyLog
 from app.models.habit import Habit
-from app.models.category import TaskCategory
-from app.schemas.habit import (
-    HabitCreate,
-    HabitUpdate,
-    HabitResponse,
-    HabitCheckResponse,
+from app.models.habit_log import HabitLog
+from app.models.habit_streak import HabitStreak
+from app.models.off_day import OffDay
+from app.models.quote import Quote
+from app.models.reward import Reward
+from app.models.user import User
+from app.schemas.analytics import CalendarDay, ContributionDay
+from app.schemas.check_habit import (
+    CapsuleDropDetail,
+    CheckHabitRequest,
+    CheckHabitResponse,
+    DailyLogSummary,
+    DragonBallInfo,
+    QuoteDetail,
+    StreakInfo,
+    TransformChange,
 )
-from app.services.habit_service import HabitService
+from app.schemas.habit import HabitCreate, HabitResponse, HabitTodayResponse, HabitUpdate
+from app.services.habit_service import check_habit as svc_check_habit
+from app.services.habit_service import get_habits_due_on_date
+from app.services.off_day_service import is_off_day
+
+router = APIRouter(prefix="/habits", tags=["habits"])
 
 
-class ReorderItem(BaseModel):
-    id: str
-    sort_order: int
+# ── Helpers ─────────────────────────────────────────────────────────────
 
 
-class ReorderRequest(BaseModel):
-    habits: List[ReorderItem]
-
-router = APIRouter()
-DEFAULT_USER_ID = "default-user"
-
-
-@router.get("/")
-def list_habits(include_inactive: bool = False, db: Session = Depends(get_db)):
-    """List all habits."""
-    query = db.query(Habit).filter(Habit.user_id == DEFAULT_USER_ID)
-    if not include_inactive:
-        query = query.filter(Habit.is_active == True)
-    habits = query.order_by(Habit.sort_order, Habit.created_at).all()
-
-    result = []
-    for h in habits:
-        cat = db.query(TaskCategory).filter(TaskCategory.id == h.category_id).first()
-        data = {
-            "id": h.id,
-            "user_id": h.user_id,
-            "category_id": h.category_id,
-            "title": h.title,
-            "description": h.description,
-            "icon_emoji": h.icon_emoji,
-            "base_points": h.base_points,
-            "frequency": h.frequency,
-            "custom_days": h.custom_days,
-            "target_time": h.target_time,
-            "is_temporary": h.is_temporary,
-            "start_date": h.start_date,
-            "end_date": h.end_date,
-            "sort_order": h.sort_order,
-            "is_active": h.is_active,
-            "created_at": h.created_at,
-            "category_name": cat.name if cat else None,
-            "category_color": cat.color_code if cat else None,
-            "category_multiplier": cat.point_multiplier if cat else None,
-        }
-        result.append(data)
-    return result
+def _get_active_habit(db: Session, habit_id: uuid.UUID, user_id: uuid.UUID) -> Habit:
+    """Fetch a habit by id belonging to user. Raises 404 if missing or inactive."""
+    habit = (
+        db.query(Habit)
+        .filter(Habit.id == habit_id, Habit.user_id == user_id, Habit.is_active == True)  # noqa: E712
+        .first()
+    )
+    if habit is None:
+        raise HTTPException(status_code=404, detail="Habit not found")
+    return habit
 
 
-@router.get("/today/list")
-def get_today_habits(db: Session = Depends(get_db)):
-    """Get today's habits with completion status."""
-    return HabitService.get_today_habits(db, DEFAULT_USER_ID)
+def select_quote_for_context(db: Session, result: dict) -> QuoteDetail | None:
+    """Pick a context-appropriate quote based on the check_habit result."""
+    if not result["is_checking"]:
+        return None
+
+    # Priority: transformation > perfect_day > zenkai > habit_complete
+    if result.get("transform_change") is not None:
+        trigger = "transformation"
+    elif result["is_perfect_day"] and result["is_checking"]:
+        trigger = "perfect_day"
+    elif result.get("zenkai_activated"):
+        trigger = "zenkai"
+    else:
+        trigger = "habit_complete"
+
+    quote = (
+        db.query(Quote)
+        .filter(Quote.trigger_event == trigger)
+        .order_by(func.random())
+        .first()
+    )
+    if quote is None:
+        return None
+
+    return QuoteDetail(
+        character=quote.character,
+        quote_text=quote.quote_text,
+        source_saga=quote.source_saga,
+        avatar_path=f"/avatars/{quote.character}.png",
+    )
 
 
-@router.get("/calendar/all")
-def get_all_habits_calendar(
-    year: int = None,
-    month: int = None,
+# ── CRUD ────────────────────────────────────────────────────────────────
+
+
+@router.post("/", response_model=HabitResponse, status_code=201)
+def create_habit(
+    body: HabitCreate,
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    """Get monthly calendar heatmap for all habits."""
-    today = date.today()
-    year = year or today.year
-    month = month or today.month
-    return HabitService.get_all_habits_calendar(db, DEFAULT_USER_ID, year, month)
-
-
-@router.put("/reorder")
-def reorder_habits(data: ReorderRequest, db: Session = Depends(get_db)):
-    """Update sort order for multiple habits."""
-    for item in data.habits:
-        habit = db.query(Habit).filter(
-            Habit.id == item.id, Habit.user_id == DEFAULT_USER_ID
-        ).first()
-        if habit:
-            habit.sort_order = item.sort_order
-    db.commit()
-    return {"message": "Habits reordered"}
-
-
-@router.post("/", status_code=201)
-def create_habit(data: HabitCreate, db: Session = Depends(get_db)):
-    """Create a new habit."""
-    cat = db.query(TaskCategory).filter(
-        TaskCategory.id == data.category_id,
-        TaskCategory.user_id == DEFAULT_USER_ID,
-    ).first()
-    if not cat:
-        raise HTTPException(status_code=404, detail="Category not found")
-
     habit = Habit(
-        user_id=DEFAULT_USER_ID,
-        category_id=data.category_id,
-        title=data.title,
-        description=data.description,
-        icon_emoji=data.icon_emoji,
-        base_points=data.base_points,
-        frequency=data.frequency,
-        custom_days=data.custom_days,
-        target_time=data.target_time,
-        is_temporary=data.is_temporary,
-        start_date=data.start_date or date.today(),
-        end_date=data.end_date,
+        id=uuid.uuid4(),
+        user_id=user.id,
+        **body.model_dump(),
     )
     db.add(habit)
     db.commit()
     db.refresh(habit)
-
-    return {
-        "id": habit.id,
-        "user_id": habit.user_id,
-        "category_id": habit.category_id,
-        "title": habit.title,
-        "description": habit.description,
-        "icon_emoji": habit.icon_emoji,
-        "base_points": habit.base_points,
-        "frequency": habit.frequency,
-        "custom_days": habit.custom_days,
-        "target_time": habit.target_time,
-        "is_temporary": habit.is_temporary,
-        "start_date": habit.start_date,
-        "end_date": habit.end_date,
-        "sort_order": habit.sort_order,
-        "is_active": habit.is_active,
-        "created_at": habit.created_at,
-        "category_name": cat.name,
-        "category_color": cat.color_code,
-        "category_multiplier": cat.point_multiplier,
-    }
+    return habit
 
 
-@router.get("/{habit_id}")
-def get_habit(habit_id: str, db: Session = Depends(get_db)):
-    """Get a single habit."""
-    habit = db.query(Habit).filter(
-        Habit.id == habit_id, Habit.user_id == DEFAULT_USER_ID
-    ).first()
-    if not habit:
-        raise HTTPException(status_code=404, detail="Habit not found")
-
-    cat = db.query(TaskCategory).filter(TaskCategory.id == habit.category_id).first()
-    return {
-        "id": habit.id,
-        "user_id": habit.user_id,
-        "category_id": habit.category_id,
-        "title": habit.title,
-        "description": habit.description,
-        "icon_emoji": habit.icon_emoji,
-        "base_points": habit.base_points,
-        "frequency": habit.frequency,
-        "custom_days": habit.custom_days,
-        "target_time": habit.target_time,
-        "is_temporary": habit.is_temporary,
-        "start_date": habit.start_date,
-        "end_date": habit.end_date,
-        "sort_order": habit.sort_order,
-        "is_active": habit.is_active,
-        "created_at": habit.created_at,
-        "category_name": cat.name if cat else None,
-        "category_color": cat.color_code if cat else None,
-        "category_multiplier": cat.point_multiplier if cat else None,
-    }
+@router.get("/", response_model=list[HabitResponse])
+def list_habits(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return (
+        db.query(Habit)
+        .filter(Habit.user_id == user.id, Habit.is_active == True)  # noqa: E712
+        .all()
+    )
 
 
-@router.put("/{habit_id}")
-def update_habit(habit_id: str, data: HabitUpdate, db: Session = Depends(get_db)):
-    """Update a habit."""
-    habit = db.query(Habit).filter(
-        Habit.id == habit_id, Habit.user_id == DEFAULT_USER_ID
-    ).first()
-    if not habit:
-        raise HTTPException(status_code=404, detail="Habit not found")
+@router.get("/today/list", response_model=list[HabitTodayResponse])
+def today_list(
+    local_date: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Return habits due today with completion status and streak info."""
+    due_habits = get_habits_due_on_date(db, user.id, local_date)
+    result = []
+    for habit in due_habits:
+        # Check completion
+        log = (
+            db.query(HabitLog)
+            .filter(
+                HabitLog.habit_id == habit.id,
+                HabitLog.log_date == local_date,
+                HabitLog.completed == True,  # noqa: E712
+            )
+            .first()
+        )
+        completed = log is not None
 
-    update_data = data.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(habit, key, value)
+        # Get streak info
+        h_streak = (
+            db.query(HabitStreak)
+            .filter(HabitStreak.habit_id == habit.id)
+            .first()
+        )
+        streak_current = h_streak.current_streak if h_streak else 0
+        streak_best = h_streak.best_streak if h_streak else 0
 
+        result.append(
+            HabitTodayResponse(
+                id=habit.id,
+                title=habit.title,
+                description=habit.description,
+                icon_emoji=habit.icon_emoji,
+                importance=habit.importance,
+                attribute=habit.attribute,
+                frequency=habit.frequency,
+                custom_days=habit.custom_days,
+                target_time=habit.target_time,
+                is_temporary=habit.is_temporary,
+                start_date=habit.start_date,
+                end_date=habit.end_date,
+                sort_order=habit.sort_order,
+                is_active=habit.is_active,
+                category_id=habit.category_id,
+                created_at=habit.created_at,
+                completed=completed,
+                streak_current=streak_current,
+                streak_best=streak_best,
+            )
+        )
+    return result
+
+
+@router.get("/calendar/all", response_model=list[CalendarDay])
+def calendar_all(
+    month: str = Query(..., pattern=r"^\d{4}-\d{2}$"),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Return daily heatmap data for the given month."""
+    prefix = f"{month}%"
+
+    daily_logs = (
+        db.query(DailyLog)
+        .filter(DailyLog.user_id == user.id, DailyLog.log_date.like(prefix))
+        .all()
+    )
+
+    off_days = (
+        db.query(OffDay)
+        .filter(OffDay.user_id == user.id, OffDay.off_date.like(prefix))
+        .all()
+    )
+    off_day_dates = {od.off_date for od in off_days}
+
+    result_map: dict[str, CalendarDay] = {}
+    for dl in daily_logs:
+        result_map[dl.log_date] = CalendarDay(
+            date=dl.log_date,
+            is_perfect_day=dl.is_perfect_day,
+            completion_tier=dl.completion_tier,
+            xp_earned=dl.xp_earned,
+            is_off_day=dl.log_date in off_day_dates,
+        )
+
+    # Add pure off days (no DailyLog entry)
+    for od_date in off_day_dates:
+        if od_date not in result_map:
+            result_map[od_date] = CalendarDay(
+                date=od_date,
+                is_perfect_day=False,
+                completion_tier="base",
+                xp_earned=0,
+                is_off_day=True,
+            )
+
+    return sorted(result_map.values(), key=lambda d: d.date)
+
+
+@router.get("/{habit_id}", response_model=HabitResponse)
+def get_habit(
+    habit_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return _get_active_habit(db, habit_id, user.id)
+
+
+@router.put("/{habit_id}", response_model=HabitResponse)
+def update_habit(
+    habit_id: uuid.UUID,
+    body: HabitUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    habit = _get_active_habit(db, habit_id, user.id)
+    updates = body.model_dump(exclude_unset=True)
+    for field, value in updates.items():
+        setattr(habit, field, value)
     db.commit()
     db.refresh(habit)
-
-    cat = db.query(TaskCategory).filter(TaskCategory.id == habit.category_id).first()
-    return {
-        "id": habit.id,
-        "user_id": habit.user_id,
-        "category_id": habit.category_id,
-        "title": habit.title,
-        "description": habit.description,
-        "icon_emoji": habit.icon_emoji,
-        "base_points": habit.base_points,
-        "frequency": habit.frequency,
-        "custom_days": habit.custom_days,
-        "target_time": habit.target_time,
-        "is_temporary": habit.is_temporary,
-        "start_date": habit.start_date,
-        "end_date": habit.end_date,
-        "sort_order": habit.sort_order,
-        "is_active": habit.is_active,
-        "created_at": habit.created_at,
-        "category_name": cat.name if cat else None,
-        "category_color": cat.color_code if cat else None,
-        "category_multiplier": cat.point_multiplier if cat else None,
-    }
+    return habit
 
 
-@router.delete("/{habit_id}")
-def delete_habit(habit_id: str, db: Session = Depends(get_db)):
-    """Soft-delete a habit (set inactive)."""
-    habit = db.query(Habit).filter(
-        Habit.id == habit_id, Habit.user_id == DEFAULT_USER_ID
-    ).first()
-    if not habit:
-        raise HTTPException(status_code=404, detail="Habit not found")
-
+@router.delete("/{habit_id}", status_code=204)
+def delete_habit(
+    habit_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    habit = _get_active_habit(db, habit_id, user.id)
     habit.is_active = False
     db.commit()
-    return {"message": "Habit deactivated", "habit_id": habit_id}
 
 
-@router.post("/{habit_id}/check")
-def check_habit(habit_id: str, db: Session = Depends(get_db)):
-    """Toggle today's completion for a habit."""
-    result = HabitService.check_habit(db, DEFAULT_USER_ID, habit_id)
-    if result is None:
-        raise HTTPException(status_code=404, detail="Habit not found")
-    return result
+# ── Check / Uncheck ────────────────────────────────────────────────────
 
 
-@router.get("/{habit_id}/calendar")
-def get_habit_calendar(
-    habit_id: str,
-    year: int = None,
-    month: int = None,
+@router.post("/{habit_id}/check", response_model=CheckHabitResponse)
+def check_habit_endpoint(
+    habit_id: uuid.UUID,
+    body: CheckHabitRequest,
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    """Get monthly calendar data for a habit."""
+    local_date = body.local_date
+
+    # Validate off day
+    if is_off_day(db, user.id, local_date):
+        raise HTTPException(status_code=409, detail="Cannot check habits on an off day")
+
+    # Validate habit exists
+    habit = _get_active_habit(db, habit_id, user.id)
+
+    # Validate habit is due
+    due_habits = get_habits_due_on_date(db, user.id, local_date)
+    if habit_id not in [h.id for h in due_habits]:
+        raise HTTPException(status_code=422, detail="Habit is not due on this date")
+
+    # Call service
+    result = svc_check_habit(db, user.id, habit_id, local_date)
+    db.commit()
+
+    # Enrich capsule
+    capsule_detail = None
+    if result.get("capsule") is not None:
+        reward = db.query(Reward).filter(Reward.id == uuid.UUID(result["capsule"]["reward_id"])).first()
+        if reward:
+            capsule_detail = CapsuleDropDetail(
+                id=uuid.UUID(result["capsule"]["id"]),
+                reward_id=reward.id,
+                reward_title=reward.title,
+                reward_rarity=reward.rarity,
+            )
+
+    # Select quote
+    quote_detail = select_quote_for_context(db, result)
+
+    # Shape streak
+    streak_info = StreakInfo(
+        current_streak=result["streak"]["current_streak"],
+        best_streak=result["streak"]["best_streak"],
+    )
+    habit_streak_info = StreakInfo(
+        current_streak=result["habit_streak"]["current_streak"],
+        best_streak=result["habit_streak"]["best_streak"],
+    )
+
+    # Shape transform change
+    transform_change = None
+    if result.get("transform_change") is not None:
+        transform_change = TransformChange(**result["transform_change"])
+
+    # Shape dragon ball
+    dragon_ball = None
+    if result.get("dragon_ball") is not None:
+        dragon_ball = DragonBallInfo(**result["dragon_ball"])
+
+    # Shape daily log
+    daily_log = DailyLogSummary(**result["daily_log"])
+
+    return CheckHabitResponse(
+        is_checking=result["is_checking"],
+        habit_id=uuid.UUID(result["habit_id"]),
+        log_date=result["log_date"],
+        attribute_xp_awarded=result["attribute_xp_awarded"],
+        is_perfect_day=result["is_perfect_day"],
+        zenkai_activated=result["zenkai_activated"],
+        daily_log=daily_log,
+        streak=streak_info,
+        habit_streak=habit_streak_info,
+        power_level=result["power_level"],
+        transformation=result["transformation"],
+        transform_change=transform_change,
+        dragon_ball=dragon_ball,
+        capsule=capsule_detail,
+        quote=quote_detail,
+    )
+
+
+# ── Contribution Graph ──────────────────────────────────────────────────
+
+
+@router.get("/{habit_id}/contribution-graph", response_model=list[ContributionDay])
+def contribution_graph(
+    habit_id: uuid.UUID,
+    days: int = Query(default=90, ge=1, le=365),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Return daily completion booleans for the last N days."""
+    _get_active_habit(db, habit_id, user.id)
+
     today = date.today()
-    year = year or today.year
-    month = month or today.month
+    start_date = today - timedelta(days=days - 1)
+    start_str = start_date.isoformat()
 
-    result = HabitService.get_habit_calendar(db, DEFAULT_USER_ID, habit_id, year, month)
-    if result is None:
-        raise HTTPException(status_code=404, detail="Habit not found")
-    return result
+    completed_logs = (
+        db.query(HabitLog.log_date)
+        .filter(
+            HabitLog.habit_id == habit_id,
+            HabitLog.log_date >= start_str,
+            HabitLog.completed == True,  # noqa: E712
+        )
+        .all()
+    )
+    completed_dates = {row.log_date for row in completed_logs}
 
+    result = []
+    for i in range(days):
+        d = start_date + timedelta(days=i)
+        d_str = d.isoformat()
+        result.append(ContributionDay(date=d_str, completed=d_str in completed_dates))
 
-@router.get("/{habit_id}/stats")
-def get_habit_stats(habit_id: str, db: Session = Depends(get_db)):
-    """Get statistics for a habit."""
-    result = HabitService.get_habit_stats(db, DEFAULT_USER_ID, habit_id)
-    if result is None:
-        raise HTTPException(status_code=404, detail="Habit not found")
     return result
