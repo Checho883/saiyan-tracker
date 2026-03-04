@@ -1,8 +1,10 @@
 # Stack Research
 
-**Domain:** Gamified habit tracker — RPG progression, heavy animations, sound effects, Dragon Ball Z theme
-**Researched:** 2026-03-03
-**Confidence:** HIGH (PRD stack validated; versions verified via npm/PyPI as of March 2026)
+**Domain:** Frontend for DBZ-themed habit tracker (dopamine-heavy animations, audio, charts)
+**Researched:** 2026-03-04
+**Confidence:** HIGH
+
+**Scope:** Frontend stack ONLY. Backend (Python 3.14 + FastAPI + SQLAlchemy 2.0 + SQLite) is built and validated with 222 tests. Do not re-research backend.
 
 ---
 
@@ -12,108 +14,235 @@
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| React | 19.x | UI framework | Concurrent rendering handles animation-heavy UIs without jank; React 19 stable since late 2024 with improved Actions and form handling; no breaking change risk for this app pattern |
-| Vite | 7.x (7.3.1 latest) | Build tool & dev server | Sub-second HMR critical for iteration speed on animation work; native ESM, no Webpack overhead; 2026 standard for React SPAs |
-| TypeScript | 5.x | Type safety | Strict types on the XP formula, transformation thresholds, and Zustand stores prevent runtime logic bugs in complex game mechanics |
-| Python | 3.14.3 | Backend runtime | Current stable (released Feb 2026); experimental JIT compiler; no breaking changes for this API; PRD specifies it explicitly |
-| FastAPI | 0.135.x | REST API | Automatic OpenAPI docs, async-first, Pydantic v2 integration; the standard Python API framework in 2026; 5-50x validation speed via Pydantic v2's Rust core |
-| SQLAlchemy | 2.0.x | ORM | Declarative models with `mapped_column()`, async session support; 2.0 is the current standard; pairs cleanly with aiosqlite for async SQLite |
-| SQLite | (stdlib) | Database | Single-user, single-file, zero config; perfect for this app; no server to manage; survives app restarts with full data intact |
+| React | 19.2.x (19.2.4) | UI framework | Latest stable. Concurrent rendering handles animation-heavy UIs without jank. `useTransition` for non-blocking animation triggers during habit checks. |
+| Vite | 7.3.x | Build tool + dev server | Rolldown-based Rust bundler = sub-second HMR. First-party Tailwind v4 plugin. **Requires Node 20.19+** (dropped Node 18). |
+| TypeScript | 5.7.x | Type safety | Strict mode. Type the complex `check_habit` API response (capsule_drop, new_transformation, completion_tier, dragon_balls). Prevents runtime bugs in game logic display. |
+| Zustand | 5.0.x (5.0.11) | State management | 1.1kb, zero boilerplate. `useSyncExternalStore` for React 19 compatibility. Subscriptions prevent re-renders during rapid habit checks. 4 stores map to domain objects. |
+| Motion | 12.x (12.34.5) | Animations | **Renamed from framer-motion.** Install `motion`, import from `motion/react`. Screen shake, aura pulse, transformation sequences, layout animations. 18M+ monthly npm downloads. |
+| Tailwind CSS | 4.2.x (4.2.0) | Styling | CSS-first config via `@theme` directive -- **no tailwind.config.js**. Use `@tailwindcss/vite` plugin. 5x faster builds, 100x faster incremental. Custom properties for dark/light theme switching at runtime. |
+| React Router | 7.13.x | Routing | 3 routes (Dashboard, Analytics, Settings). v7 supports React 19 transitions. Simple client-side routing, no SSR needed. |
 
-### Animation & Effects Libraries
-
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| framer-motion | 12.x (12.34.4 latest) | Screen shakes, aura pulses, transformation overlays, XP popups | All animated UI elements; use `animate={{ x: [-10,10,-10,10,0] }}` for screen shake; `AnimatePresence` for mount/unmount; `motion.div` wrappers on habit cards and overlays |
-| react-canvas-confetti | 2.x | Particle burst effects — energy blasts, Dragon Ball drops, Perfect Day explosion sparks | Replace confetti shapes with energy/fire particle configs; use canvas overlay during 100% climax sequence |
-| tsParticles / @tsparticles/react | 3.x | Persistent ambient particle backgrounds (aura field, SSJ lightning sparks) | For always-on ambient effects like the Saiyan aura field; more configurable than react-canvas-confetti for looping effects |
-
-**Note on tsParticles:** `@tsparticles/react` 3.0.0 is the current package (react-tsparticles was deprecated). Last published 2 years ago but still functional; evaluate at implementation time whether react-canvas-confetti alone is sufficient for burst effects before adding tsParticles as a dependency.
-
-### Audio Libraries
+### Supporting Libraries
 
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| use-sound | 5.0.0 | React hook for short sound effects | Primary audio layer; use for all event-triggered sounds (scouter beep, habit check, capsule pop, tier change); wraps Howler.js automatically |
-| howler | 2.x | Direct audio engine for advanced control | Use directly (via Howler) only if use-sound's API is insufficient — e.g., looping ki-charge audio that must be stopped programmatically mid-playback; Howler provides `stop()`, `fade()`, `rate()` |
-
-**Decision rationale:** use-sound is semi-maintained (5.0.0, published ~1 year ago) but stable for its scope. For the ki-charge hum that must grow and stop on demand, access Howler directly. use-sound delegates unrecognized options to Howler, so you can stay in the hook API and pass `loop: true` where needed.
-
-### State Management
-
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| Zustand | 5.x (5.0.11 latest) | Client state stores | All 4 stores from PRD: habitStore, powerStore, rewardStore, uiStore; v5 uses `useSyncExternalStore` for React 18/19 compatibility and eliminates tearing |
-
-### Styling
-
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| Tailwind CSS | 4.x (4.2.1 latest) | Utility-first CSS | Full UI styling; v4 is a complete rewrite — no more `tailwind.config.js` JS file, config is pure CSS `@import "tailwindcss"` in index.css; **5x faster full builds, 100x faster incremental** — critical for rapid animation iteration |
-
-**Tailwind v4 breaking change:** The configuration model changed completely from v3. No `module.exports`, no `content` array, no `theme.extend`. All customization via CSS `@theme` directive. The PRD specifies Tailwind CSS without version; use v4 — it's the 2026 standard.
-
-### Data Visualization
-
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| Recharts | 3.x (3.7.0 latest) | Analytics charts — attribute progression, weekly XP bars | AttributeChart, contribution graph sparklines; declarative React components built on D3; 3.6M weekly downloads; React 19 compatible |
-
-### Notifications / Feedback
-
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| sonner | latest (2.x) | Toast notifications | For non-animated feedback like "Off day marked", "Habit deleted"; the 2026 standard for React toasts; 2-3KB; shadcn/ui compatible |
-
-### Backend Supporting Libraries
-
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| Pydantic | 2.12.x | Request/response validation | Ships with FastAPI; v2 required (FastAPI dropped v1 support); 5-50x faster than v1 via Rust core |
-| pydantic-settings | 2.x | Environment config loading | `Settings` class for CORS origins, SQLite path, debug flag |
-| aiosqlite | 0.22.1 | Async SQLite driver | SQLAlchemy 2.0 async sessions with SQLite; enables non-blocking DB queries in FastAPI async route handlers |
-| uvicorn | 0.x (latest) | ASGI server | Run FastAPI in development and production; use `--reload` in dev |
-| alembic | 1.x (latest) | Database migrations | Schema evolution without data loss as models change through development |
+| `@tanstack/react-query` | 5.90.x | Server state / API caching | Every API call. Caches habit lists, power levels, analytics. `invalidateQueries` after `check_habit` refreshes all dashboard data. Stale-while-revalidate = instant UI. Mutations with optimistic updates for snappy habit checks. |
+| `use-sound` | 5.0.0 | Sound effects hook | Every interaction: scouter beep, ki charge, capsule pop, tier change, explosions. Wraps Howler.js with lazy-loading (1kb bundle + 9kb async). Simple `const [play] = useSound(url)` API. |
+| `howler` | 2.2.4 | Audio engine (peer dep of use-sound) | Loaded by use-sound. Also use directly for overlapping sounds during Perfect Day explosion (multiple simultaneous streams), looping ki-charge hum with `fade()` and `stop()` control. |
+| `@types/howler` | 2.2.x | Howler TypeScript types | Dev dependency. Required when accessing Howler instances via use-sound's `sound` return value. |
+| `recharts` | 3.7.x (3.7.0) | Charts | Attribute progression line charts (STR/VIT/INT/KI over time), weekly XP bar charts, category breakdowns. Declarative React components, SVG-based. Best for <10k data points (our use case). |
+| `canvas-confetti` | 1.9.x | Particle effects | Perfect Day explosions, transformation unlocks, Dragon Ball earned bursts. Custom energy-blast shapes via `shapeFromPath()`. Use directly -- NOT `react-canvas-confetti` (unmaintained, last update 2+ years ago). |
+| `sonner` | latest | Toast notifications | Lightweight (2-3kb). XP award popups, capsule drop alerts, streak milestones, system messages. Custom styled for DBZ theme. Smaller and better styled than react-hot-toast. |
+| `clsx` | 2.x | Conditional classnames | Tailwind conditional classes for dynamic styling (active habits, tier colors, transformation auras). Tiny, zero overhead. |
 
 ### Development Tools
 
 | Tool | Purpose | Notes |
 |------|---------|-------|
-| ESLint 9 | Linting | Flat config (`eslint.config.js`); v9 is the 2026 standard; configure react-hooks and typescript rules |
-| Vitest | Frontend unit tests | Same config as Vite; fast; test XP formula functions, transformation threshold logic |
-| pytest | Backend unit tests | Test habit_service, power_service, XP calculations in isolation |
-| httpx | FastAPI test client | Async HTTP client for pytest integration tests against FastAPI routes |
+| `@tailwindcss/vite` | Tailwind v4 Vite integration | Add to `vite.config.ts` plugins. Replaces PostCSS from v3. Auto content detection. |
+| `@vitejs/plugin-react` | React Fast Refresh in Vite | Standard React plugin for Vite. |
+| `eslint` 9.x | Linting | Flat config (`eslint.config.js`). React hooks + TypeScript rules. |
+| `prettier` + `prettier-plugin-tailwindcss` | Formatting | Auto-sorts Tailwind classes for consistency. |
+| `vitest` | Frontend unit tests | Same config as Vite. Test XP display formatting, transformation threshold logic, store behavior. |
+| Vite dev proxy | API proxy to FastAPI backend | `server.proxy: { '/api': 'http://localhost:8000' }` avoids CORS during development. |
 
 ---
 
 ## Installation
 
 ```bash
-# Frontend — core
-npm install react@^19 react-dom@^19
-npm install framer-motion zustand recharts sonner
+# Core framework
+npm install react react-dom react-router
+
+# State & data fetching
+npm install zustand @tanstack/react-query
+
+# Animation & effects
+npm install motion canvas-confetti
+
+# Audio
 npm install use-sound howler
-npm install react-canvas-confetti @tsparticles/react @tsparticles/engine
 
-# Frontend — dev
-npm install -D vite@^7 @vitejs/plugin-react typescript
-npm install -D tailwindcss @tailwindcss/vite
-npm install -D eslint vitest @types/react @types/react-dom
+# Charts
+npm install recharts
 
-# Backend
-pip install fastapi[standard]  # includes uvicorn, pydantic, pydantic-settings
-pip install sqlalchemy[asyncio] aiosqlite alembic
+# UI utilities
+npm install sonner clsx
+
+# Styling (Tailwind v4 -- CSS-first, no config file)
+npm install tailwindcss @tailwindcss/vite
+
+# Dev dependencies
+npm install -D typescript @types/react @types/react-dom @types/howler
+npm install -D @vitejs/plugin-react
+npm install -D eslint prettier prettier-plugin-tailwindcss
+npm install -D vitest
 ```
 
-**Tailwind v4 with Vite:** Use `@tailwindcss/vite` plugin instead of the PostCSS approach. In `vite.config.ts`:
-```ts
-import tailwindcss from '@tailwindcss/vite'
-export default defineConfig({ plugins: [react(), tailwindcss()] })
-```
-Then in `index.css`:
+---
+
+## Critical Setup Details
+
+### Tailwind CSS v4 (Different from v3 -- Do NOT Create tailwind.config.js)
+
+Tailwind v4 is CSS-first. No JavaScript config file. All configuration in CSS:
+
 ```css
+/* src/index.css */
 @import "tailwindcss";
-@theme { /* custom tokens here */ }
+
+@theme {
+  /* DBZ color palette */
+  --color-space-black: #050510;
+  --color-card-dark: #0D0D1A;
+  --color-goku-orange: #FF6B00;
+  --color-vegeta-blue: #1E90FF;
+  --color-ssj-gold: #FFD700;
+  --color-ssg-red: #DC143C;
+  --color-ui-silver: #C0C0C0;
+  --color-ue-purple: #8B00FF;
+  --color-beast-orange: #FF4500;
+
+  /* Calendar heatmap colors */
+  --color-perfect-gold: #FFD700;
+  --color-good-blue: #3B82F6;
+  --color-mid-red: #EF4444;
+  --color-miss-gray: #374151;
+  --color-offday-blue: #60A5FA;
+}
+```
+
+In `vite.config.ts`:
+```typescript
+import { defineConfig } from "vite";
+import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  server: {
+    proxy: { "/api": "http://localhost:8000" }
+  }
+});
+```
+
+### Motion (Renamed from Framer Motion)
+
+The package was renamed. Use the new import path:
+
+```typescript
+// CORRECT (2026)
+import { motion, AnimatePresence } from "motion/react";
+
+// WRONG (legacy -- will stop receiving updates)
+// import { motion } from "framer-motion";
+```
+
+Install `motion`, NOT `framer-motion`.
+
+### Audio Architecture
+
+**Simple interactions:** use-sound hook per component.
+```typescript
+const [playBeep] = useSound("/sounds/scouter-beep.mp3", { volume: 0.5 });
+```
+
+**Perfect Day explosion (overlapping audio):** Multiple simultaneous sounds.
+```typescript
+const [playExplosion] = useSound("/sounds/explosion.mp3");
+const [playScream] = useSound("/sounds/power-up-scream.mp3");
+// Fire both -- Howler handles simultaneous playback
+playExplosion();
+playScream();
+```
+
+**Looping ki-charge hum:** Access Howler directly for `fade()` and `stop()`.
+```typescript
+const [playCharge, { sound: chargeHowl }] = useSound("/sounds/ki-charge.mp3", { loop: true });
+// Start charging
+playCharge();
+// On 100%: fade out and stop
+chargeHowl?.fade(1, 0, 500);
+setTimeout(() => chargeHowl?.stop(), 500);
+```
+
+**Sound files:** Keep all clips under 3 seconds. MP3 format (universal browser support). Store in `public/sounds/` for direct URL access without bundling.
+
+### Canvas-Confetti for Energy Effects
+
+Use `canvas-confetti` directly (not the React wrapper):
+
+```typescript
+import confetti from "canvas-confetti";
+
+// Energy blast particles with custom SVG shape
+const energyShape = confetti.shapeFromPath({
+  path: "M0 0 L5 -10 L10 0 L5 -3 Z"
+});
+
+// Perfect Day explosion
+confetti({
+  particleCount: 150,
+  spread: 360,
+  origin: { y: 0.5 },
+  shapes: [energyShape],
+  colors: ["#FFD700", "#FF6B00", "#FF4500"],
+  gravity: 0.3,
+  ticks: 100,
+});
+
+// Dragon Ball earned (focused upward burst)
+confetti({
+  particleCount: 50,
+  angle: 90,
+  spread: 45,
+  origin: { y: 0.8 },
+  colors: ["#FFD700", "#FF8C00"],
+  gravity: 0.8,
+});
+```
+
+### State Architecture: TanStack Query + Zustand Split
+
+**TanStack Query** owns ALL server state (data from API). **Zustand** owns ONLY client-side UI state. Never duplicate server state in Zustand.
+
+```
+TanStack Query (server state):
+  - habits list, today's habits, calendar data
+  - power level, transformation, attributes
+  - rewards, wishes, capsule history
+  - analytics summaries
+  - quotes
+
+Zustand uiStore (client-only state):
+  - activeModal (which modal is open)
+  - pendingAnimations queue (perfectDay, tierChange, transformation, capsuleDrop, shenron)
+  - soundEnabled (persisted to backend but cached locally)
+  - theme (dark/light)
+```
+
+**Mutation flow for habit check:**
+```typescript
+// In habitStore or a custom hook
+const checkMutation = useMutation({
+  mutationFn: (habitId: string) => api.habits.check(habitId),
+  onSuccess: (response) => {
+    // Invalidate all affected queries
+    queryClient.invalidateQueries({ queryKey: ["habits", "today"] });
+    queryClient.invalidateQueries({ queryKey: ["power"] });
+
+    // Queue animations based on response
+    if (response.capsule_drop?.dropped) {
+      uiStore.queueAnimation("capsuleDrop", response.capsule_drop);
+    }
+    if (response.is_perfect_day) {
+      uiStore.queueAnimation("perfectDay", response);
+    }
+    if (response.new_transformation) {
+      uiStore.queueAnimation("transformation", response.new_transformation);
+    }
+  }
+});
 ```
 
 ---
@@ -122,17 +251,17 @@ Then in `index.css`:
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| framer-motion | react-spring | react-spring is better for physics-heavy gesture interactions (dragging, throw velocity); framer-motion wins for declarative variant-based UI sequences like the transformation animation chain |
-| framer-motion | GSAP | GSAP is more powerful for complex timeline sequences; overkill for this app; framer-motion covers all PRD animation needs declaratively |
-| use-sound + Howler | Web Audio API directly | Web Audio API gives full DSP control (pitch shifting, reverb); not needed here; short clips don't need audio graph complexity |
-| Zustand | Redux Toolkit | Redux adds boilerplate and DevTools complexity that Zustand avoids; RTK is justified at team scale, not for single-dev solo apps |
-| Zustand | Jotai | Jotai is atom-based (bottom-up); Zustand store-based (top-down) better models this app's domain objects (habitStore, powerStore) as cohesive units |
-| Recharts | Victory | Victory has a smaller ecosystem and fewer maintained examples; Recharts has 3.6M weekly downloads and React 19 support confirmed |
-| Recharts | Chart.js | Chart.js is non-React; requires imperative API; Recharts is declarative JSX, fits the React mental model |
-| SQLite + aiosqlite | PostgreSQL | PostgreSQL is overkill for single-user local app; SQLite is zero-config, file-based, survives process restarts; migrate to PostgreSQL only if moving to multi-user VPS deployment |
-| FastAPI | Django REST | Django is heavier, ORM is less composable; FastAPI's async-first design and automatic Pydantic validation suit this use case |
-| Tailwind v4 | Tailwind v3 | v3 is EOL for new projects; v4's CSS-first config is simpler once learned; 100x faster incremental builds matter for animation iteration |
-| sonner | react-hot-toast | Both are fine; sonner is the 2026 trending choice; react-hot-toast is more established but slower release cadence |
+| Motion 12 | React Spring | Physics-based springs for drag/throw; Motion wins for declarative variant sequences (Perfect Day = 8-step choreography) |
+| Motion 12 | GSAP | Complex timeline sequences; adds 25kb and different paradigm; Motion handles all our animation needs |
+| Zustand 5 | Jotai | Atom-based state; overkill here -- 4 stores map cleanly to API domains |
+| Zustand 5 | Redux Toolkit | Massive boilerplate for single-user app with 4 stores; RTK justified at team scale only |
+| Recharts 3 | Nivo | Canvas rendering for 100k+ data points; Recharts simpler for our 4 chart types; Nivo has poor docs |
+| Recharts 3 | Victory | React Native cross-platform; we don't need it |
+| use-sound | Howler directly | Fine-grained audio everywhere; use-sound's hook API cleaner for React; access Howler when needed via `sound` return |
+| canvas-confetti | tsparticles | Persistent particle systems (backgrounds); canvas-confetti better for one-shot bursts; tsparticles is 50kb+ |
+| Sonner | react-hot-toast | Headless toasts; Sonner better default styling, smaller (2-3kb vs 5kb) |
+| @tanstack/react-query | SWR | Simpler API; TanStack has better mutation/invalidation for check_habit flow |
+| React Router 7 | TanStack Router | Type-safe routes; 3 pages don't justify learning curve |
 
 ---
 
@@ -140,74 +269,149 @@ Then in `index.css`:
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| CSS animations / keyframes for complex sequences | Cannot sequence, pause, or trigger conditionally from React state; no spring physics; brittle timing | framer-motion for all stateful animation |
-| react-spring for this project | Physics model is powerful but adds complexity for timeline-style sequences; framer-motion's `variants` and `AnimatePresence` are a better fit for the Perfect Day animation chain | framer-motion |
-| react-tsparticles (old package) | Deprecated 3 years ago; new package is `@tsparticles/react` | `@tsparticles/react` — or skip entirely if react-canvas-confetti covers burst needs |
-| Pydantic v1 | FastAPI has dropped v1 support as of late 2024; only v2 works with FastAPI 0.100+ | pydantic v2 (already the default with `pip install fastapi`) |
-| SQLModel | Created by FastAPI's author but lags behind SQLAlchemy 2.0 and Pydantic v2 changes; community notes it as "behind the curve"; SQLAlchemy 2.0 directly gives more control | SQLAlchemy 2.0 + Pydantic v2 separately |
-| `react-query` / `TanStack Query` | Not needed here; Zustand stores own server state; API calls are triggered by explicit user actions (habit check), not background syncing; adding TanStack Query adds complexity without payoff | Zustand + direct fetch in store actions |
-| Next.js | SSR adds complexity with no benefit for single-user local app; no SEO need; no server components needed; full Vite SPA is simpler and faster to develop | Vite + React SPA |
-| Electron | Desktop wrapping adds 300MB+ to distribution; no file system access needed beyond SQLite which FastAPI handles; browser-served app is sufficient | FastAPI serving React SPA locally |
-
----
-
-## Stack Patterns by Variant
-
-**If the ki-charge sound needs to loop and fade out on 100%:**
-- Use Howler directly: `const sound = new Howl({ src: ['ki-charge.mp3'], loop: true })`
-- `sound.fade(1, 0, 500)` then `sound.stop()` after fade
-- Do NOT use use-sound for looping sounds that need programmatic stop; use-sound's `stop()` is fire-and-forget
-
-**If Tailwind custom theme tokens cause issues in v4:**
-- Define all design tokens in `index.css` under `@theme { --color-ki-orange: #FF6B00; }`
-- Access via `bg-[--color-ki-orange]` or use Tailwind's CSS variable utilities
-- There is no `tailwind.config.js` in v4 — do not create one
-
-**If tsParticles bundle size is a concern:**
-- Use `@tsparticles/basic` (slim bundle) instead of `tsparticles` (full bundle)
-- Or use react-canvas-confetti for burst effects only and skip ambient particles entirely
-- The PRD lists `react-canvas-confetti` as the explicit choice — start there, add tsParticles only if ambient aura effects require persistent looping particles
-
-**If Python 3.14's experimental JIT causes issues:**
-- FastAPI is compatible with Python 3.10+; fall back to 3.13.x (stable, no JIT experiment)
-- Python 3.14.3 is in full support phase (not alpha) — JIT is opt-in, not default
+| `framer-motion` (package name) | Renamed to `motion`. Old package will stop receiving updates. | `motion` package, import from `motion/react` |
+| `react-canvas-confetti` | Unmaintained (last update 2+ years ago). Wrapper adds nothing. | `canvas-confetti` directly with imperative calls |
+| `tailwind.config.js` | Tailwind v4 uses CSS-first config. JS config is legacy v3 pattern. | `@theme` directive in CSS file |
+| `@tsparticles/react` | Last published 2+ years ago. 50kb+ bundle. Overkill for one-shot bursts. | `canvas-confetti` for burst effects. Add tsParticles later ONLY if ambient looping particles needed |
+| Redux / Redux Toolkit | Massive boilerplate for a single-user app. | Zustand 5 |
+| Axios | `fetch` is built into browsers. Axios adds 13kb for no benefit here. | Native `fetch` in a thin API client + TanStack Query |
+| CSS Modules / Styled Components | Tailwind v4 handles everything including dark mode via CSS custom properties. | Tailwind CSS v4 |
+| `react-player` / heavy audio libs | We play short sound effects, not music or video. | `use-sound` (1kb + 9kb async Howler) |
+| Chart.js / react-chartjs-2 | Canvas-based, imperative API. Recharts is more idiomatic React. | Recharts |
+| Next.js | SSR adds complexity with zero benefit for single-user local app. No SEO needed. | Vite + React SPA |
+| Duplicating server state in Zustand | Creates sync bugs. Two sources of truth. | TanStack Query for server state, Zustand for UI-only state |
 
 ---
 
 ## Version Compatibility
 
-| Package | Compatible With | Notes |
-|---------|-----------------|-------|
-| React 19 | framer-motion 12.x | framer-motion 12 explicitly supports React 19 |
-| React 19 | Zustand 5.x | Zustand 5 uses `useSyncExternalStore`, compatible with React 18/19 |
-| React 19 | Recharts 3.x | Recharts 3.x tested with React 19 |
-| React 19 | use-sound 5.0.0 | Maintainer commits to major React release compatibility |
-| Tailwind v4 | Vite 7 | Use `@tailwindcss/vite` plugin — do NOT use PostCSS approach with v4 |
-| FastAPI 0.135+ | Pydantic v2 only | FastAPI dropped Pydantic v1 support; v2 is required |
-| SQLAlchemy 2.0 | aiosqlite 0.22.x | Standard async SQLite driver for SQLAlchemy 2.0 async sessions |
-| Python 3.14 | FastAPI 0.135+ | FastAPI requires Python >= 3.10; 3.14 is fully supported |
+| Package A | Compatible With | Notes |
+|-----------|-----------------|-------|
+| react@19.2.x | zustand@5.0.x | Confirmed. Zustand 5 has React 19 peer dep. |
+| react@19.2.x | motion@12.x | Confirmed. Motion 12 supports React 19. |
+| react@19.2.x | recharts@3.7.x | Compatible. May need `react-is` override during install. Add to package.json `overrides` if peer dep warning. |
+| react@19.2.x | use-sound@5.0.0 | **LOW confidence.** Last published Feb 2025. May need `--legacy-peer-deps`. See fallback plan below. |
+| react@19.2.x | react-router@7.13.x | Confirmed. React Router 7 targets React 19. |
+| react@19.2.x | @tanstack/react-query@5.90.x | Confirmed. Actively maintained for React 19. |
+| vite@7.3.x | @tailwindcss/vite@4.2.x | Confirmed. First-party integration. |
+| vite@7.3.x | @vitejs/plugin-react | Confirmed. Official plugin. |
+| **Node.js** | **20.19+ required** | Vite 7 dropped Node 18. Verify before starting. |
+
+---
+
+## Fallback Plan: use-sound React 19 Issues
+
+If `use-sound@5.0.0` has peer dependency conflicts with React 19 (LOW confidence risk), write a custom hook wrapping Howler directly (~15 lines):
+
+```typescript
+import { Howl } from "howler";
+import { useCallback, useEffect, useRef } from "react";
+
+export function useSound(src: string, options?: { volume?: number; loop?: boolean }) {
+  const soundRef = useRef<Howl | null>(null);
+
+  useEffect(() => {
+    soundRef.current = new Howl({
+      src: [src],
+      volume: options?.volume ?? 1,
+      loop: options?.loop ?? false,
+    });
+    return () => { soundRef.current?.unload(); };
+  }, [src, options?.volume, options?.loop]);
+
+  const play = useCallback(() => soundRef.current?.play(), []);
+  const stop = useCallback(() => soundRef.current?.stop(), []);
+
+  return [play, { sound: soundRef.current, stop }] as const;
+}
+```
+
+This replaces the dependency entirely. Consider this if `npm install use-sound` fails or produces React version warnings.
+
+---
+
+## Animation Choreography Pattern
+
+The Perfect Day explosion is an 8-step sequence. Use Motion's `AnimatePresence` + `variants` + `onAnimationComplete` to chain steps. **Do NOT use setTimeout chains** -- they drift and cannot be interrupted.
+
+```typescript
+// Step sequence managed by state machine, not timeouts
+const PERFECT_DAY_STEPS = [
+  "blackout",           // 100ms dark overlay
+  "aura_explosion",     // screen shake + aura burst
+  "audio_scream",       // power-up audio trigger
+  "banner",             // "100% COMPLETE" title card
+  "xp_counter",         // animated XP multiplier reveal
+  "dragon_ball",        // Dragon Ball earned animation
+  "quote",              // Goku celebration quote
+  "wind_down"           // 2-3s fade back to dashboard
+] as const;
+```
+
+Each step triggers the next via `onAnimationComplete`. Motion handles spring timing naturally.
+
+---
+
+## API Client Pattern
+
+Use native `fetch` in a thin typed wrapper. TanStack Query handles caching, retries, background refetching:
+
+```typescript
+// services/api.ts
+const BASE = "/api/v1";
+
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    headers: { "Content-Type": "application/json" },
+    ...options,
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export const api = {
+  habits: {
+    today: () => request<TodayHabitsResponse>("/habits/today/list"),
+    check: (id: string) => request<CheckHabitResponse>(`/habits/${id}/check`, { method: "POST" }),
+    calendar: (id: string, month?: string) => request<CalendarResponse>(`/habits/${id}/calendar`),
+  },
+  power: {
+    current: () => request<PowerResponse>("/power/current"),
+  },
+  analytics: {
+    summary: (period: string) => request<AnalyticsResponse>(`/analytics/summary?period=${period}`),
+  },
+  settings: {
+    get: () => request<SettingsResponse>("/settings/"),
+    update: (data: SettingsUpdate) => request<SettingsResponse>("/settings/", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  },
+};
+```
 
 ---
 
 ## Sources
 
-- [framer-motion on npm](https://www.npmjs.com/package/framer-motion) — version 12.34.4 confirmed, React 19 support verified — HIGH confidence
-- [motion.dev docs](https://motion.dev/docs/react) — official framer-motion documentation — HIGH confidence
-- [Vite releases](https://vite.dev/releases) — version 7.3.1 confirmed — HIGH confidence
-- [Zustand GitHub releases](https://github.com/pmndrs/zustand/releases) — version 5.0.11, React 19 `useSyncExternalStore` integration confirmed — HIGH confidence
-- [Recharts npm](https://www.npmjs.com/package/recharts) — version 3.7.0 confirmed — HIGH confidence
-- [use-sound npm](https://www.npmjs.com/package/use-sound) — version 5.0.0, semi-maintained status noted — MEDIUM confidence (maintenance risk flagged)
-- [Tailwind CSS v4.0 announcement](https://tailwindcss.com/blog/tailwindcss-v4) — CSS-first config confirmed, v4.2.1 current — HIGH confidence
-- [FastAPI releases](https://github.com/fastapi/fastapi/releases) — version 0.135.1, Python 3.10+ requirement — HIGH confidence
-- [Pydantic PyPI](https://pypi.org/project/pydantic/) — version 2.12.x, FastAPI v1 drop confirmed — HIGH confidence
-- [aiosqlite PyPI](https://pypi.org/project/aiosqlite/) — version 0.22.1, SQLAlchemy 2.0 async compatibility confirmed — HIGH confidence
-- [Python 3.14 release](https://www.python.org/downloads/release/python-3143/) — 3.14.3 stable as of Feb 2026 — HIGH confidence
-- [react-canvas-confetti npm](https://www.npmjs.com/package/react-canvas-confetti) — confirmed functional — MEDIUM confidence (canvas customization for non-confetti effects needs implementation-time testing)
-- [@tsparticles/react npm](https://www.npmjs.com/package/@tsparticles/react) — 3.0.0, last published 2 years ago — LOW confidence for active maintenance; evaluate at implementation
-- [LogRocket: React animation libraries 2026](https://blog.logrocket.com/best-react-animation-libraries/) — framer-motion vs react-spring comparison — MEDIUM confidence
-- [sonner vs react-hot-toast comparison](https://www.oreateai.com/blog/sonner-vs-toast-a-deep-dive-into-react-notification-libraries/) — MEDIUM confidence
+- [React 19.2 blog](https://react.dev/blog/2025/10/01/react-19-2) -- v19.2.4 stable confirmed -- HIGH
+- [Vite 7.0 announcement](https://vite.dev/blog/announcing-vite7) -- Rolldown, Node 20.19+ -- HIGH
+- [Vite 7 releases](https://github.com/vitejs/vite/releases) -- v7.3.1 current -- HIGH
+- [Motion docs](https://motion.dev/docs/react) -- renamed from framer-motion, import path -- HIGH
+- [Motion npm](https://www.npmjs.com/package/framer-motion) -- v12.34.5 -- HIGH
+- [Tailwind CSS v4 docs](https://tailwindcss.com/docs) -- @tailwindcss/vite, @theme directive, v4.2.0 -- HIGH
+- [Zustand GitHub](https://github.com/pmndrs/zustand) -- v5.0.11, React 19 compatible -- HIGH
+- [Recharts npm](https://www.npmjs.com/package/recharts) -- v3.7.0, react-is override note -- MEDIUM
+- [Recharts React 19 issue](https://github.com/recharts/recharts/issues/4558) -- peer dep workaround -- MEDIUM
+- [use-sound GitHub](https://github.com/joshwcomeau/use-sound) -- v5.0.0, last update Feb 2025 -- LOW (maintenance risk)
+- [Howler.js npm](https://www.npmjs.com/package/howler) -- v2.2.4 stable -- HIGH
+- [TanStack Query docs](https://tanstack.com/query/latest) -- v5.90.x, React 19 -- HIGH
+- [React Router npm](https://www.npmjs.com/package/react-router) -- v7.13.1 -- HIGH
+- [canvas-confetti GitHub](https://github.com/catdad/canvas-confetti) -- custom shapes via shapeFromPath, v1.9.4 -- HIGH
+- [Sonner comparison](https://www.oreateai.com/blog/sonner-vs-toast-a-deep-dive-into-react-notification-libraries/) -- 2-3kb, better than react-hot-toast -- MEDIUM
 
 ---
 
-*Stack research for: Gamified habit tracker — Dragon Ball Z theme, RPG progression, heavy animations, sound effects*
-*Researched: 2026-03-03*
+*Stack research for: Saiyan Tracker v3 frontend -- The Dopamine Layer*
+*Researched: 2026-03-04*

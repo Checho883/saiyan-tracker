@@ -1,569 +1,919 @@
 # Architecture Research
 
-**Domain:** React + FastAPI gamified habit tracker (single-user, local SQLite)
-**Researched:** 2026-03-03
-**Confidence:** HIGH (stack is well-documented; patterns drawn from official SQLAlchemy 2.0 docs, Framer Motion docs, FastAPI best practices, and Zustand docs)
+**Domain:** Frontend integration with existing FastAPI backend -- DBZ-themed habit tracker
+**Researched:** 2026-03-04
+**Confidence:** HIGH
 
----
-
-## Standard Architecture
-
-### System Overview
+## System Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        BROWSER (React 19 + Vite 7)                  │
-├────────────────────────────────┬────────────────────────────────────┤
-│          UI LAYER              │       ANIMATION/AUDIO LAYER        │
-│  pages/  components/           │  AnimationOrchestrator (uiStore)   │
-│  Dashboard, Analytics,         │  SoundProvider (Context)           │
-│  Settings                      │  AnimatePresence (Framer Motion)   │
-├────────────────────────────────┴────────────────────────────────────┤
-│                         STATE LAYER (Zustand)                        │
-│  habitStore │ powerStore │ rewardStore │ uiStore                     │
-├─────────────────────────────────────────────────────────────────────┤
-│                         API CLIENT (services/api.ts)                 │
-│  Typed fetch wrapper — all HTTP calls go through here               │
-└────────────────────┬────────────────────────────────────────────────┘
-                     │  HTTP (REST, JSON)
-                     │  localhost:8000/api/v1
-┌────────────────────▼────────────────────────────────────────────────┐
-│                        FASTAPI BACKEND                               │
-├────────────────────────────────┬────────────────────────────────────┤
-│           ROUTE LAYER          │       Thin — gather input,         │
-│  api/v1/habits.py              │       call service, return         │
-│  api/v1/power.py               │       response. No business        │
-│  api/v1/rewards.py  ...        │       logic lives here.            │
-├────────────────────────────────┴────────────────────────────────────┤
-│                        SERVICE LAYER                                 │
-│  habit_service.py  — check logic, XP calc, capsule RNG              │
-│  power_service.py  — transformation detection, attribute leveling   │
-│  reward_service.py — capsule drop, wish grant                       │
-│  quote_service.py  — quote selection by trigger + context           │
-│  analytics_service.py — aggregation queries                         │
-├─────────────────────────────────────────────────────────────────────┤
-│                        PERSISTENCE LAYER                             │
-│  SQLAlchemy 2.0 ORM (sync)  +  SQLite                               │
-│  models/: User, Habit, HabitLog, HabitStreak, DailyLog,            │
-│           Streak, PowerLevel, Reward, CapsuleDrop,                  │
-│           Wish, WishLog, OffDay, Achievement, Quote                  │
-└─────────────────────────────────────────────────────────────────────┘
++-------------------------------------------------------------+
+|                     React 19 + Vite 7                       |
+|                                                             |
+|  Pages                                                      |
+|  +------------+  +------------+  +------------+             |
+|  | Dashboard  |  | Analytics  |  | Settings   |             |
+|  +-----+------+  +-----+------+  +-----+------+            |
+|        |               |               |                    |
+|  Components                                                 |
+|  +----------+ +----------+ +-----------+ +----------+       |
+|  | dashboard| | analytics| | animations| | common   |       |
+|  | (avatar, | | (charts, | | (perfect, | | (modals, |       |
+|  |  habits, | |  heatmap)| |  shenron, | |  quotes) |       |
+|  |  aura)   | |          | |  capsule) | |          |       |
+|  +----+-----+ +----+-----+ +----+------+ +----+-----+      |
+|       |             |            |              |           |
+|  +--------------------------------------------------+      |
+|  |              SoundProvider (context)              |      |
+|  +--------------------------------------------------+      |
+|       |             |            |              |           |
+|  Zustand Stores                                             |
+|  +----------+ +----------+ +-----------+ +----------+       |
+|  | habitStr | | powerStr | | rewardStr | | uiStore  |       |
+|  +----+-----+ +----+-----+ +----+------+ +----+-----+      |
+|       |             |            |              |           |
+|  +--------------------------------------------------+      |
+|  |                API Client Layer (ky)              |      |
+|  +--------------------------------------------------+      |
+|       |                                                     |
++-------+-----------------------------------------------------+
+        | HTTP (JSON)
++-------+-----------------------------------------------------+
+|  FastAPI Backend (existing, unchanged)                       |
+|  /api/v1/habits, /power, /attributes, /rewards, /wishes,   |
+|  /quotes, /off-days, /analytics, /settings, /categories     |
++-------------------------------------------------------------+
+        |
++-------+--------+
+|  SQLite (local) |
++----------------+
 ```
 
 ### Component Responsibilities
 
-| Component | Responsibility | Communicates With |
-|-----------|---------------|-------------------|
-| **pages/** | Compose layout, read from stores, dispatch actions | Zustand stores, components |
-| **components/dashboard/** | Render UI slices: SaiyanAvatar, AttributeBars, DailyAuraBar, DragonBallTracker, HabitCard | habitStore, powerStore, uiStore |
-| **components/animations/** | Full-screen overlays: PerfectDayAnimation, ShenronAnimation, TransformationAnimation, CapsuleDropPopup | uiStore (queued animation state) |
-| **components/audio/SoundProvider** | Context that exposes `play(soundId)`. Manages Howler instances. Respects sound toggle. | uiStore (sound_enabled), consumed app-wide |
-| **uiStore** | Owns animation queue, active modal, quote display, animation trigger flags | Read by animation components, written by habitStore actions |
-| **habitStore** | Today's habits, daily progress, calendar data. On check: calls API, processes response, writes to uiStore triggers | api.ts, uiStore, powerStore |
-| **powerStore** | Power level, transformation, attribute XP/levels, dragon balls | api.ts |
-| **rewardStore** | Capsule rewards CRUD, wishes CRUD, capsule drop history | api.ts |
-| **services/api.ts** | Typed HTTP client. All fetch calls live here — no raw fetch in stores or components | FastAPI backend |
-| **FastAPI routes** | Validate request, call service, serialize response. No business logic. | Service layer |
-| **Service layer** | All game logic: XP formulas, capsule RNG, transformation detection, streak updates, Dragon Ball awards | SQLAlchemy session (via dependency injection) |
-| **SQLAlchemy models** | Data schema and ORM relationships | SQLite via session |
-
----
+| Component | Responsibility | Typical Implementation |
+|-----------|----------------|------------------------|
+| API Client | HTTP communication with FastAPI backend | ky instance with base URL, JSON defaults, error interceptor |
+| Zustand Stores | Client-side state + server data cache | 4 stores: habit, power, reward, ui |
+| SoundProvider | Audio preloading, playback, global mute | React Context wrapping Howler.js |
+| Pages | Route-level containers, data fetching on mount | React Router v7 with 3 routes |
+| Animation Layer | Overlay animations (perfect day, shenron, capsule) | Motion (formerly Framer Motion) with AnimatePresence |
+| Dashboard Components | Habit cards, avatar, aura bar, dragon balls | Presentation + store subscriptions |
+| Analytics Components | Charts, heatmap, contribution graphs | Recharts + custom calendar grid |
+| Common Components | Modals, forms, quote display | Shared across pages |
 
 ## Recommended Project Structure
 
-The PRD already specifies this structure. Rationale for each decision is noted below.
-
 ```
-backend/
-├── app/
-│   ├── main.py                    # App factory, CORS, router include
-│   ├── api/
-│   │   └── v1/
-│   │       ├── router.py          # Aggregates all route modules
-│   │       ├── habits.py          # CRUD + /check endpoint (the complex one)
-│   │       ├── power.py
-│   │       ├── rewards.py
-│   │       ├── wishes.py
-│   │       ├── categories.py
-│   │       ├── quotes.py
-│   │       ├── off_days.py
-│   │       ├── analytics.py
-│   │       └── settings.py
-│   ├── services/
-│   │   ├── habit_service.py       # check_habit() — the god function
-│   │   ├── power_service.py
-│   │   ├── reward_service.py
-│   │   ├── quote_service.py
-│   │   └── analytics_service.py
-│   ├── models/                    # One file per SQLAlchemy model
-│   ├── schemas/                   # Pydantic request/response shapes
-│   ├── database/
-│   │   ├── base.py                # DeclarativeBase
-│   │   └── session.py             # SessionLocal, get_db dependency
-│   └── core/
-│       ├── config.py              # Settings (pydantic-settings)
-│       └── constants.py           # XP values, transformation thresholds, rarity weights
-
-frontend/
-├── src/
-│   ├── types/index.ts             # All shared TypeScript types
-│   ├── services/api.ts            # All HTTP calls — single source of truth
-│   ├── store/
-│   │   ├── habitStore.ts
-│   │   ├── powerStore.ts
-│   │   ├── rewardStore.ts
-│   │   └── uiStore.ts
-│   ├── context/
-│   │   └── ThemeContext.tsx
-│   ├── components/
-│   │   ├── audio/
-│   │   │   └── SoundProvider.tsx  # Howler.js context — loaded once at app root
-│   │   ├── dashboard/             # SaiyanAvatar, AttributeBars, DailyAuraBar,
-│   │   │                          # DragonBallTracker, HabitCard, StreakDisplay
-│   │   ├── animations/            # PerfectDayAnimation, ShenronAnimation,
-│   │   │                          # TransformationAnimation, CapsuleDropPopup, PointsPopup
-│   │   ├── analytics/             # CalendarHeatmap, ContributionGraph, AttributeChart
-│   │   └── common/                # HabitFormModal, OffDayModal, GokuQuote,
-│   │                              # VegetaDialog, RewardManager, WishManager
-│   ├── pages/
-│   │   ├── Dashboard.tsx
-│   │   ├── Analytics.tsx
-│   │   └── Settings.tsx
-│   └── assets/                    # Sound files (.mp3/.webm), character images, DB images
+frontend/src/
++-- main.tsx                  # React root, router setup
++-- App.tsx                   # Layout shell (header, nav, outlet)
++-- index.css                 # Tailwind v4 directives, CSS variables, theme
++-- types/
+|   +-- index.ts              # All TypeScript interfaces mirroring backend schemas
++-- api/
+|   +-- client.ts             # ky instance (base URL, error handling)
+|   +-- habits.ts             # Habit API functions (getToday, check, CRUD)
+|   +-- power.ts              # Power/attributes API
+|   +-- rewards.ts            # Capsule reward CRUD
+|   +-- wishes.ts             # Shenron wish CRUD + grant
+|   +-- analytics.ts          # Summary, calendar, capsule/wish history
+|   +-- settings.ts           # Settings get/update
+|   +-- quotes.ts             # Random quote fetch
+|   +-- offDays.ts            # Off day CRUD
+|   +-- categories.ts         # Category CRUD
++-- stores/
+|   +-- habitStore.ts         # Today's habits, check state, calendar data
+|   +-- powerStore.ts         # Power level, transformation, attributes, dragon balls
+|   +-- rewardStore.ts        # Capsule rewards, wishes, drop history
+|   +-- uiStore.ts            # Modals, active animations, quote queue, theme
++-- audio/
+|   +-- SoundProvider.tsx     # Context provider wrapping Howler
+|   +-- useSound.ts           # Hook: play(soundId), preload, mute toggle
+|   +-- sounds.ts             # Sound definitions (name -> file/sprite mapping)
++-- pages/
+|   +-- Dashboard.tsx         # Main page, fetches today data on mount
+|   +-- Analytics.tsx         # Charts/history, fetches on mount
+|   +-- Settings.tsx          # Config page, fetches settings/rewards/wishes
++-- components/
+|   +-- layout/
+|   |   +-- Header.tsx        # App title, nav links, sound toggle
+|   |   +-- PageShell.tsx     # Common page wrapper (padding, max-width)
+|   +-- dashboard/
+|   |   +-- SaiyanAvatar.tsx  # Character image + form-specific aura animation
+|   |   +-- AttributeBars.tsx # 4 stat bars (STR/VIT/INT/KI)
+|   |   +-- DailyAuraBar.tsx  # Percentage progress bar (the centerpiece)
+|   |   +-- DragonBallTracker.tsx  # 7 ball slots with glow
+|   |   +-- HabitCard.tsx     # Single habit row with check, attribute, streak
+|   |   +-- HabitList.tsx     # Container for habit cards
+|   |   +-- StreakDisplay.tsx # Current/best streak with flame
+|   |   +-- TransformationTimeline.tsx  # Form progression bar
+|   +-- analytics/
+|   |   +-- CalendarHeatmap.tsx    # Monthly grid, color-coded days
+|   |   +-- ContributionGraph.tsx  # Per-habit 90-day grid
+|   |   +-- AttributeChart.tsx     # Recharts line chart for attr progression
+|   |   +-- SummaryCards.tsx       # Perfect days, avg %, total XP stats
+|   |   +-- CapsuleHistory.tsx     # Loot drop history list
+|   |   +-- WishHistory.tsx        # Shenron wish grant history
+|   +-- animations/
+|   |   +-- PerfectDayExplosion.tsx   # Full-screen 100% overlay
+|   |   +-- ShenronAnimation.tsx     # Full-screen wish granting
+|   |   +-- TransformationReveal.tsx # New form unlock animation
+|   |   +-- CapsuleDropPopup.tsx     # Capsule appear + tap-to-open + reveal
+|   |   +-- XpPopup.tsx             # "+22 STR XP" float-up
+|   |   +-- TierChangeBanner.tsx     # "Kaio-ken x10!" flash
+|   |   +-- ScreenShake.tsx         # Wrapper that shakes children
+|   +-- common/
+|   |   +-- HabitFormModal.tsx   # Create/edit habit form
+|   |   +-- OffDayModal.tsx      # Declare off day
+|   |   +-- QuoteBar.tsx         # Character quote display (bottom bar)
+|   |   +-- RewardManager.tsx    # CRUD for capsule rewards
+|   |   +-- WishManager.tsx      # CRUD for Shenron wishes
+|   |   +-- CategoryManager.tsx  # CRUD for visual categories
++-- assets/
+|   +-- images/                # Character forms, dragon balls, capsules
+|   +-- sounds/                # Audio files (.mp3/.webm)
++-- lib/
+    +-- constants.ts           # Transformation thresholds, tier names, colors
+    +-- formatters.ts          # XP formatting, percentage display
 ```
 
 ### Structure Rationale
 
-- **services/ separate from api/v1/:** Routes are thin request/response adapters. All game logic (XP formula, capsule RNG, transformation detection) lives in services where it can be tested without HTTP context.
-- **constants.py for game values:** XP amounts, transformation thresholds, and rarity weights are magic numbers that change. Centralizing them prevents hunt-and-fix bugs when tuning game balance.
-- **store/ per domain:** Each Zustand store owns one domain. habitStore does not import powerStore — they communicate through the API response (the `/check` response contains all side-effect results).
-- **components/audio/ isolated:** SoundProvider is mounted once at the app root. Components call `useSound` hook — they never instantiate Howler directly. This prevents the multiple-Howler-instance bug.
-- **animations/ isolated from dashboard/:** Animation overlays are full-screen portals, not children of habit cards. Keeping them in their own folder clarifies that they are triggered by state, not by component hierarchy.
-
----
+- **api/:** One file per backend router. Functions return typed data. Separates HTTP concerns from state management. Stores call these; components never call API directly.
+- **stores/:** 4 stores matching the PRD specification. Each store owns its slice of server data plus client-only UI state. Actions are async (call API, update state).
+- **audio/:** Isolated from component tree. Context-based so any component can trigger sounds without prop drilling. Howler handles preloading and sprite management.
+- **components/animations/:** Overlay animations are separate from dashboard components because they render in a portal/overlay layer via AnimatePresence, not inline.
+- **lib/:** Pure utility functions with zero React dependencies. Display-only constants (transformation names, tier display text, theme colors) -- NOT game logic constants (XP formulas, thresholds). Game logic stays on the backend.
 
 ## Architectural Patterns
 
-### Pattern 1: The Composite Check Endpoint
+### Pattern 1: Zustand Stores as Server Cache (No TanStack Query)
 
-**What:** `POST /habits/{id}/check` is a single atomic transaction that performs all side effects and returns all needed data in one response. The frontend never needs to call a second endpoint to learn what changed.
+**What:** Each Zustand store holds server data directly and exposes async actions that call the API and update state. No separate server-state library (TanStack Query, SWR).
 
-**When to use:** Any action that has cascading RPG side effects. Calling 5 endpoints sequentially creates race conditions and partial-state UI bugs.
+**When to use:** Single-user apps with simple cache needs. No concurrent users means no stale data from other sessions. No SSR means no hydration complexity.
 
-**Why it works:** With a single-user SQLite app there is no concurrency concern — the session is synchronous, the transaction is straightforward. The service layer executes all logic in order within one DB session.
+**Trade-offs:**
+- PRO: One state system instead of two. Simpler mental model. Zustand actions handle fetch + update atomically.
+- PRO: Animation triggers live in the same store that receives API responses -- no synchronization gap.
+- CON: Manual refetch logic (no automatic background refetch). Acceptable for single-user local app.
+- CON: No built-in retry/deduplication. Acceptable given simple request patterns.
 
-**Transaction sequence inside `habit_service.check_habit()`:**
+**Why not TanStack Query:** This app has a critical requirement that `check_habit()` responses drive animations (capsule drops, tier changes, transformation unlocks). The response must flow: API -> store -> animation queue -> component. TanStack Query adds a layer between API response and state that complicates this flow. Zustand actions can atomically update habit state AND queue animations in one synchronous update.
 
-```python
-def check_habit(db: Session, habit_id: UUID, user_id: UUID) -> CheckHabitResult:
-    # All within a single db session — commit once at the end
-
-    # 1. Toggle the HabitLog for today
-    habit_log = _toggle_habit_log(db, habit_id, user_id)
-
-    # 2. Recalculate today's DailyLog (habits_due, habits_completed, rate, tier)
-    daily = _update_daily_log(db, user_id)
-
-    # 3. Award attribute XP if completing (not un-checking)
-    attr_xp = 0
-    if habit_log.completed:
-        attr_xp = _award_attribute_xp(db, habit, user)
-
-    # 4. Update per-habit streak
-    _update_habit_streak(db, habit_id, user_id)
-
-    # 5. Update overall streak (only on perfect day or >=80%)
-    _update_overall_streak(db, user_id, daily)
-
-    # 6. Calculate and award daily XP to power level (recalculated on each check)
-    xp_result = _recalculate_daily_xp(db, user_id, daily)
-
-    # 7. Check for transformation unlock
-    new_transformation = _check_transformation(db, user, xp_result.new_power_level)
-
-    # 8. Award Dragon Ball if perfect day (first time today)
-    dragon_ball_earned = _maybe_award_dragon_ball(db, user, daily)
-
-    # 9. Roll capsule drop RNG
-    capsule = _roll_capsule_drop(db, user_id, habit_id) if habit_log.completed else None
-
-    # 10. Select contextual quote
-    quote = _select_quote(db, trigger_context)
-
-    # Single commit — all or nothing
-    db.commit()
-
-    return CheckHabitResult(...)
-```
-
-**Trade-offs:** The response payload is large (~15 fields), but this is intentional. The frontend gets everything it needs to orchestrate the animation sequence without additional round trips.
-
-### Pattern 2: Animation Queue in uiStore
-
-**What:** The frontend receives a rich `/check` response. Rather than immediately triggering all animations simultaneously, the uiStore manages a sequential animation queue. Each animation plays, completes, then the next fires.
-
-**When to use:** Whenever a single user action can trigger multiple sequential visual events (XP popup → tier change banner → perfect day explosion → Dragon Ball earned → capsule drop).
-
-**Why it matters:** Simultaneous full-screen overlays are unreadable. The ADHD user needs to feel each win distinctly. Sequential delivery maximizes dopamine impact per check.
+**Example:**
 
 ```typescript
-// uiStore.ts
-interface UIState {
-  animationQueue: AnimationEvent[];
-  activeAnimation: AnimationEvent | null;
-  sound_enabled: boolean;
-  activeQuote: Quote | null;
-  modals: { habitForm: boolean; offDay: boolean };
+// stores/habitStore.ts
+import { create } from 'zustand';
+import * as habitApi from '../api/habits';
+import { useUiStore } from './uiStore';
+import { usePowerStore } from './powerStore';
+
+interface HabitState {
+  todayHabits: HabitToday[];
+  dailyProgress: DailyProgress | null;
+  isLoading: boolean;
+
+  fetchToday: (date: string) => Promise<void>;
+  checkHabit: (habitId: string, date: string) => Promise<void>;
 }
 
+export const useHabitStore = create<HabitState>((set, get) => ({
+  todayHabits: [],
+  dailyProgress: null,
+  isLoading: false,
+
+  fetchToday: async (date) => {
+    set({ isLoading: true });
+    const habits = await habitApi.getTodayHabits(date);
+    set({ todayHabits: habits, isLoading: false });
+  },
+
+  checkHabit: async (habitId, date) => {
+    // Optimistic: toggle the habit immediately
+    set((state) => ({
+      todayHabits: state.todayHabits.map((h) =>
+        h.id === habitId ? { ...h, completed: !h.completed } : h
+      ),
+    }));
+
+    try {
+      const result = await habitApi.checkHabit(habitId, date);
+
+      // Update habit store with server truth
+      set((state) => ({
+        todayHabits: state.todayHabits.map((h) =>
+          h.id === habitId
+            ? {
+                ...h,
+                completed: result.is_checking,
+                streak_current: result.habit_streak.current_streak,
+              }
+            : h
+        ),
+        dailyProgress: {
+          habitsDue: result.daily_log.habits_due,
+          habitsCompleted: result.daily_log.habits_completed,
+          completionRate: result.daily_log.completion_rate,
+          completionTier: result.daily_log.completion_tier,
+          xpEarned: result.daily_log.xp_earned,
+        },
+      }));
+
+      // Update power store (cross-store)
+      usePowerStore.getState().applyCheckResult(result);
+
+      // Queue animations in UI store (cross-store)
+      useUiStore.getState().processCheckResult(result);
+    } catch (error) {
+      // Revert optimistic update
+      set((state) => ({
+        todayHabits: state.todayHabits.map((h) =>
+          h.id === habitId ? { ...h, completed: !h.completed } : h
+        ),
+      }));
+    }
+  },
+}));
+```
+
+### Pattern 2: Animation Queue in UI Store
+
+**What:** The `uiStore` maintains a FIFO queue of animation events. Components subscribe to the queue and consume events one at a time. Each animation calls `dequeue()` on its exit, triggering the next.
+
+**When to use:** When multiple animations can trigger from a single action (XP popup -> tier change banner -> capsule drop -> perfect day explosion). They must play sequentially, not simultaneously.
+
+**Trade-offs:**
+- PRO: Deterministic animation ordering. No race conditions.
+- PRO: Components are simple -- they just watch for their event type and animate when it appears.
+- CON: Slightly more complex store logic. Worth it for the animation-heavy nature of this app.
+
+**Example:**
+
+```typescript
+// stores/uiStore.ts
 type AnimationEvent =
-  | { type: 'xp_popup'; attribute: string; amount: number }
+  | { type: 'xp_popup'; attribute: string; xp: number }
   | { type: 'tier_change'; tier: string }
+  | { type: 'capsule_drop'; reward: CapsuleReward }
   | { type: 'perfect_day' }
-  | { type: 'dragon_ball_earned'; ballNumber: number }
-  | { type: 'capsule_drop'; reward: Reward }
-  | { type: 'transformation'; form: string }
+  | { type: 'dragon_ball'; count: number }
+  | { type: 'transformation'; form: string; name: string }
   | { type: 'shenron' };
 
-// Actions
-enqueueFromCheckResponse: (response: CheckHabitResponse) => void;
-advanceQueue: () => void; // called by each animation's onComplete
-clearQueue: () => void;
+interface UiState {
+  animationQueue: AnimationEvent[];
+  currentAnimation: AnimationEvent | null;
+  quote: QuoteDetail | null;
+  activeModal: string | null;
+
+  processCheckResult: (result: CheckHabitResponse) => void;
+  dequeueAnimation: () => void;
+}
+
+export const useUiStore = create<UiState>((set, get) => ({
+  animationQueue: [],
+  currentAnimation: null,
+  quote: null,
+  activeModal: null,
+
+  processCheckResult: (result) => {
+    const events: AnimationEvent[] = [];
+
+    // Always show XP popup when checking (not unchecking)
+    if (result.is_checking && result.attribute_xp_awarded > 0) {
+      events.push({
+        type: 'xp_popup',
+        attribute: result.daily_log.completion_tier,
+        xp: result.attribute_xp_awarded,
+      });
+    }
+
+    // Tier change (compare previous tier vs new -- tracked in habitStore)
+    // Only queue if tier actually changed from previous state
+
+    // Capsule drop
+    if (result.capsule) {
+      events.push({
+        type: 'capsule_drop',
+        reward: {
+          id: result.capsule.id,
+          title: result.capsule.reward_title,
+          rarity: result.capsule.reward_rarity,
+        },
+      });
+    }
+
+    // Transformation unlock (highest priority visual)
+    if (result.transform_change) {
+      events.push({
+        type: 'transformation',
+        form: result.transform_change.key,
+        name: result.transform_change.name,
+      });
+    }
+
+    // Perfect day explosion (after other animations)
+    if (result.is_perfect_day && result.is_checking) {
+      events.push({ type: 'perfect_day' });
+    }
+
+    // Dragon ball / Shenron
+    if (result.dragon_ball?.dragon_balls_collected === 7) {
+      events.push({ type: 'shenron' });
+    } else if (result.daily_log.dragon_ball_earned && result.is_checking) {
+      events.push({
+        type: 'dragon_ball',
+        count: result.dragon_ball?.dragon_balls_collected ?? 0,
+      });
+    }
+
+    // Set quote (displays independently in QuoteBar, not queued)
+    if (result.quote) {
+      set({ quote: result.quote });
+    }
+
+    // Start the queue
+    if (events.length > 0) {
+      set({
+        animationQueue: events.slice(1),
+        currentAnimation: events[0],
+      });
+    }
+  },
+
+  dequeueAnimation: () => {
+    const { animationQueue } = get();
+    if (animationQueue.length > 0) {
+      set({
+        currentAnimation: animationQueue[0],
+        animationQueue: animationQueue.slice(1),
+      });
+    } else {
+      set({ currentAnimation: null });
+    }
+  },
+}));
 ```
 
-```typescript
-// In habitStore — after API call returns:
-const { enqueueFromCheckResponse } = useUIStore();
+### Pattern 3: API Client with Typed Wrappers
 
-const result = await api.checkHabit(habitId);
-// Update stores with new data
-powerStore.setFromCheckResponse(result);
-habitStore.updateDailyProgress(result);
-// Queue animations in priority order
-enqueueFromCheckResponse(result);
+**What:** A single `ky` instance configured with base URL and error handling. Per-resource files export typed async functions. Stores call these functions -- components never import from `api/` directly.
+
+**When to use:** Always. This is the boundary between frontend and backend.
+
+**Trade-offs:**
+- PRO: Type safety at the API boundary. Backend schema changes caught at compile time.
+- PRO: Easy to mock in tests (mock the api module, not HTTP).
+- PRO: ky is 3.6KB gzipped vs axios at 13.5KB. Built on fetch. Better TypeScript support.
+
+**Why ky over axios or raw fetch:** Axios is bloated for what this app needs (no upload progress, no XSRF tokens, no Node.js support needed). Raw fetch lacks automatic JSON parsing, error throwing on 4xx/5xx, and timeout support. ky is the right middle ground -- thin fetch wrapper with exactly the features needed.
+
+**Example:**
+
+```typescript
+// api/client.ts
+import ky from 'ky';
+
+export const api = ky.create({
+  prefixUrl: 'http://localhost:8000/api/v1',
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 10000,
+  hooks: {
+    beforeError: [
+      (error) => {
+        console.error(`API Error: ${error.response?.status} ${error.request?.url}`);
+        return error;
+      },
+    ],
+  },
+});
+
+// api/habits.ts
+import { api } from './client';
+import type { HabitToday, CheckHabitResponse } from '../types';
+
+export async function getTodayHabits(date: string): Promise<HabitToday[]> {
+  return api.get('habits/today/list', { searchParams: { local_date: date } }).json();
+}
+
+export async function checkHabit(
+  habitId: string,
+  date: string
+): Promise<CheckHabitResponse> {
+  return api
+    .post(`habits/${habitId}/check`, { json: { local_date: date } })
+    .json();
+}
+
+export async function getCalendar(
+  year: number,
+  month: number
+): Promise<CalendarDay[]> {
+  return api
+    .get('habits/calendar/all', { searchParams: { year, month } })
+    .json();
+}
 ```
 
-**Trade-offs:** Slightly more complex than firing all at once. The complexity pays off in UX legibility. Each animation component calls `advanceQueue()` in its `onAnimationComplete` callback.
+### Pattern 4: Audio System via Context + Howler Sprites
 
-### Pattern 3: Sound Provider as Context, Not Per-Component
+**What:** A single Howler sprite sheet loaded on app init. A React context provides a `play(soundId)` function. Components call `play('scouter_beep')` without knowing about audio internals. Global mute is controlled via settings store.
 
-**What:** A single `SoundProvider` component mounts all Howler instances at app startup (or lazily on first interaction). Components access sounds via a `useSound` hook that reads from context, not by creating new Howler instances themselves.
+**When to use:** When every interaction needs audio feedback (this app's core requirement).
 
-**When to use:** Any app with 10+ distinct sounds that trigger across many components.
+**Trade-offs:**
+- PRO: Single HTTP request for all sounds. No loading delays on individual interactions.
+- PRO: Howler handles Web Audio API fallback, mobile autoplay restrictions, format detection.
+- PRO: Context avoids prop drilling; any component can trigger audio.
+- CON: Initial load is larger (one sprite file ~500KB-1MB). Acceptable for a single-user local app.
 
-**Why it matters:** Howler.js instances persist in memory. Creating one per component mount/unmount causes audio glitches, memory leaks, and the "sound plays twice" bug common in React StrictMode.
+**Why Howler directly over use-sound:** use-sound is a React hook wrapper around Howler. It creates one Howl instance per hook call. With 10+ sounds across many components, this means duplicate instances and no shared sprite support. Using Howler directly with a context gives full control over instance lifecycle and sprite configuration.
+
+**Example:**
 
 ```typescript
-// context/SoundContext.tsx
-const SOUND_MAP = {
-  habit_check: '/assets/sounds/scouter-beep.mp3',
-  perfect_day: '/assets/sounds/super-saiyan-scream.mp3',
-  capsule_drop: '/assets/sounds/capsule-pop.mp3',
-  dragon_ball: '/assets/sounds/radar-ping.mp3',
-  transformation: '/assets/sounds/transformation.mp3',
-  tier_change: '/assets/sounds/power-up-burst.mp3',
-  shenron: '/assets/sounds/shenron-roar.mp3',
+// audio/sounds.ts
+export const SOUND_SPRITE = {
+  src: ['/sounds/sprite.webm', '/sounds/sprite.mp3'],
+  sprite: {
+    scouter_beep:    [0, 800],
+    ki_charge:       [1000, 1500],
+    power_up_burst:  [3000, 2000],
+    capsule_pop:     [5500, 1000],
+    item_reveal:     [7000, 1200],
+    explosion:       [9000, 3000],
+    dragon_radar:    [12500, 1500],
+    shenron_roar:    [14500, 3000],
+    transform_power: [18000, 4000],
+    achievement:     [22500, 2000],
+  },
 } as const;
 
-type SoundId = keyof typeof SOUND_MAP;
+export type SoundId = keyof typeof SOUND_SPRITE.sprite;
 
-// Single context value: play(soundId) — checks uiStore.sound_enabled internally
-const play = useCallback((id: SoundId) => {
-  if (!soundEnabled) return;
-  howlerInstances[id].play();
-}, [soundEnabled]);
+// audio/SoundProvider.tsx
+import { createContext, useContext, useRef, useEffect, useCallback } from 'react';
+import { Howl } from 'howler';
+import { SOUND_SPRITE, type SoundId } from './sounds';
+
+interface SoundContextValue {
+  play: (id: SoundId) => void;
+}
+
+const SoundCtx = createContext<SoundContextValue>({ play: () => {} });
+
+export function SoundProvider({ children }: { children: React.ReactNode }) {
+  const howlRef = useRef<Howl | null>(null);
+  // Read sound_enabled from settings -- fetched on app mount
+  const soundEnabled = usePowerStore((s) => s.soundEnabled);
+
+  useEffect(() => {
+    howlRef.current = new Howl({
+      src: SOUND_SPRITE.src,
+      sprite: SOUND_SPRITE.sprite as Record<string, [number, number]>,
+      preload: true,
+    });
+    return () => {
+      howlRef.current?.unload();
+    };
+  }, []);
+
+  const play = useCallback(
+    (id: SoundId) => {
+      if (soundEnabled && howlRef.current) {
+        howlRef.current.play(id);
+      }
+    },
+    [soundEnabled]
+  );
+
+  return <SoundCtx.Provider value={{ play }}>{children}</SoundCtx.Provider>;
+}
+
+export const useAudio = () => useContext(SoundCtx);
 ```
 
-**Audio sprite alternative:** For production optimization, bundle all sounds into a single audio sprite file. Howler.js supports sprites natively — one network request for all sounds, no per-sound load latency.
+### Pattern 5: Animation Overlays with Motion AnimatePresence
 
-### Pattern 4: SQLAlchemy Relationship Design — Hub-and-Spoke from User
+**What:** Full-screen animation overlays (perfect day, shenron, transformation) render in a fixed-position layer above all content. Motion's `AnimatePresence` handles mount/unmount animations. Each overlay watches `uiStore.currentAnimation` and renders when its type matches.
 
-**What:** User is the hub. Nearly all tables hang off User via `user_id` FK. Habits connect downward to HabitLogs, HabitStreaks, and CapsuleDrops. The DailyLog is the daily aggregate.
+**When to use:** For the "climax" animations that take over the screen.
 
-**When to use:** Single-user apps where cross-user isolation is never needed. Keeping `user_id` on every table simplifies future multi-user migration if needed, while keeping queries simple now.
+**Trade-offs:**
+- PRO: Overlays don't disrupt page layout. They render on top via `position: fixed`.
+- PRO: `AnimatePresence` handles exit animations cleanly -- the component stays mounted until the exit animation completes.
+- PRO: GPU-accelerated transforms (scale, opacity, x/y) for smooth 60fps.
+- CON: Must manage z-index carefully. Use a dedicated layer above everything.
 
-```python
-# models/user.py
-class User(Base):
-    __tablename__ = "users"
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+**Note on package name:** The library formerly known as Framer Motion is now called Motion. Install via `npm install motion`. Import from `motion/react`.
 
-    # Progression stats (denormalized for fast reads — no JOIN needed for dashboard)
-    power_level: Mapped[int] = mapped_column(default=0)
-    str_xp: Mapped[int] = mapped_column(default=0)
-    vit_xp: Mapped[int] = mapped_column(default=0)
-    int_xp: Mapped[int] = mapped_column(default=0)
-    ki_xp: Mapped[int] = mapped_column(default=0)
-    dragon_balls_collected: Mapped[int] = mapped_column(default=0)
-    current_transformation: Mapped[str] = mapped_column(default="base")
+**Example:**
 
-    # Relationships
-    habits: Mapped[list["Habit"]] = relationship(back_populates="user",
-                                                  cascade="all, delete-orphan")
-    habit_logs: Mapped[list["HabitLog"]] = relationship(back_populates="user")
-    daily_logs: Mapped[list["DailyLog"]] = relationship(back_populates="user")
-    streak: Mapped["Streak"] = relationship(back_populates="user", uselist=False)
+```typescript
+// App.tsx -- animation layer rendered above page content
+import { AnimatePresence } from 'motion/react';
+import { useUiStore } from './stores/uiStore';
 
-# models/habit.py
-class Habit(Base):
-    __tablename__ = "habits"
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
-    attribute: Mapped[str]   # str | vit | int | ki
-    importance: Mapped[str]  # normal | important | critical
+function AnimationLayer() {
+  const current = useUiStore((s) => s.currentAnimation);
+  const dequeue = useUiStore((s) => s.dequeueAnimation);
 
-    user: Mapped["User"] = relationship(back_populates="habits")
-    logs: Mapped[list["HabitLog"]] = relationship(back_populates="habit",
-                                                   cascade="all, delete-orphan")
-    streak: Mapped["HabitStreak"] = relationship(back_populates="habit", uselist=False,
-                                                  cascade="all, delete-orphan")
+  return (
+    <AnimatePresence mode="wait">
+      {current?.type === 'xp_popup' && (
+        <XpPopup
+          key="xp"
+          attribute={current.attribute}
+          xp={current.xp}
+          onComplete={dequeue}
+        />
+      )}
+      {current?.type === 'capsule_drop' && (
+        <CapsuleDropPopup
+          key="capsule"
+          reward={current.reward}
+          onComplete={dequeue}
+        />
+      )}
+      {current?.type === 'perfect_day' && (
+        <PerfectDayExplosion key="perfect" onComplete={dequeue} />
+      )}
+      {current?.type === 'transformation' && (
+        <TransformationReveal
+          key="transform"
+          form={current.form}
+          name={current.name}
+          onComplete={dequeue}
+        />
+      )}
+      {current?.type === 'shenron' && (
+        <ShenronAnimation key="shenron" onComplete={dequeue} />
+      )}
+    </AnimatePresence>
+  );
+}
 
-# models/habit_log.py
-class HabitLog(Base):
-    __tablename__ = "habit_logs"
-    __table_args__ = (UniqueConstraint("habit_id", "log_date"),)
+// components/animations/PerfectDayExplosion.tsx
+import { motion } from 'motion/react';
+import { useAudio } from '../../audio/SoundProvider';
+import { useEffect } from 'react';
 
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    habit_id: Mapped[UUID] = mapped_column(ForeignKey("habits.id"))
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
-    log_date: Mapped[date]
-    completed: Mapped[bool] = mapped_column(default=False)
-    attribute_xp_awarded: Mapped[int] = mapped_column(default=0)
-    capsule_dropped: Mapped[bool] = mapped_column(default=False)
+interface Props {
+  onComplete: () => void;
+}
 
-    habit: Mapped["Habit"] = relationship(back_populates="logs")
-    user: Mapped["User"] = relationship(back_populates="habit_logs")
+export function PerfectDayExplosion({ onComplete }: Props) {
+  const { play } = useAudio();
+
+  useEffect(() => {
+    play('explosion');
+    // Auto-dismiss after 3 seconds
+    const timer = setTimeout(onComplete, 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <motion.div
+        initial={{ scale: 0, rotate: -180 }}
+        animate={{ scale: [0, 1.5, 1], rotate: 0 }}
+        transition={{ duration: 1.5, ease: 'easeOut' }}
+      >
+        <h1 className="text-6xl font-bold text-yellow-400 text-center drop-shadow-[0_0_30px_rgba(255,200,0,0.8)]">
+          100% COMPLETE
+        </h1>
+        <p className="text-2xl text-orange-300 text-center mt-4">
+          KAIO-KEN x20!
+        </p>
+      </motion.div>
+    </motion.div>
+  );
+}
 ```
 
-**Key design decision — denormalize attribute XP onto User:** `user.str_xp`, `user.vit_xp`, `user.int_xp`, `user.ki_xp` are running totals on the User row, not computed by summing HabitLogs on every request. The dashboard reads one row — no aggregate query. This is the correct choice for a single-user app where write frequency is low (4-6 habits/day).
+### Pattern 6: Screen Shake Wrapper Component
 
----
+**What:** A reusable component that wraps children and applies a shake animation on trigger. Used for the dashboard container when habits are checked and for the 100% explosion.
+
+**Example:**
+
+```typescript
+// components/animations/ScreenShake.tsx
+import { motion, useAnimation } from 'motion/react';
+import { useImperativeHandle, forwardRef } from 'react';
+
+export interface ScreenShakeRef {
+  shake: () => void;
+}
+
+export const ScreenShake = forwardRef<ScreenShakeRef, { children: React.ReactNode }>(
+  ({ children }, ref) => {
+    const controls = useAnimation();
+
+    useImperativeHandle(ref, () => ({
+      shake: () => {
+        controls.start({
+          x: [0, -8, 8, -6, 6, -3, 3, 0],
+          transition: { duration: 0.5 },
+        });
+      },
+    }));
+
+    return <motion.div animate={controls}>{children}</motion.div>;
+  }
+);
+```
 
 ## Data Flow
 
-### Primary Flow: Habit Check
+### The Critical Flow: Habit Check
+
+This is the most important data flow in the entire app. A single habit check triggers state updates across 3 stores and potentially 5+ sequential animations.
 
 ```
-User taps habit card
-    ↓
-HabitCard onClick → habitStore.checkHabit(habitId)
-    ↓
-api.ts: POST /habits/{id}/check
-    ↓
-FastAPI route: validate, call habit_service.check_habit(db, habit_id, user_id)
-    ↓
-habit_service (single DB transaction):
-  toggle HabitLog → update DailyLog → award attribute XP →
-  update HabitStreak → update Streak → recalculate daily XP →
-  update User.power_level + User.{attr}_xp → check transformation →
-  maybe award Dragon Ball → roll capsule RNG → select quote → commit
-    ↓
-Response: CheckHabitResponse (15 fields — complete game state delta)
-    ↓
-habitStore: update todayHabits, dailyProgress (optimistic UI sync)
-powerStore: update power_level, attributes, dragon_balls
-rewardStore: append capsule if dropped
-uiStore.enqueueFromCheckResponse(response):
-  Queue: [xp_popup, tier_change?, perfect_day?, dragon_ball?, capsule?, transformation?]
-    ↓
-AnimationOrchestrator reads queue → plays PerfectDayAnimation
-    ↓ (onComplete)
-AnimationOrchestrator advances queue → plays CapsuleDropPopup
-    ↓ (onComplete)
-SoundProvider.play() called by each animation at its start
-    ↓
-Queue empty → dashboard returns to idle
+[User taps habit checkbox]
+    |
+    v
+[HabitCard] --> habitStore.checkHabit(id, date)
+    |
+    v
+[habitStore] -- 1. Optimistic toggle (instant UI feedback)
+    |          -- 2. POST /habits/{id}/check
+    |          -- 3. Update habits + dailyProgress from response
+    |          -- 4. Cross-store: powerStore.applyCheckResult(response)
+    |          -- 5. Cross-store: uiStore.processCheckResult(response)
+    |
+    v
+[powerStore] -- Updates power_level, transformation, attributes, dragon_balls
+    |
+    v
+[uiStore] -- Builds animation queue from response fields:
+    |        -- capsule? -> queue capsule_drop
+    |        -- transform_change? -> queue transformation
+    |        -- is_perfect_day? -> queue perfect_day + dragon_ball
+    |        -- Sets currentAnimation = queue[0]
+    |
+    v
+[AnimationLayer] -- AnimatePresence renders currentAnimation
+    |              -- Each animation calls play(soundId) via useAudio
+    |              -- On complete: uiStore.dequeueAnimation()
+    |              -- Next animation renders (or queue empties)
+    |
+    v
+[QuoteBar] -- Displays result.quote independently (not queued)
+    |
+    v
+[Dashboard components] -- Re-render from store subscriptions:
+    -- DailyAuraBar reads habitStore.dailyProgress.completionRate
+    -- AttributeBars reads powerStore.attributes
+    -- DragonBallTracker reads powerStore.dragonBalls
+    -- SaiyanAvatar reads powerStore.transformation
+    -- StreakDisplay reads habitStore/powerStore streak
 ```
 
-### State Management Flow
+### Page Load Flow
 
 ```
-Zustand Store (habitStore)
-    ↓ (selector)
-HabitCard component subscribes to todayHabits[habitId]
-    ↓ (user action)
-habitStore.checkHabit() → api call → store mutation
-    ↓ (state change)
-HabitCard re-renders (only this component, selector isolation)
+[Dashboard mounts]
+    |
+    +-> habitStore.fetchToday(todayDate)     -- GET /habits/today/list
+    +-> powerStore.fetchPower()              -- GET /power/current
+    |   (parallel requests)
+    v
+[Components render from store state]
 
-Zustand Store (uiStore)
-    ↓ (selector)
-AnimationOrchestrator subscribes to animationQueue[0]
-    ↓ (queue populated by habitStore after check)
-PerfectDayAnimation mounts → plays → calls advanceQueue()
-    ↓
-AnimationOrchestrator subscribes to next item
+[Analytics mounts]
+    |
+    +-> GET /analytics/summary?period=month
+    +-> GET /habits/calendar/all?year=2026&month=3
+    |   (parallel requests)
+    v
+[Charts render]
+
+[Settings mounts]
+    |
+    +-> GET /settings/
+    +-> GET /rewards/
+    +-> GET /wishes/
+    +-> GET /categories/
+    |   (parallel requests)
+    v
+[Forms render with current values]
 ```
 
-### Key Data Flows
+### State Synchronization Strategy
 
-1. **Dashboard load:** `GET /power/current` + `GET /habits/today/list` → populate powerStore and habitStore → render dashboard. Two parallel requests, no dependency.
-2. **Perfect Day detection:** Backend sets `is_perfect_day: true` in CheckHabitResponse. Frontend never calculates this — backend is the source of truth for all game logic.
-3. **Capsule drop:** Decided by backend RNG (`random.random() < 0.25`). Backend selects the reward weighted by rarity, returns full reward object in response. Frontend only displays what it receives.
-4. **Transformation unlock:** Backend computes `new_transformation` by comparing new power level against threshold constants. Returns `null` if no change, string form name if unlocked. Frontend only plays the animation when field is non-null.
-5. **Sound trigger:** SoundProvider listens to uiStore `activeAnimation` — plays the matching sound when each animation becomes active. Sound and animation are decoupled (sound does not block animation and vice versa).
+| Trigger | Action | Why |
+|---------|--------|-----|
+| Page mount | Fetch from API | Fresh data on navigation |
+| After habit check | Use response directly | CheckHabitResponse contains ALL updated state |
+| After CRUD (reward, wish, category) | Refetch list | Simple, correct, low-frequency operations |
+| Tab refocus (visibilitychange) | Refetch today's habits + power | Catch midnight rollover |
+| No polling or WebSocket | N/A | Single-user local app, no concurrent writers |
 
----
+**Key insight:** The `CheckHabitResponse` is designed to return ALL downstream state changes (daily log, streak, power level, transformation, dragon balls, capsule, quote). The frontend never needs follow-up requests after checking a habit. The single POST response drives all UI updates.
 
-## SQLAlchemy Model Relationship Map
+### Zustand Store Shapes
 
-```
-User (1)
- ├── Habits (many)          — cascade delete
- │    ├── HabitLogs (many)  — cascade delete, UniqueConstraint(habit_id, log_date)
- │    ├── HabitStreak (1)   — cascade delete, uselist=False
- │    └── CapsuleDrops (many) — FK to habit that triggered drop
- ├── DailyLogs (many)       — UniqueConstraint(user_id, log_date)
- ├── Streak (1)             — overall streak, uselist=False
- ├── PowerLevels (many)     — daily snapshots for analytics
- ├── Rewards (many)         — capsule loot pool items
- ├── CapsuleDrops (many)    — history of what dropped
- ├── Wishes (many)          — Shenron wish pool
- ├── WishLogs (many)        — history of granted wishes
- ├── OffDays (many)         — streak pause dates
- ├── Achievements (many)    — badges earned
- └── Categories (many)      — visual grouping for habits
-
-Quotes (no user_id)         — shared static table, seeded at startup
+**habitStore:**
+```typescript
+{
+  todayHabits: HabitToday[],       // from GET /habits/today/list
+  dailyProgress: {                  // derived from check response
+    habitsDue: number,
+    habitsCompleted: number,
+    completionRate: number,         // 0.0 - 1.0
+    completionTier: string,         // 'base' | 'kaio_x3' | 'kaio_x10' | 'kaio_x20'
+    xpEarned: number,
+  } | null,
+  allHabits: HabitResponse[],      // from GET /habits/ (for settings page)
+  isLoading: boolean,
+}
 ```
 
-**Relationship loading strategy:** Use `selectinload` for collections accessed frequently (habits → logs for today's list). Use `joined` loading only for one-to-one relationships (habit → streak). Avoid N+1 by loading `HabitStreak` eagerly when fetching today's habits list.
-
-```python
-# Correct: load habits + their streaks in 2 queries (selectinload), not N+1
-habits = db.execute(
-    select(Habit)
-    .where(Habit.user_id == user_id, Habit.is_active == True)
-    .options(selectinload(Habit.streak))
-).scalars().all()
+**powerStore:**
+```typescript
+{
+  powerLevel: number,
+  transformation: string,          // 'base' | 'ssj' | ... | 'beast'
+  transformationName: string,      // 'Super Saiyan 2'
+  nextTransformation: string | null,
+  nextThreshold: number | null,
+  dragonBallsCollected: number,    // 0-7
+  wishesGranted: number,
+  attributes: AttributeDetail[],   // 4 items: str, vit, int, ki with levels
+  soundEnabled: boolean,           // from settings, drives SoundProvider
+  theme: 'dark' | 'light',
+  isLoading: boolean,
+}
 ```
 
----
+**rewardStore:**
+```typescript
+{
+  rewards: RewardResponse[],       // capsule loot pool
+  wishes: WishResponse[],          // Shenron wish pool
+  capsuleHistory: CapsuleHistoryItem[],
+  wishHistory: WishHistoryItem[],
+  isLoading: boolean,
+}
+```
 
-## Scaling Considerations
-
-This is a single-user local app. Scaling is not a real concern. The table below exists to show why the current approach is appropriate, not to plan for scale.
-
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| 1 user (current) | Sync SQLAlchemy + SQLite. No connection pooling needed. Session per request via dependency injection. |
-| Future VPS (multi-user) | Switch SQLite → PostgreSQL, add auth (JWT or session), add async SQLAlchemy with asyncpg, add proper connection pool. The service layer design does not change — only the session configuration. |
-| 100k+ users | This is a personal tool. Not a design goal. |
-
-### First bottleneck if this ever scales
-
-Analytics aggregation queries on large HabitLog tables. Solution: maintain pre-aggregated DailyLog rows (already designed this way) and add indexes on `(user_id, log_date)` columns.
-
----
+**uiStore:**
+```typescript
+{
+  animationQueue: AnimationEvent[],
+  currentAnimation: AnimationEvent | null,
+  quote: QuoteDetail | null,
+  activeModal: 'habitForm' | 'offDay' | 'shenronWish' | null,
+  editingHabitId: string | null,   // for edit mode in HabitFormModal
+}
+```
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: Business Logic in Routes
+### Anti-Pattern 1: Fetching Power Level After Habit Check
 
-**What people do:** Write XP calculation, capsule RNG, and streak logic directly in the FastAPI route handler function.
+**What people do:** Call `checkHabit()`, then call `fetchPower()` to get updated power level.
+**Why it's wrong:** `CheckHabitResponse` already contains `power_level`, `transformation`, `transform_change`, `dragon_ball`, `streak`. A second request is wasted and creates a timing gap where the UI shows stale data.
+**Do this instead:** Extract all state updates from the single check response. The backend was designed for this exact pattern.
 
-**Why it's wrong:** The `/check` endpoint's game logic is complex (10 sequential operations). Routes are tested via HTTP — testing business logic through HTTP is slow and brittle. If you ever need to call this logic from a background task, CLI script, or test, you cannot reuse it.
+### Anti-Pattern 2: Putting Server State in TanStack Query AND Zustand
 
-**Do this instead:** Routes call `habit_service.check_habit(db, ...)` and return the result. The service is a plain Python function — unit testable without HTTP overhead.
+**What people do:** Use TanStack Query for fetching, then copy data into Zustand stores.
+**Why it's wrong:** Two sources of truth. Cache invalidation becomes a nightmare. Animation triggers need synchronous access to the latest state, but TanStack Query updates asynchronously via its own scheduler.
+**Do this instead:** Use Zustand as the single source of truth. Store actions call API functions directly and update state in the same synchronous call.
 
-### Anti-Pattern 2: Triggering Multiple Sequential API Calls from the Frontend
+### Anti-Pattern 3: Playing Animations Simultaneously
 
-**What people do:** After checking a habit, call `/power/current`, `/habits/today/list`, and `/analytics/summary` to refresh state.
+**What people do:** When a perfect day triggers (XP popup + capsule + tier change + dragon ball + explosion), render all animation components at once.
+**Why it's wrong:** Visual chaos. Sounds overlap. User can't process what happened. The dopamine hit gets diluted instead of compounding.
+**Do this instead:** Use the animation queue. Each event plays one at a time. Each calls `dequeue()` on completion. The sequence IS the experience.
 
-**Why it's wrong:** Three round trips where one suffices. Creates a "loading flash" between animation frames. Introduces race conditions if the user checks a second habit before the first round trip completes.
+### Anti-Pattern 4: Individual Sound File Imports with use-sound
 
-**Do this instead:** The `POST /habits/{id}/check` response contains everything needed — the frontend updates all stores from that single response. The only time the frontend fetches independently is on initial page load.
+**What people do:** Call `useSound('/assets/sounds/scouter-beep.mp3')` inside HabitCard. With 6 habit cards rendered, 6 Howler instances are created for the same sound.
+**Why it's wrong:** Memory waste, audio glitches in React 19 StrictMode (double-mount creates duplicate instances), and sounds play at inconsistent offsets if two habits are checked quickly.
+**Do this instead:** SoundProvider creates one Howl instance with audio sprites at app mount. Components call `useAudio().play('scouter_beep')`. One instance, one network request, consistent playback.
 
-### Anti-Pattern 3: Computing Game State on the Frontend
+### Anti-Pattern 5: Computing Game Logic on the Frontend
 
-**What people do:** Frontend calculates whether a transformation was unlocked, whether a Dragon Ball was earned, or what XP tier applies.
+**What people do:** Frontend calculates whether a transformation was unlocked, computes XP with the Kaio-ken formula, or decides capsule drop rarity weights.
+**Why it's wrong:** Game constants drift between Python and TypeScript. Backend is the authoritative source for stored state. Frontend duplicating logic means bugs where the UI shows "SSJ" but the DB says "base."
+**Do this instead:** Backend computes everything. Frontend only renders what it receives. The `lib/constants.ts` file contains display-only data (transformation names for labels, colors for themes) -- never XP formulas or threshold values used for logic.
 
-**Why it's wrong:** Game constants live in two places (Python constants.py and TypeScript). They drift. The backend must be authoritative for any stored state. Frontend duplicating this logic means bugs where the frontend shows "SSJ" but the backend stored "base".
+### Anti-Pattern 6: CSS Animations for Sequenced Overlays
 
-**Do this instead:** Backend computes everything, frontend only renders what it receives. Frontend contains zero XP formulas, zero transformation thresholds, zero rarity weights.
-
-### Anti-Pattern 4: Multiple Howler Instances Per Component
-
-**What people do:** Call `useSound('/assets/sounds/scouter-beep.mp3')` inside HabitCard directly. With 6 habit cards, 6 Howler instances are created for the same sound.
-
-**Why it's wrong:** Memory waste, potential audio glitches in React StrictMode (double-mount creates duplicate instances), and the sound plays at different offsets if two habits are checked quickly.
-
-**Do this instead:** SoundProvider creates one instance per unique sound ID at app mount. Components call `const { play } = useSoundContext(); play('habit_check')`. One instance, always in sync.
-
-### Anti-Pattern 5: Animating Immediately After State Update
-
-**What people do:** In the `onSuccess` callback of a habit check, immediately set `showPerfectDayAnimation = true` and `showCapsulePopup = true` at the same time.
-
-**Why it's wrong:** Two full-screen overlays simultaneously is unreadable. The ADHD brain processes one dopamine hit at a time. Simultaneous = noise.
-
-**Do this instead:** The animation queue pattern (Pattern 2). `enqueueFromCheckResponse()` builds a priority-ordered list. The AnimationOrchestrator plays one at a time, advancing on completion. Perfect day fires first (highest impact), then Dragon Ball, then capsule, then tier change.
-
----
+**What people do:** Use CSS `@keyframes` for full-screen animations to avoid library overhead.
+**Why it's wrong:** CSS animations cannot coordinate with React component lifecycle. Exit animations require `AnimatePresence` -- CSS has no concept of "animate while unmounting." Sequencing CSS animations requires manual timers that drift across browsers.
+**Do this instead:** Use Motion for all overlay/sequenced animations. Use CSS/Tailwind for simple hover/focus/transition states only.
 
 ## Integration Points
 
-### Internal Boundaries
+### Backend API (Existing -- Unchanged)
+
+| Endpoint | Frontend Consumer | Integration Notes |
+|----------|-------------------|-------------------|
+| `POST /habits/{id}/check` | habitStore.checkHabit() | THE critical endpoint. Response drives 3 stores + animation queue. Requires `{ local_date: "YYYY-MM-DD" }` body. |
+| `GET /habits/today/list` | habitStore.fetchToday() | Requires `local_date` query param. Returns habits with completion + streak. |
+| `GET /habits/` | habitStore.fetchAll() | Settings page habit management. |
+| `POST /habits/` | habitStore.createHabit() | HabitFormModal. Requires attribute + importance. |
+| `PUT /habits/{id}` | habitStore.updateHabit() | HabitFormModal edit mode. |
+| `DELETE /habits/{id}` | habitStore.archiveHabit() | Soft-delete (is_active=false). |
+| `PUT /habits/reorder` | habitStore.reorderHabits() | Batch sort_order update. |
+| `GET /habits/{id}/calendar` | CalendarHeatmap | Per-habit monthly calendar. |
+| `GET /habits/calendar/all` | CalendarHeatmap | Monthly heatmap with tier colors. Returns CalendarDay[]. |
+| `GET /habits/{id}/contribution-graph` | ContributionGraph | 90-day grid. Returns ContributionDay[]. |
+| `GET /power/current` | powerStore.fetchPower() | Dashboard load. Returns power, transformation, attributes, dragon balls. |
+| `GET /attributes/` | (redundant) | Subset of /power/current -- use /power/current instead. |
+| `GET /rewards/` | rewardStore.fetchRewards() | Settings page. |
+| `POST/PUT/DELETE /rewards/` | RewardManager | CRUD for capsule loot pool. |
+| `GET /wishes/` | rewardStore.fetchWishes() | Settings page. |
+| `POST/PUT/DELETE /wishes/` | WishManager | CRUD for Shenron wishes. |
+| `POST /wishes/grant` | ShenronAnimation flow | Called when user picks a wish after 7 dragon balls. |
+| `GET /quotes/random` | Dashboard welcome | Optional -- check response already includes a quote. |
+| `GET/POST/DELETE /off-days/` | OffDayModal | Creates off day, then refetch today's habits. |
+| `GET /analytics/summary` | SummaryCards | Accepts `period=week\|month\|all`. |
+| `GET /analytics/capsule-history` | CapsuleHistory | Loot drop history list. |
+| `GET /analytics/wish-history` | WishHistory | Wish grant log. |
+| `GET/PUT /settings/` | Settings page + powerStore | sound_enabled drives global mute. theme drives CSS class. |
+| `GET/POST/PUT/DELETE /categories/` | CategoryManager + HabitFormModal | Visual grouping only. |
+
+### CORS Requirement (Backend Modification Needed)
+
+The backend `main.py` does NOT currently include CORS middleware. This MUST be added before the frontend can communicate:
+
+```python
+# backend/app/main.py -- add before route registration
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # Vite dev server
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
+
+### Internal Boundaries (Frontend)
 
 | Boundary | Communication | Notes |
 |----------|---------------|-------|
-| habitStore → uiStore | Direct Zustand import (no props) | habitStore calls `useUIStore.getState().enqueueFromCheckResponse()` after check |
-| habitStore → powerStore | No direct coupling | powerStore reads from its own `/power/current` endpoint OR is updated directly from CheckHabitResponse via `powerStore.updateFromCheck(response)` |
-| AnimationOrchestrator → SoundProvider | Context | Each animation component calls `play(soundId)` at mount time |
-| routes → services | Direct function call with injected `db: Session` | No message queues, no abstraction layers — plain Python function calls |
-| services → models | SQLAlchemy session | All DB access through `db.execute()`, `db.add()`, `db.commit()` |
+| habitStore <-> powerStore | `usePowerStore.getState()` | Cross-store update after habit check. Zustand allows direct store access outside React. |
+| habitStore <-> uiStore | `useUiStore.getState()` | Animation queue population after check response. |
+| Components <-> Stores | Zustand selectors | `useHabitStore((s) => s.todayHabits)`. Selectors prevent unnecessary re-renders. |
+| Components <-> Audio | React Context | `useAudio().play('scouter_beep')`. No store involvement needed. |
+| Animation components <-> uiStore | Subscribe + callback | Watch `currentAnimation`, call `dequeueAnimation()` on exit. |
+| Settings <-> Theme | CSS class on `<html>` | `document.documentElement.classList.toggle('dark')`. Tailwind v4 dark mode strategy. |
 
-### External Dependencies (No external services)
+## Build Order (Dependency-Driven)
 
-This app has no external service integrations. All data is local. The only "integration" is the audio and image assets bundled with the frontend.
+Components have hard dependencies. This is the recommended build order:
 
-| Asset Type | Location | Notes |
-|------------|----------|-------|
-| Sound files | `frontend/src/assets/sounds/` | .mp3 + .webm for cross-browser. <3s each per PRD. |
-| Character images | `frontend/src/assets/characters/` | One image per transformation form (10 forms) |
-| Dragon Ball images | `frontend/src/assets/dragonballs/` | 7 individual ball images (numbered) |
+| Order | What to Build | Depends On | Why This Order |
+|-------|---------------|------------|----------------|
+| 1 | Types (`types/index.ts`) + API client (`api/client.ts`) + all API modules | Backend running | Foundation. Every store and component imports from these. |
+| 2 | Zustand stores (habitStore, powerStore, rewardStore, uiStore) | Types, API modules | Stores are the spine. Components are useless without data. |
+| 3 | App shell (Router, Header, PageShell, theme CSS) | Stores (for nav state) | Navigation structure before page content. CORS must be added to backend here. |
+| 4 | Dashboard core: HabitList + HabitCard + DailyAuraBar | habitStore | Core interaction loop. Must work before anything else. Verify check flow end-to-end. |
+| 5 | Dashboard context: SaiyanAvatar + AttributeBars + DragonBallTracker + StreakDisplay + TransformationTimeline | powerStore | Visual context around the habit list. These are read-only displays. |
+| 6 | Audio system (SoundProvider, sprite sheet, useAudio hook) | Independent | Can build in parallel with steps 4-5. Wire to HabitCard after. |
+| 7 | Animation layer (AnimationLayer + all overlay components) | uiStore, Motion, Audio | The dopamine layer. Needs stores + audio to be meaningful. |
+| 8 | Modals (HabitFormModal, OffDayModal) | habitStore, uiStore | CRUD flows needed for Settings and Dashboard "add habit." |
+| 9 | Settings page (RewardManager, WishManager, CategoryManager, settings form) | rewardStore, API | Configuration screens. Lower priority than daily use flow. |
+| 10 | Analytics page (CalendarHeatmap, ContributionGraph, AttributeChart, SummaryCards, CapsuleHistory, WishHistory) | analyticsApi, Recharts | Historical views. No dependency on animation system. Can build last. |
 
----
-
-## Build Order Implications
-
-The architecture creates a clear dependency graph that should drive phase ordering:
-
-```
-Phase 1: Database models + relationships (SQLAlchemy)
-    ↓ (required before any service can run)
-Phase 2: Service layer skeleton (habit_service, power_service, reward_service)
-    ↓ (required before routes can call anything)
-Phase 3: FastAPI routes + Pydantic schemas (thin wrappers over services)
-    ↓ (required before frontend can connect)
-Phase 4: Frontend store layer + api.ts (Zustand stores, typed API client)
-    ↓ (required before components can display real data)
-Phase 5: Core dashboard UI (SaiyanAvatar, AttributeBars, DailyAuraBar, HabitCard)
-    ↓ (required before animations have a base to overlay)
-Phase 6: Animation + audio layer (SoundProvider, PerfectDayAnimation, CapsuleDropPopup, queue)
-    ↓ (builds on top of working dashboard)
-Phase 7: Analytics page + settings page
-    ↓ (reads data that exists from phases 1-6)
-Phase 8: Polish (transformation visuals, quote seeding, Shenron animation)
-```
-
-**Why this order:**
-- The `POST /habits/{id}/check` endpoint (Phase 3) is the most complex integration point. Building models and services first means the endpoint can be tested via curl/Swagger before any frontend exists.
-- The animation queue (Phase 6) requires a working dashboard (Phase 5) to overlay. Building animations without a real data-connected UI makes integration testing impossible.
-- Analytics (Phase 7) is read-only — it depends on data being generated by Phase 1-6 mechanics. No data = no meaningful analytics to test.
-
----
+**Why this order matters:**
+- Steps 1-4 give a working habit check flow with optimistic updates. This is testable end-to-end before any animation work begins.
+- Step 6 (audio) is independent and can be developed in parallel with dashboard components.
+- Step 7 (animations) is the "dopamine layer" -- it requires a working dashboard underneath to overlay on top of. Building animations first without real data makes integration testing impossible.
+- Steps 9-10 are lowest dependency and can be built in parallel by different phases.
 
 ## Sources
 
-- [FastAPI Service Layer Architecture 2025](https://medium.com/@abhinav.dobhal/building-production-ready-fastapi-applications-with-service-layer-architecture-in-2025-f3af8a6ac563) — MEDIUM confidence (WebSearch, aligns with official FastAPI patterns)
-- [FastAPI Best Practices — zhanymkanov](https://github.com/zhanymkanov/fastapi-best-practices) — HIGH confidence (widely referenced, official community resource)
-- [SQLAlchemy 2.0 Basic Relationship Patterns](https://docs.sqlalchemy.org/en/20/orm/basic_relationships.html) — HIGH confidence (official docs)
-- [SQLAlchemy 2.0 Relationship Loading](https://docs.sqlalchemy.org/en/20/orm/queryguide/relationships.html) — HIGH confidence (official docs)
-- [Zustand GitHub — Slice Pattern](https://github.com/pmndrs/zustand) — HIGH confidence (official repo)
-- [use-sound — Josh W. Comeau](https://www.joshwcomeau.com/react/announcing-use-sound-react-hook/) — HIGH confidence (library author)
-- [Framer Motion / Motion docs](https://motion.dev/docs/react-motion-component) — HIGH confidence (official docs)
-- [FastAPI preferred commit/rollback patterns](https://github.com/fastapi/fastapi/discussions/8949) — MEDIUM confidence (community discussion, no official answer)
+- [Zustand GitHub - pmndrs/zustand](https://github.com/pmndrs/zustand) - Official repo, multi-store philosophy, selector patterns
+- [TkDodo - Working with Zustand](https://tkdodo.eu/blog/working-with-zustand) - Custom hooks, selector best practices
+- [Zustand Architecture Patterns at Scale](https://brainhub.eu/library/zustand-architecture-patterns-at-scale) - Store organization, cross-store communication
+- [Zustand + React Query discussion](https://medium.com/@freeyeon96/zustand-react-query-new-state-management-7aad6090af56) - When to combine vs choose one
+- [Motion (formerly Framer Motion)](https://motion.dev/docs/react) - AnimatePresence, layout animations, React 19 support
+- [Motion npm package](https://www.npmjs.com/package/motion) - v12.x, `motion/react` import path, 30M+ monthly downloads
+- [Motion performance best practices](https://tillitsdone.com/blogs/framer-motion-performance-tips/) - GPU acceleration, transform properties
+- [Howler.js](https://howlerjs.com/) - Audio sprites, preloading, Web Audio API fallback
+- [Howler.js audio sprites guide](https://medium.com/game-development-stuff/how-to-create-audiosprites-to-use-with-howler-js-beed5d006ac1) - Sprite sheet creation
+- [use-sound npm](https://www.npmjs.com/package/use-sound) - React hook wrapper (evaluated, decided against for this project)
+- [ky GitHub](https://github.com/sindresorhus/ky) - 3.6KB fetch wrapper, TypeScript-first
+- [Axios vs Fetch vs Ky 2025](https://dev.to/suhaotian/axios-vs-fetch-which-fetch-wrapper-should-i-choose-in-2025-57f2) - Size and feature comparison
+- [Building Type-Safe API Client in TypeScript](https://dev.to/limacodes/building-a-type-safe-api-client-in-typescript-beyond-axios-vs-fetch-4a3i) - Typed wrapper patterns
 
 ---
-*Architecture research for: React + FastAPI gamified habit tracker (Saiyan Tracker v3)*
-*Researched: 2026-03-03*
+*Architecture research for: Saiyan Tracker v1.1 frontend integration*
+*Researched: 2026-03-04*
