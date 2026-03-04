@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-last_updated: "2026-03-04T15:18:41Z"
+last_updated: "2026-03-04T15:28:47Z"
 progress:
   total_phases: 8
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 3
   completed_plans: 3
 ---
@@ -18,33 +18,33 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Every habit check must feel like something happened -- a sound, a visual pulse, a number going up. If the app is silent and still, it has failed.
-**Current focus:** Phase 2 in progress -- Game Logic Services (XP formulas, attribute leveling, capsule, dragon ball, power services done)
+**Current focus:** Phase 2 complete -- All 7 game logic services built and tested (163 tests). Ready for Phase 3 (API Routes).
 
 ## Current Position
 
-Phase: 2 of 8 (Core Game Logic Services)
-Plan: 2 of 3 in current phase
-Status: In Progress
-Last activity: 2026-03-04 -- Completed 02-01 (XP and attribute calculation services)
+Phase: 2 of 8 (Core Game Logic Services) -- COMPLETE
+Plan: 3 of 3 in current phase
+Status: Phase Complete
+Last activity: 2026-03-04 -- Completed 02-03 (check_habit orchestrator, streak, off-day services)
 
-Progress: [██░░░░░░░░] ~18%
+Progress: [███░░░░░░░] ~25%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
+- Total plans completed: 5
 - Average duration: 6 min
-- Total execution time: 0.4 hours
+- Total execution time: 0.5 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-database | 2 | 12 min | 6 min |
-| 02-game-logic | 2 | 11 min | 5.5 min |
+| 02-game-logic | 3 | 17 min | 5.7 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (6 min), 01-02 (6 min), 02-02 (5 min), 02-01 (6 min)
+- Last 5 plans: 01-01 (6 min), 01-02 (6 min), 02-02 (5 min), 02-01 (6 min), 02-03 (6 min)
 - Trend: Consistent
 
 *Updated after each plan completion*
@@ -70,6 +70,10 @@ Recent decisions affecting current work:
 - [02-02]: Services do NOT commit or add to session -- caller manages transaction boundaries
 - [02-02]: Capsule drop uses fallback order (epic -> rare -> common) when rolled tier has no rewards
 - [02-02]: Power level is purely additive (sum of all DailyLog.xp_earned), never decreases
+- [02-03]: check_habit() flushes but does not commit -- API layer manages transaction boundaries
+- [02-03]: Zenkai check only runs on first habit log of the day (was_new_log guard)
+- [02-03]: Capsule drops guarded by capsule_dropped flag -- re-checking never re-rolls RNG
+- [02-03]: Off-day service loads habit relationship via log.habit for attribute XP clawback
 
 ### Pending Todos
 
@@ -84,5 +88,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed 02-01-PLAN.md (XP and attribute calculation services)
-Resume file: .planning/phases/02-core-game-logic-services/02-01-SUMMARY.md
+Stopped at: Completed 02-03-PLAN.md (check_habit orchestrator, streak, off-day services)
+Resume file: .planning/phases/02-core-game-logic-services/02-03-SUMMARY.md

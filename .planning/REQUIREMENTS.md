@@ -24,16 +24,16 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **GAME-02**: Kaio-ken tier system: <50% = 1.0x, >=50% = 1.2x, >=80% = 1.5x, 100% = 2.0x
 - [x] **GAME-03**: Per-habit attribute XP: Normal = 15, Important = 22, Critical = 30 XP to the habit's attribute
 - [x] **GAME-04**: Streak bonus: +5%/day on overall streak, capped at +100%
-- [ ] **GAME-05**: Zenkai recovery: streak halved on break (never reset to 0), +50% bonus XP on first Perfect Day after recovery
-- [ ] **GAME-06**: Overall streak requires >=80% daily completion
-- [ ] **GAME-07**: Per-habit streaks track consecutive due-day completions (visual only, no XP effect)
+- [x] **GAME-05**: Zenkai recovery: streak halved on break (never reset to 0), +50% bonus XP on first Perfect Day after recovery
+- [x] **GAME-06**: Overall streak requires >=80% daily completion
+- [x] **GAME-07**: Per-habit streaks track consecutive due-day completions (visual only, no XP effect)
 - [x] **GAME-08**: Capsule drop: 25% chance per habit check, rarity weighted (60% common, 30% rare, 10% epic)
 - [x] **GAME-09**: Dragon Ball earned on each Perfect Day (100%); 7 Dragon Balls trigger Shenron wish
 - [x] **GAME-10**: Wish granting resets dragon_balls_collected to 0 and increments times_wished on chosen wish
 - [x] **GAME-11**: Power Level = cumulative total XP (never decreases); 10 transformation thresholds from Base (0) to Beast (150,000)
 - [x] **GAME-12**: Attribute leveling formula: xp_needed = 100 * level^1.5 with title unlocks at levels 5/10/25/50/100
-- [ ] **GAME-13**: Off days pause both streak types — no penalty, no XP
-- [ ] **GAME-14**: check_habit() is a single atomic transaction: toggle log, update daily log, award attribute XP, update habit streak, update overall streak, recalc daily XP, update power level, check transformation, award Dragon Ball, roll capsule RNG
+- [x] **GAME-13**: Off days pause both streak types — no penalty, no XP
+- [x] **GAME-14**: check_habit() is a single atomic transaction: toggle log, update daily log, award attribute XP, update habit streak, update overall streak, recalc daily XP, update power level, check transformation, award Dragon Ball, roll capsule RNG
 
 ### API
 
@@ -169,16 +169,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GAME-02 | Phase 2 | Complete |
 | GAME-03 | Phase 2 | Complete |
 | GAME-04 | Phase 2 | Complete |
-| GAME-05 | Phase 2 | Pending |
-| GAME-06 | Phase 2 | Pending |
-| GAME-07 | Phase 2 | Pending |
+| GAME-05 | Phase 2 | Complete |
+| GAME-06 | Phase 2 | Complete |
+| GAME-07 | Phase 2 | Complete |
 | GAME-08 | Phase 2 | Complete |
 | GAME-09 | Phase 2 | Complete |
 | GAME-10 | Phase 2 | Complete |
 | GAME-11 | Phase 2 | Complete |
 | GAME-12 | Phase 2 | Complete |
-| GAME-13 | Phase 2 | Pending |
-| GAME-14 | Phase 2 | Pending |
+| GAME-13 | Phase 2 | Complete |
+| GAME-14 | Phase 2 | Complete |
 | API-01 | Phase 3 | Pending |
 | API-02 | Phase 3 | Pending |
 | API-03 | Phase 3 | Pending |
