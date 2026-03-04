@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.0
-milestone_name: milestone
-status: unknown
-last_updated: "2026-03-04T20:33:41.722Z"
+milestone_name: Backend Foundation
+status: milestone_complete
+last_updated: "2026-03-04T22:17:00.000Z"
 progress:
   total_phases: 3
   completed_phases: 3
@@ -15,19 +15,18 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-03)
+See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Every habit check must feel like something happened -- a sound, a visual pulse, a number going up. If the app is silent and still, it has failed.
-**Current focus:** Phase 3 complete -- all 9 API routers wired, 222 tests passing. Ready for Phase 4 (frontend state management).
+**Current focus:** v1.0 Backend Foundation shipped. Planning next milestone (frontend).
 
 ## Current Position
 
-Phase: 3 of 8 (API Routes and Schemas) -- COMPLETE
-Plan: 2 of 2 in current phase (all done)
-Status: Phase Complete
-Last activity: 2026-03-04 -- Completed 03-02 (habits, power, analytics endpoints; all 9 routers wired)
+Phase: v1.0 complete (Phases 1-3). Next: Phase 4 (Frontend State Layer)
+Status: Milestone Complete
+Last activity: 2026-03-04 -- v1.0 Backend Foundation shipped
 
-Progress: [████░░░░░░] ~35%
+Progress: [████████░░] v1.0 shipped, Phases 4-8 remain
 
 ## Performance Metrics
 
@@ -44,47 +43,16 @@ Progress: [████░░░░░░] ~35%
 | 02-game-logic | 3 | 17 min | 5.7 min |
 | 03-api-routes | 2/2 | 14 min | 7 min |
 
-**Recent Trend:**
-- Last 5 plans: 02-02 (5 min), 02-01 (6 min), 02-03 (6 min), 03-01 (9 min), 03-02 (5 min)
-- Trend: Stable (TDD pattern efficient for well-defined endpoints)
-
-*Updated after each plan completion*
-
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- [Roadmap]: 8-phase bottom-up build order derived from research; DB models first, services second, API third, frontend state fourth, dashboard fifth, audio/animation sixth, analytics/settings seventh, quotes/polish eighth
-- [Roadmap]: Phase 7 (Analytics/Settings) depends on Phase 5 (not Phase 6), enabling potential parallel work with Phase 6
-- [01-01]: Synchronous SQLAlchemy chosen over async -- single-user SQLite, no async benefit
-- [01-01]: Achievement.metadata_json Python attr maps to "metadata" column to avoid Base.metadata conflict
-- [01-01]: Wish model uses cascade="all, delete-orphan" alongside DB ondelete=CASCADE
-- [01-02]: Seed functions use check-before-insert pattern for idempotency
-- [01-02]: Test conftest uses connection-level transactions with rollback for test isolation
-- [01-02]: 118 quotes with Vegeta savage roasts referencing specific saga moments for authenticity
-- [02-01]: Pure functions with no DB dependency -- composable by check_habit orchestrator in Plan 02-03
-- [02-01]: math.floor for all XP outputs -- consistent integer XP throughout the system
-- [02-01]: KeyError propagation for invalid importance -- validation at API layer
-- [02-02]: Services do NOT commit or add to session -- caller manages transaction boundaries
-- [02-02]: Capsule drop uses fallback order (epic -> rare -> common) when rolled tier has no rewards
-- [02-02]: Power level is purely additive (sum of all DailyLog.xp_earned), never decreases
-- [02-03]: check_habit() flushes but does not commit -- API layer manages transaction boundaries
-- [02-03]: Zenkai check only runs on first habit log of the day (was_new_log guard)
-- [02-03]: Capsule drops guarded by capsule_dropped flag -- re-checking never re-rolls RNG
-- [02-03]: Off-day service loads habit relationship via log.habit for attribute XP clawback
-- [03-01]: StaticPool + check_same_thread=False for TestClient SQLite thread safety
-- [03-01]: join_transaction_mode=create_savepoint so route commit() uses savepoints in tests
-- [03-01]: CRUD router pattern: model_dump(exclude_unset=True) for partial updates, 201/204 status codes
-- [03-02]: Quote selection uses priority-based trigger matching (transformation > perfect_day > zenkai > habit_complete)
-- [03-02]: Contribution graph generates entries for every date in range for complete grid rendering
-- [03-02]: Power and attributes endpoints share _build_attribute_details helper to avoid duplication
+Full v1.0 decision log archived to `.planning/milestones/v1.0-ROADMAP.md`.
 
 ### Pending Todos
 
-None yet.
+None.
 
 ### Blockers/Concerns
 
@@ -95,5 +63,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed 03-02-PLAN.md (habits, power, analytics endpoints; Phase 3 complete)
-Resume file: .planning/phases/03-api-routes-and-schemas/03-02-SUMMARY.md
+Stopped at: v1.0 Backend Foundation milestone completed
+Resume: `/gsd:new-milestone` to start next milestone

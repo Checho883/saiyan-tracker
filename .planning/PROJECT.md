@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A Dragon Ball Z-themed daily habit tracker built exclusively for Sergio. It weaponizes ADHD dopamine-seeking behavior through percentage-based daily completion, sound effects on every interaction, randomized loot boxes, screen-shaking 100% explosions, and a Dragon Ball collection macro-reward loop. No tasks, no punishment — only habits and positive reinforcement.
+A Dragon Ball Z-themed daily habit tracker built exclusively for Sergio. It weaponizes ADHD dopamine-seeking behavior through percentage-based daily completion, sound effects on every interaction, randomized loot boxes, screen-shaking 100% explosions, and a Dragon Ball collection macro-reward loop. No tasks, no punishment — only habits and positive reinforcement. The backend is fully built with 15 database models, complete game logic (XP, tiers, streaks, capsules, Dragon Balls, transformations), and 9 REST API endpoints — all testable via Swagger.
 
 ## Core Value
 
@@ -12,20 +12,26 @@ Every habit check must feel like something happened — a sound, a visual pulse,
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ SQLAlchemy models for all 15 tables with relationships, constraints, indexes — v1.0
+- ✓ XP formula with Kaio-ken tiers, attribute leveling, streak bonuses — v1.0
+- ✓ check_habit() atomic transaction (10 services in one commit) — v1.0
+- ✓ Capsule RNG with rarity fallback, Dragon Ball collection, wish granting — v1.0
+- ✓ Power level tracking with 10 transformation thresholds — v1.0
+- ✓ Zenkai recovery (halve streaks, +50% comeback bonus) — v1.0
+- ✓ Off-day system with XP/Dragon Ball clawback — v1.0
+- ✓ 9 REST API routers with full Pydantic schemas (222 tests) — v1.0
+- ✓ 118 seeded quotes across 6 characters and 7 trigger events — v1.0
 
 ### Active
 
 - [ ] Percentage-based daily aura (all habits equal weight toward 100%)
-- [ ] Saiyan attributes (STR/VIT/INT/KI) with per-habit XP
-- [ ] Kaio-ken tiered completion bonuses (50%/80%/100%)
-- [ ] Capsule Corp loot boxes (25% drop chance, user-configured rewards)
-- [ ] Dragon Ball collection (7 Perfect Days = Shenron wish)
+- [ ] Saiyan attributes (STR/VIT/INT/KI) with per-habit XP visualization
+- [ ] Capsule Corp loot boxes with visual drop/reveal animations
+- [ ] Dragon Ball tracker UI (7 slots with glow effects)
 - [ ] Full-screen 100% Perfect Day explosion with audio
 - [ ] Saiyan avatar with visual transformation (10 forms: Base through Beast)
 - [ ] Sound effects on every interaction (scouter beep, ki charge, explosions)
-- [ ] Forgiving Zenkai streaks (halved, never reset, +50% comeback bonus)
-- [ ] Character quote system (Goku, Vegeta, Piccolo, Whis, Beerus)
+- [ ] Character quote system with trigger routing and Vegeta escalation
 - [ ] Calendar heatmap with gold/blue/red/gray color coding
 - [ ] Attribute progression charts and per-habit contribution graphs
 - [ ] Settings: capsule reward CRUD, Shenron wish CRUD, sound toggle, theme
@@ -34,19 +40,17 @@ Every habit check must feel like something happened — a sound, a visual pulse,
 
 - Task management — habits only, no one-off tasks
 - Multi-user / authentication — single tenant, Sergio only
-- Mobile app — web-first (PWA later)
+- Mobile app — web-first (PWA later in v2)
 - Real-time sync — local SQLite, no cloud
 - Social features — solo tracker, no leaderboards with others
 
 ## Context
 
-- Sergio has ADHD and needs immediate, visceral feedback on every action
-- Past habit trackers failed due to boredom — invisible points don't create dopamine
-- Competitive personality means the 100% target becomes an obsession (by design)
-- 4-6 daily habits is the realistic scope (each = 16-25% of daily aura)
-- Building custom eliminates paying for apps that don't fit his brain
-- PRD v3 (PRD.md) contains the complete detailed specification
-- Dragon Ball Z theme is non-negotiable — real images, real quotes, real sounds
+Shipped v1.0 Backend Foundation with 5,967 LOC Python (3,292 app + 2,675 tests).
+Tech stack: Python 3.14 + FastAPI + SQLAlchemy 2.0 + SQLite.
+222 tests passing across 3 phases. All game mechanics verified via TDD.
+Frontend stack ready: React 19 + Vite 7 + TypeScript + Zustand + Framer Motion + Tailwind CSS v4.
+Next milestone covers Phases 4-8: frontend state, dashboard UI, audio/animations, analytics/settings, quote polish.
 
 ## Constraints
 
@@ -60,12 +64,17 @@ Every habit check must feel like something happened — a sound, a visual pulse,
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Pure habits, no tasks | Tasks compete with habits and enable hyperfocus exploits | — Pending |
-| Equal % weight per habit | Prevents gaming importance levels to skip habits | — Pending |
-| Importance affects XP only | Still rewards harder habits without breaking the 100% loop | — Pending |
-| Zenkai halve (not reset) streaks | Punishment kills ADHD motivation; forgiveness keeps you coming back | — Pending |
-| 25% capsule drop rate | High enough to feel frequent, low enough to stay exciting | — Pending |
-| 7 non-consecutive Perfect Days for Shenron | Achievable without requiring perfection streaks | — Pending |
+| Pure habits, no tasks | Tasks compete with habits and enable hyperfocus exploits | ✓ Good |
+| Equal % weight per habit | Prevents gaming importance levels to skip habits | ✓ Good |
+| Importance affects XP only | Still rewards harder habits without breaking the 100% loop | ✓ Good |
+| Zenkai halve (not reset) streaks | Punishment kills ADHD motivation; forgiveness keeps you coming back | ✓ Good |
+| 25% capsule drop rate | High enough to feel frequent, low enough to stay exciting | ✓ Good |
+| 7 non-consecutive Perfect Days for Shenron | Achievable without requiring perfection streaks | ✓ Good |
+| Synchronous SQLAlchemy over async | Single-user SQLite has no async benefit | ✓ Good |
+| check_habit() flushes but doesn't commit | API layer manages transaction boundaries | ✓ Good |
+| Services don't add to session | Caller manages transaction boundaries for composability | ✓ Good |
+| Pure functions for XP math | Composable, testable, no DB dependency | ✓ Good |
+| 8-phase bottom-up build order | DB → Services → API → Frontend → UI → Audio → Analytics → Polish | ✓ Good |
 
 ---
-*Last updated: 2026-03-03 after initialization*
+*Last updated: 2026-03-04 after v1.0 milestone*
