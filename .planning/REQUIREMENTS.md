@@ -15,7 +15,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **DB-04**: HabitLog stores attribute_xp_awarded and capsule_dropped per completion
 - [x] **DB-05**: DailyLog stores is_perfect_day, completion_tier, xp_earned, streak_multiplier, zenkai_bonus_applied, dragon_ball_earned
 - [x] **DB-06**: All date-based logic uses client-supplied local_date (not server datetime) to prevent timezone/midnight bugs
-- [ ] **DB-07**: Seed 100+ quotes with character, source_saga, trigger_event, transformation_level, and severity fields
+- [x] **DB-07**: Seed 100+ quotes with character, source_saga, trigger_event, transformation_level, and severity fields
 - [x] **DB-08**: Category model is visual-only (name, color, icon) — no point_multiplier
 
 ### Core Game Logic
@@ -163,7 +163,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DB-04 | Phase 1 | Complete |
 | DB-05 | Phase 1 | Complete |
 | DB-06 | Phase 1 | Complete |
-| DB-07 | Phase 1 | Pending |
+| DB-07 | Phase 1 | Complete |
 | DB-08 | Phase 1 | Complete |
 | GAME-01 | Phase 2 | Pending |
 | GAME-02 | Phase 2 | Pending |
