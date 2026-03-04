@@ -6,6 +6,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.database.base import Base
 
@@ -16,7 +17,12 @@ import app.models  # noqa: F401
 @pytest.fixture(scope="session")
 def engine():
     """Create an in-memory SQLite engine with FK enforcement."""
-    eng = create_engine("sqlite:///:memory:", echo=False)
+    eng = create_engine(
+        "sqlite:///:memory:",
+        echo=False,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
 
     @event.listens_for(eng, "connect")
     def set_sqlite_pragma(dbapi_connection, connection_record):
@@ -30,11 +36,23 @@ def engine():
 
 @pytest.fixture()
 def db(engine):
-    """Yield a fresh database session; rollback after each test."""
+    """Yield a fresh database session; rollback after each test.
+
+    Uses nested transactions so that db.commit() inside route handlers
+    releases a savepoint instead of the outer transaction.
+    """
     connection = engine.connect()
     transaction = connection.begin()
-    Session = sessionmaker(bind=connection)
+    Session = sessionmaker(bind=connection, join_transaction_mode="create_savepoint")
     session = Session()
+
+    # Use SAVEPOINT so route-level commit() doesn't end the outer txn
+    session.begin_nested()
+
+    @event.listens_for(session, "after_transaction_end")
+    def restart_savepoint(sess, trans):
+        if trans.nested and not trans._parent.nested:
+            sess.begin_nested()
 
     yield session
 
