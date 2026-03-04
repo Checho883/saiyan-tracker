@@ -15,14 +15,14 @@ async def lifespan(app: FastAPI):
     import app.models  # noqa: F401 — register all models with Base.metadata
     Base.metadata.create_all(bind=engine)
 
-    # Seed data (created in Plan 01-02)
-    # from app.database.seed import seed_all
-    # from app.database.session import SessionLocal
-    # db = SessionLocal()
-    # try:
-    #     seed_all(db)
-    # finally:
-    #     db.close()
+    # Seed default data on startup (idempotent)
+    from app.database.seed import seed_all
+    from app.database.session import SessionLocal
+    db = SessionLocal()
+    try:
+        seed_all(db)
+    finally:
+        db.close()
 
     yield
 
