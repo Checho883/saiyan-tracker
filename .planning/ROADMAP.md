@@ -49,11 +49,12 @@ Plans:
   3. Zenkai recovery halves streak on break (never resets to 0) and applies +50% bonus XP on first Perfect Day after recovery
   4. Collecting 7th Dragon Ball triggers wish-available state; granting wish resets dragon_balls_collected to 0
   5. Off days pause both streak types with no penalty and no XP awarded
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
+- [ ] 02-01-PLAN.md — XP formulas, tier system, attribute XP, streak bonus, attribute leveling (pure functions + tests)
+- [ ] 02-02-PLAN.md — Capsule RNG, Dragon Ball awards, wish granting, power level, transformations (DB services + tests)
+- [ ] 02-03-PLAN.md — Streak management, Zenkai recovery, off-day service, check_habit() atomic transaction (integration + tests)
 
 ### Phase 3: API Routes and Schemas
 **Goal**: All backend functionality is accessible via REST endpoints with typed request/response schemas, testable via Swagger UI and curl before any frontend exists
