@@ -1,17 +1,21 @@
+"""PowerLevel model — daily snapshot of cumulative power level."""
+
 import uuid
-from datetime import datetime, date
-from sqlalchemy import Column, String, Integer, Date, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
+
+from sqlalchemy import String, ForeignKey, Uuid
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.database.base import Base
+
 
 class PowerLevel(Base):
     __tablename__ = "power_levels"
-    
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
-    power_level_date = Column(Date, nullable=False, default=date.today)
-    total_power_points = Column(Integer, default=0)
-    transformation_level = Column(String(50), default="base")
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    user = relationship("User", back_populates="power_levels")
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    log_date: Mapped[str] = mapped_column(String(10))  # YYYY-MM-DD
+    total_points: Mapped[int] = mapped_column(default=0)
+    transformation_level: Mapped[str] = mapped_column(String(20), default="base")
+
+    # Relationships
+    user: Mapped["User"] = relationship()

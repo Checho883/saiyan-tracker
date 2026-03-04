@@ -1,25 +1,39 @@
+"""User model — single-user app, stores cumulative XP, power level, settings."""
+
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, DateTime
-from sqlalchemy.orm import relationship
+
+from sqlalchemy import String, Uuid
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.database.base import Base
+
 
 class User(Base):
     __tablename__ = "users"
-    
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    username = Column(String(255), unique=True, nullable=False)
-    email = Column(String(255), unique=True, nullable=False)
-    daily_point_minimum = Column(Integer, default=100)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    tasks = relationship("Task", back_populates="user")
-    categories = relationship("TaskCategory", back_populates="user")
-    completions = relationship("TaskCompletion", back_populates="user")
-    daily_logs = relationship("DailyLog", back_populates="user")
-    streak = relationship("Streak", back_populates="user", uselist=False)
-    power_levels = relationship("PowerLevel", back_populates="user")
-    off_days = relationship("OffDay", back_populates="user")
-    achievements = relationship("Achievement", back_populates="user")
-    habits = relationship("Habit", back_populates="user")
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    username: Mapped[str] = mapped_column(String(100), default="default-user")
+    display_name: Mapped[str] = mapped_column(String(100), default="Saiyan")
+    dragon_balls_collected: Mapped[int] = mapped_column(default=0)
+    wishes_granted: Mapped[int] = mapped_column(default=0)
+    str_xp: Mapped[int] = mapped_column(default=0)
+    vit_xp: Mapped[int] = mapped_column(default=0)
+    int_xp: Mapped[int] = mapped_column(default=0)
+    ki_xp: Mapped[int] = mapped_column(default=0)
+    power_level: Mapped[int] = mapped_column(default=0)
+    current_transformation: Mapped[str] = mapped_column(String(20), default="base")
+    sound_enabled: Mapped[bool] = mapped_column(default=True)
+    theme: Mapped[str] = mapped_column(String(10), default="dark")
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+
+    # Relationships
+    habits: Mapped[list["Habit"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    categories: Mapped[list["Category"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    habit_logs: Mapped[list["HabitLog"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    daily_logs: Mapped[list["DailyLog"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    streaks: Mapped[list["Streak"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    rewards: Mapped[list["Reward"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    wishes: Mapped[list["Wish"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    off_days: Mapped[list["OffDay"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    achievements: Mapped[list["Achievement"]] = relationship(back_populates="user", cascade="all, delete-orphan")

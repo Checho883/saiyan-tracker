@@ -1,7 +1,12 @@
+"""HabitLog model — one entry per habit per day with UniqueConstraint."""
+
 import uuid
-from datetime import datetime, date
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, Date, ForeignKey, Text, UniqueConstraint
-from sqlalchemy.orm import relationship
+from datetime import datetime
+from typing import Optional
+
+from sqlalchemy import String, Text, ForeignKey, UniqueConstraint, Uuid
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.database.base import Base
 
 
@@ -11,14 +16,16 @@ class HabitLog(Base):
         UniqueConstraint("habit_id", "log_date", name="uq_habit_log_date"),
     )
 
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
-    habit_id = Column(String, ForeignKey("habits.id"), nullable=False)
-    log_date = Column(Date, nullable=False, default=date.today)
-    completed = Column(Boolean, default=False)
-    completed_at = Column(DateTime, nullable=True)
-    points_awarded = Column(Integer, default=0)
-    notes = Column(Text, nullable=True)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    habit_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("habits.id"))
+    log_date: Mapped[str] = mapped_column(String(10))  # YYYY-MM-DD
+    completed: Mapped[bool] = mapped_column(default=False)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    attribute_xp_awarded: Mapped[int] = mapped_column(default=0)
+    capsule_dropped: Mapped[bool] = mapped_column(default=False)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    user = relationship("User")
-    habit = relationship("Habit", back_populates="logs")
+    # Relationships
+    user: Mapped["User"] = relationship(back_populates="habit_logs")
+    habit: Mapped["Habit"] = relationship(back_populates="logs")
