@@ -126,10 +126,10 @@ Plans:
   1. SoundProvider reads `rewardStore.settings.sound_enabled` on mount and syncs mute state — sound preference persists across page loads
   2. `powerStore.updateFromCheck` updates `transformationName` alongside `transformation` — ScouterHUD shows correct form name immediately after transformation
   3. CapsuleDropOverlay tap handler calls `play('reveal_chime')` during card-flip reveal — capsule open is no longer silent
-**Plans**: TBD
+**Plans**: 1 plan in 1 wave
 
 Plans:
-- [ ] 09-01: TBD
+- [ ] 09-01-PLAN.md — Fix SoundProvider settings sync, powerStore transformationName staleness, CapsuleDropOverlay reveal chime wiring
 
 ### Phase 10: Milestone Verification & Housekeeping
 **Goal**: Close all verification gaps from v1.1 audit — create missing VERIFICATION.md for Phases 7 and 8, fix Phase 7 SUMMARY frontmatter, and update all stale REQUIREMENTS.md checkboxes
