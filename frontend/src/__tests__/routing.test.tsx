@@ -12,18 +12,88 @@ vi.mock('../hooks/useInitApp', () => ({
   useInitApp: () => ({ isReady: true, error: null }),
 }));
 
-// Mock stores to prevent API calls
+// Mock stores to prevent API calls — selector-compatible mocks
+const habitState = {
+  todayHabits: [],
+  isLoading: false,
+  error: null,
+  fetchToday: vi.fn(),
+  checkHabit: vi.fn(),
+  createHabit: vi.fn(),
+  updateHabit: vi.fn(),
+  deleteHabit: vi.fn(),
+};
 vi.mock('../store/habitStore', () => ({
-  useHabitStore: Object.assign(() => ({}), { getState: () => ({}) }),
+  useHabitStore: Object.assign(
+    (selector: (s: typeof habitState) => unknown) => selector(habitState),
+    { getState: () => habitState }
+  ),
 }));
+
+const powerState = {
+  powerLevel: 0,
+  transformation: 'base',
+  transformationName: 'Base',
+  nextTransformation: null,
+  nextThreshold: null,
+  dragonBallsCollected: 0,
+  wishesGranted: 0,
+  attributes: [],
+  isLoading: false,
+  error: null,
+  fetchPower: vi.fn(),
+  updateFromCheck: vi.fn(),
+};
 vi.mock('../store/powerStore', () => ({
-  usePowerStore: Object.assign(() => ({}), { getState: () => ({}) }),
+  usePowerStore: Object.assign(
+    (selector: (s: typeof powerState) => unknown) => selector(powerState),
+    { getState: () => powerState }
+  ),
 }));
+
+const rewardState = {
+  categories: [],
+  rewards: [],
+  wishes: [],
+  settings: null,
+  isLoading: false,
+  error: null,
+  fetchCategories: vi.fn(),
+  fetchRewards: vi.fn(),
+  fetchWishes: vi.fn(),
+  fetchSettings: vi.fn(),
+  createReward: vi.fn(),
+  updateReward: vi.fn(),
+  deleteReward: vi.fn(),
+  createWish: vi.fn(),
+  updateWish: vi.fn(),
+  deleteWish: vi.fn(),
+  createCategory: vi.fn(),
+  updateCategory: vi.fn(),
+  deleteCategory: vi.fn(),
+  updateSettings: vi.fn(),
+};
 vi.mock('../store/rewardStore', () => ({
-  useRewardStore: Object.assign(() => ({}), { getState: () => ({}) }),
+  useRewardStore: Object.assign(
+    (selector: (s: typeof rewardState) => unknown) => selector(rewardState),
+    { getState: () => rewardState }
+  ),
 }));
+
+const uiState = {
+  animationQueue: [],
+  enqueueAnimation: vi.fn(),
+  dequeueAnimation: vi.fn(),
+  clearAnimations: vi.fn(),
+  activeModal: null as string | null,
+  openModal: vi.fn(),
+  closeModal: vi.fn(),
+};
 vi.mock('../store/uiStore', () => ({
-  useUiStore: Object.assign(() => ({}), { getState: () => ({}) }),
+  useUiStore: Object.assign(
+    (selector: (s: typeof uiState) => unknown) => selector(uiState),
+    { getState: () => uiState }
+  ),
 }));
 
 // Mock react-hot-toast
@@ -54,8 +124,8 @@ describe('Page Routing (STATE-06)', () => {
 
   test('renders Dashboard at root path', () => {
     renderApp('/');
-    expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
-    expect(screen.getByText('Habit tracking coming in Phase 5')).toBeInTheDocument();
+    // Dashboard now shows empty state when no habits
+    expect(screen.getByText('No habits yet')).toBeInTheDocument();
   });
 
   test('navigates to Analytics page', () => {
@@ -80,7 +150,7 @@ describe('Page Routing (STATE-06)', () => {
     const user = userEvent.setup();
     renderApp('/');
 
-    expect(screen.getByText('Habit tracking coming in Phase 5')).toBeInTheDocument();
+    expect(screen.getByText('No habits yet')).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: /analytics/i }));
     expect(screen.getByText('Charts coming in Phase 8')).toBeInTheDocument();
@@ -89,6 +159,6 @@ describe('Page Routing (STATE-06)', () => {
     expect(screen.getByText('Configuration coming in Phase 8')).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: /dashboard/i }));
-    expect(screen.getByText('Habit tracking coming in Phase 5')).toBeInTheDocument();
+    expect(screen.getByText('No habits yet')).toBeInTheDocument();
   });
 });

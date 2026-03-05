@@ -93,8 +93,9 @@ describe('Dashboard Habits (05-01)', () => {
   test('optimistic toggle applies completed class on click', async () => {
     mockCheckHabit.mockResolvedValueOnce(mockCheckResponse);
     const user = userEvent.setup();
-    render(<HabitCard habit={mockHabits[1]} />);
-    const card = screen.getByRole('button');
+    const { container } = render(<HabitCard habit={mockHabits[1]} />);
+    // Click the main card element (role="button" with the habit title)
+    const card = container.firstElementChild as HTMLElement;
     await user.click(card);
     expect(mockCheckHabit).toHaveBeenCalledWith(
       'habit-2',

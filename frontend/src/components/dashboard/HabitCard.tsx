@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
-import { Check } from 'lucide-react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { Check, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import type { HabitTodayResponse, Attribute } from '../../types';
 import { useHabitStore } from '../../store/habitStore';
+import { useUiStore } from '../../store/uiStore';
 import { XpPopup } from './XpPopup';
 import { showCharacterQuote } from './CharacterQuote';
 
@@ -31,10 +32,26 @@ interface HabitCardProps {
 
 export function HabitCard({ habit }: HabitCardProps) {
   const checkHabit = useHabitStore((s) => s.checkHabit);
+  const openModal = useUiStore((s) => s.openModal);
   const [showXp, setShowXp] = useState(false);
   const [xpAmount, setXpAmount] = useState(0);
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!showMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showMenu]);
 
   const handleTap = useCallback(async () => {
+    if (showMenu) return; // Don't trigger check when menu is open
     try {
       const today = new Date().toISOString().slice(0, 10);
       const result = await checkHabit(habit.id, today);
@@ -50,7 +67,7 @@ export function HabitCard({ habit }: HabitCardProps) {
     } catch {
       // Error handled by store
     }
-  }, [checkHabit, habit.id]);
+  }, [checkHabit, habit.id, showMenu]);
 
   return (
     <div
@@ -67,7 +84,7 @@ export function HabitCard({ habit }: HabitCardProps) {
         habit.completed ? 'opacity-50' : ''
       }`}
     >
-      {/* Top row: emoji + title + check indicator */}
+      {/* Top row: emoji + title + check indicator + menu */}
       <div className="flex items-center gap-2">
         <span className="text-base">{habit.icon_emoji}</span>
         <span className="text-text-primary text-sm font-medium flex-1 truncate">
@@ -76,6 +93,47 @@ export function HabitCard({ habit }: HabitCardProps) {
         {habit.completed && (
           <Check className="w-4 h-4 text-success flex-shrink-0" />
         )}
+
+        {/* More options menu */}
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowMenu(!showMenu);
+            }}
+            className="p-1 rounded hover:bg-space-600 transition-colors"
+            aria-label="Habit options"
+          >
+            <MoreVertical className="w-4 h-4 text-text-muted" />
+          </button>
+
+          {showMenu && (
+            <div className="absolute right-0 top-full mt-1 bg-space-800 border border-space-600 rounded-lg shadow-xl z-10 min-w-[120px]">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openModal(`habit-edit-${habit.id}`);
+                  setShowMenu(false);
+                }}
+                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-text-primary hover:bg-space-700 rounded-t-lg"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Edit
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openModal(`habit-delete-${habit.id}`);
+                  setShowMenu(false);
+                }}
+                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-danger hover:bg-space-700 rounded-b-lg"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Bottom row: attribute badge + streak + importance */}
