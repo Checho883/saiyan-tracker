@@ -111,6 +111,23 @@ vi.mock('../audio/useAudio', () => ({
   }),
 }));
 
+// Mock recharts to avoid JSDOM issues
+vi.mock('recharts', () => ({
+  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AreaChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Area: () => null,
+  LineChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Line: () => null,
+  XAxis: () => null,
+  YAxis: () => null,
+  Tooltip: () => null,
+}));
+
+// Mock analytics data hook
+vi.mock('../hooks/useAnalyticsData', () => ({
+  useAnalyticsData: () => ({ summary: null, calendarDays: [], isLoading: false }),
+}));
+
 function renderApp(initialRoute = '/') {
   return render(
     <MemoryRouter initialEntries={[initialRoute]}>
@@ -140,13 +157,11 @@ describe('Page Routing (STATE-06)', () => {
   test('navigates to Analytics page', () => {
     renderApp('/analytics');
     expect(screen.getByRole('heading', { name: 'Analytics' })).toBeInTheDocument();
-    expect(screen.getByText('Charts coming in Phase 8')).toBeInTheDocument();
   });
 
   test('navigates to Settings page', () => {
     renderApp('/settings');
     expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
-    expect(screen.getByText('Configuration coming in Phase 8')).toBeInTheDocument();
   });
 
   test('bottom tab bar shows 3 navigation links', () => {
@@ -162,10 +177,10 @@ describe('Page Routing (STATE-06)', () => {
     expect(screen.getByText('No habits yet')).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: /analytics/i }));
-    expect(screen.getByText('Charts coming in Phase 8')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Analytics' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: /settings/i }));
-    expect(screen.getByText('Configuration coming in Phase 8')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: /dashboard/i }));
     expect(screen.getByText('No habits yet')).toBeInTheDocument();
