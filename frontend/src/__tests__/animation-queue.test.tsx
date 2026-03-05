@@ -29,9 +29,19 @@ vi.mock('motion/react', () => {
 
 import { AnimationPlayer } from '../components/animations/AnimationPlayer';
 import { useUiStore } from '../store/uiStore';
+import { useRewardStore } from '../store/rewardStore';
 
 beforeEach(() => {
+  vi.useFakeTimers();
   useUiStore.setState({ animationQueue: [] });
+  // Default: active wish so Shenron doesn't show warning
+  useRewardStore.setState({
+    wishes: [{ id: '1', title: 'Wish', is_active: true, times_wished: 0 } as any],
+  });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('AnimationPlayer (ANIM-01)', () => {
@@ -40,43 +50,50 @@ describe('AnimationPlayer (ANIM-01)', () => {
     expect(container.querySelector('[data-testid="animation-overlay"]')).toBeNull();
   });
 
-  it('renders current animation event when queue has items', () => {
+  it('renders animation overlay when queue has perfect_day event', () => {
     useUiStore.getState().enqueueAnimation({ type: 'perfect_day' });
     render(<AnimationPlayer />);
-    expect(screen.getByTestId('animation-overlay')).toBeInTheDocument();
-    expect(screen.getByText('PERFECT DAY!')).toBeInTheDocument();
+    const overlay = screen.getByTestId('animation-overlay');
+    expect(overlay).toBeInTheDocument();
+    expect(overlay).toHaveAttribute('data-event-type', 'perfect_day');
   });
 
-  it('renders capsule_drop event with reward info', () => {
+  it('renders perfect_day overlay component', () => {
+    useUiStore.getState().enqueueAnimation({ type: 'perfect_day' });
+    render(<AnimationPlayer />);
+    expect(screen.getByTestId('perfect-day-overlay')).toBeInTheDocument();
+  });
+
+  it('renders capsule_drop overlay component', () => {
     useUiStore.getState().enqueueAnimation({
       type: 'capsule_drop',
       rewardTitle: 'Senzu Bean',
       rarity: 'rare',
     });
     render(<AnimationPlayer />);
-    expect(screen.getByText('CAPSULE: Senzu Bean')).toBeInTheDocument();
+    expect(screen.getByTestId('capsule-drop-overlay')).toBeInTheDocument();
   });
 
-  it('renders transformation event with form name', () => {
+  it('renders transformation overlay component', () => {
     useUiStore.getState().enqueueAnimation({
       type: 'transformation',
       form: 'ssj',
       name: 'Super Saiyan',
     });
     render(<AnimationPlayer />);
-    expect(screen.getByText('TRANSFORMATION: Super Saiyan')).toBeInTheDocument();
+    expect(screen.getByTestId('transformation-overlay')).toBeInTheDocument();
   });
 
-  it('renders shenron event', () => {
+  it('renders shenron ceremony component', () => {
     useUiStore.getState().enqueueAnimation({ type: 'shenron' });
     render(<AnimationPlayer />);
-    expect(screen.getByText('SHENRON CEREMONY')).toBeInTheDocument();
+    expect(screen.getByTestId('shenron-ceremony')).toBeInTheDocument();
   });
 
-  it('renders dragon_ball event with count', () => {
+  it('renders dragon_ball trajectory component', () => {
     useUiStore.getState().enqueueAnimation({ type: 'dragon_ball', count: 3 });
     render(<AnimationPlayer />);
-    expect(screen.getByText('DRAGON BALL #3')).toBeInTheDocument();
+    expect(screen.getByTestId('dragon-ball-trajectory')).toBeInTheDocument();
   });
 
   it('filters out xp_popup events (inline, not queued)', () => {
@@ -105,6 +122,6 @@ describe('AnimationPlayer (ANIM-01)', () => {
     });
     useUiStore.getState().enqueueAnimation({ type: 'perfect_day' });
     render(<AnimationPlayer />);
-    expect(screen.getByText('PERFECT DAY!')).toBeInTheDocument();
+    expect(screen.getByTestId('perfect-day-overlay')).toBeInTheDocument();
   });
 });

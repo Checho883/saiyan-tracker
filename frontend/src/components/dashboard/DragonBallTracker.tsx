@@ -4,7 +4,7 @@ interface DragonBallTrackerProps {
 
 export function DragonBallTracker({ collected }: DragonBallTrackerProps) {
   return (
-    <div className="flex items-center justify-center gap-2">
+    <div className="flex items-center justify-center gap-2" data-testid="dragon-ball-tracker">
       {Array.from({ length: 7 }, (_, i) => {
         const isFilled = i < collected;
         return (

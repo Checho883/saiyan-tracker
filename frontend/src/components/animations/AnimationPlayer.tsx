@@ -2,6 +2,11 @@ import { useRef, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useUiStore } from '../../store/uiStore';
 import type { AnimationEvent } from '../../store/uiStore';
+import { PerfectDayOverlay } from './PerfectDayOverlay';
+import { CapsuleDropOverlay } from './CapsuleDropOverlay';
+import { DragonBallTrajectory } from './DragonBallTrajectory';
+import { TransformationOverlay } from './TransformationOverlay';
+import { ShenronCeremony } from './ShenronCeremony';
 
 /** Event types that are queued (full-screen overlays). Others are inline. */
 const QUEUED_TYPES = new Set([
@@ -43,16 +48,14 @@ export function AnimationPlayer() {
       {current && !isDone && (
         <motion.div
           key={`${current.type}-${queueIdRef.current}`}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 text-white text-2xl"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.15 }}
           data-testid="animation-overlay"
           data-event-type={current.type}
-          onClick={handleComplete}
         >
-          {renderOverlayContent(current)}
+          {renderOverlay(current, handleComplete)}
         </motion.div>
       )}
     </AnimatePresence>
@@ -60,22 +63,38 @@ export function AnimationPlayer() {
 }
 
 /**
- * Placeholder renderer for animation events.
- * Plan 02 replaces this with actual overlay components.
+ * Dispatches to the correct overlay component based on event type.
  */
-function renderOverlayContent(event: AnimationEvent): string {
+function renderOverlay(
+  event: AnimationEvent,
+  onComplete: () => void,
+): React.ReactNode {
   switch (event.type) {
     case 'perfect_day':
-      return 'PERFECT DAY!';
+      return <PerfectDayOverlay onComplete={onComplete} />;
     case 'capsule_drop':
-      return `CAPSULE: ${event.rewardTitle}`;
+      return (
+        <CapsuleDropOverlay
+          rewardTitle={event.rewardTitle}
+          rarity={event.rarity}
+          onComplete={onComplete}
+        />
+      );
     case 'dragon_ball':
-      return `DRAGON BALL #${event.count}`;
+      return (
+        <DragonBallTrajectory count={event.count} onComplete={onComplete} />
+      );
     case 'transformation':
-      return `TRANSFORMATION: ${event.name}`;
+      return (
+        <TransformationOverlay
+          form={event.form}
+          name={event.name}
+          onComplete={onComplete}
+        />
+      );
     case 'shenron':
-      return 'SHENRON CEREMONY';
+      return <ShenronCeremony onComplete={onComplete} />;
     default:
-      return '';
+      return null;
   }
 }
