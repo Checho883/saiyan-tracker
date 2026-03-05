@@ -3,32 +3,47 @@ node_modules/
 frontend/node_modules/
 
 # Build output
+dist/
 frontend/dist/
 
 # Python
-backend/venv/
-backend/data/
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
+*.egg-info/
+*.egg
+.venv/
+venv/
+Include/
+Lib/
+Scripts/
+pyvenv.cfg
+
+# Environment
+.env
+.env.local
+.env.*.local
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Env
-.env
-.env.local
+# Database
+*.db
+*.db-journal
 
-# Screenshots (test artifacts)
-*.png
+# Vite
+*.local
 
-# Playwright
-.playwright-mcp/
+# Testing
+coverage/
 
-# Claude
-.claude/
+# Logs
+*.log
+npm-debug.log*
