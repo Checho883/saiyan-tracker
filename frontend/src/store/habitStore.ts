@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import toast from 'react-hot-toast';
-import type { HabitTodayResponse, CheckHabitResponse } from '../types';
+import type { HabitTodayResponse, CheckHabitResponse, HabitCreate, HabitUpdate } from '../types';
 import { habitsApi } from '../services/api';
 import { usePowerStore } from './powerStore';
 import { useUiStore } from './uiStore';
@@ -12,6 +12,9 @@ interface HabitState {
 
   fetchToday: (date: string) => Promise<void>;
   checkHabit: (habitId: string, date: string) => Promise<CheckHabitResponse>;
+  createHabit: (data: HabitCreate) => Promise<void>;
+  updateHabit: (id: string, data: HabitUpdate) => Promise<void>;
+  deleteHabit: (id: string) => Promise<void>;
 }
 
 export const useHabitStore = create<HabitState>((set, get) => ({
@@ -117,6 +120,37 @@ export const useHabitStore = create<HabitState>((set, get) => ({
       set({ todayHabits: prev, error: (err as Error).message });
       toast.error((err as Error).message, { duration: 4000 });
       throw err;
+    }
+  },
+  createHabit: async (data) => {
+    try {
+      await habitsApi.create(data);
+      const today = new Date().toISOString().split('T')[0];
+      await get().fetchToday(today);
+    } catch (err) {
+      const message = (err as Error).message;
+      toast.error(message, { duration: 4000 });
+    }
+  },
+
+  updateHabit: async (id, data) => {
+    try {
+      await habitsApi.update(id, data);
+      const today = new Date().toISOString().split('T')[0];
+      await get().fetchToday(today);
+    } catch (err) {
+      const message = (err as Error).message;
+      toast.error(message, { duration: 4000 });
+    }
+  },
+
+  deleteHabit: async (id) => {
+    try {
+      await habitsApi.delete(id);
+      set({ todayHabits: get().todayHabits.filter((h) => h.id !== id) });
+    } catch (err) {
+      const message = (err as Error).message;
+      toast.error(message, { duration: 4000 });
     }
   },
 }));
