@@ -21,7 +21,7 @@ Requirements for the frontend experience. Each maps to roadmap phases.
 - [ ] **DASH-01**: User can see all active habits grouped by category with completion status
 - [ ] **DASH-02**: User can check/uncheck a habit and see optimistic UI toggle with rollback on error
 - [ ] **DASH-03**: Daily aura progress bar animates from 0% to current completion with spring physics
-- [ ] **DASH-04**: Aura bar shows tier label (Kaio-ken x3/x10/x20) updating at 50%/80%/100% thresholds
+- [x] **DASH-04**: Aura bar shows tier label (Kaio-ken x3/x10/x20) updating at 50%/80%/100% thresholds
 - [ ] **DASH-05**: Four RPG attribute bars (STR/VIT/INT/KI) display current level and XP fill toward next level
 - [ ] **DASH-06**: Dragon Ball tracker shows 7 slots with glowing filled balls and dim empty slots
 - [ ] **DASH-07**: Saiyan avatar displays current transformation form with form-appropriate aura effect
@@ -34,10 +34,10 @@ Requirements for the frontend experience. Each maps to roadmap phases.
 
 ### Audio
 
-- [ ] **AUDIO-01**: SoundProvider context wraps app with global sound toggle and playSound method
+- [x] **AUDIO-01**: SoundProvider context wraps app with global sound toggle and playSound method
 - [ ] **AUDIO-02**: Habit check triggers scouter beep sound
 - [ ] **AUDIO-03**: Tier change triggers power-up burst sound
-- [ ] **AUDIO-04**: Capsule drop triggers capsule pop sound; capsule open triggers reveal chime
+- [x] **AUDIO-04**: Capsule drop triggers capsule pop sound; capsule open triggers reveal chime
 - [ ] **AUDIO-05**: Perfect Day (100%) triggers explosion/SSJ scream sound
 - [ ] **AUDIO-06**: Dragon Ball earned triggers radar ping sound
 - [ ] **AUDIO-07**: Shenron ceremony triggers thunder + roar sound
@@ -66,7 +66,7 @@ Requirements for the frontend experience. Each maps to roadmap phases.
 
 ### Settings
 
-- [ ] **SET-01**: User can toggle sound effects on/off (persisted via backend)
+- [x] **SET-01**: User can toggle sound effects on/off (persisted via backend)
 - [ ] **SET-02**: User can switch between dark and light theme (persisted via backend)
 - [ ] **SET-03**: User can CRUD capsule rewards with rarity assignment (common/rare/epic) and see distribution stats
 - [ ] **SET-04**: User can CRUD Shenron wishes with active toggle and times-wished count
@@ -122,7 +122,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DASH-01 | Phase 5 | Pending |
 | DASH-02 | Phase 5 | Pending |
 | DASH-03 | Phase 5 | Pending |
-| DASH-04 | Phase 9 | Pending |
+| DASH-04 | Phase 9 | Complete |
 | DASH-05 | Phase 5 | Pending |
 | DASH-06 | Phase 5 | Pending |
 | DASH-07 | Phase 5 | Pending |
@@ -132,10 +132,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DASH-11 | Phase 5 | Pending |
 | DASH-12 | Phase 5 | Pending |
 | DASH-13 | Phase 5 | Pending |
-| AUDIO-01 | Phase 9 | Pending |
+| AUDIO-01 | Phase 9 | Complete |
 | AUDIO-02 | Phase 6 | Pending |
 | AUDIO-03 | Phase 6 | Pending |
-| AUDIO-04 | Phase 9 | Pending |
+| AUDIO-04 | Phase 9 | Complete |
 | AUDIO-05 | Phase 6 | Pending |
 | AUDIO-06 | Phase 6 | Pending |
 | AUDIO-07 | Phase 6 | Pending |
@@ -155,7 +155,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ANLYT-03 | Phase 10 | Pending |
 | ANLYT-04 | Phase 10 | Pending |
 | ANLYT-05 | Phase 10 | Pending |
-| SET-01 | Phase 10 | Pending |
+| SET-01 | Phase 10 | Complete |
 | SET-02 | Phase 10 | Pending |
 | SET-03 | Phase 10 | Pending |
 | SET-04 | Phase 10 | Pending |
