@@ -47,11 +47,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. TypeScript types in `types/index.ts` match all backend API response schemas and the API client layer successfully calls all 9 backend endpoints with typed request/response (verified by fetching today's habits from a running backend)
   3. Four Zustand stores (habitStore, powerStore, rewardStore, uiStore) hold client state with selector discipline -- `useShallow` used for multi-value selections, no bare `useStore()` calls
   4. Dark theme is applied by default with DBZ color tokens (deep space background, glowing borders, orange/blue accents) via CSS custom properties in Tailwind v4 `@theme` config
-**Plans**: TBD
+**Plans**: 2 plans in 2 waves
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
+- [ ] 04-01-PLAN.md — Vite 7 scaffold, Tailwind v4 dark theme, TypeScript types, ky API client
+- [ ] 04-02-PLAN.md — Zustand stores, useInitApp hydration, React Router 7 routing, AppShell + BottomTabBar + LoadingScreen
 
 ### Phase 5: Dashboard Core & Habit Management
 **Goal**: Users can view all their habits, check them off with optimistic UI, and see every game-state display (aura %, attributes, Dragon Balls, avatar, streaks, quotes, XP popup) update from real backend data -- plus create, edit, and delete habits
