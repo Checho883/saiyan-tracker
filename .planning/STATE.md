@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: The Dopamine Layer
-status: unknown
-last_updated: "2026-03-05T18:42:46.528Z"
+status: complete
+last_updated: "2026-03-05T19:30:00.000Z"
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
+  total_phases: 5
+  completed_phases: 5
+  total_plans: 14
+  completed_plans: 14
 ---
 
 # Project State
@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Every habit check must feel like something happened -- a sound, a visual pulse, a number going up. If the app is silent and still, it has failed.
-**Current focus:** Phase 8 — Analytics & Settings
+**Current focus:** Milestone v1.1 complete — all phases shipped
 
 ## Current Position
 
-Phase: 7 of 8 (Animation Layer)
+Phase: 8 of 8 (Analytics & Settings)
 Plan: 2 of 2 in current phase (PHASE COMPLETE)
 Status: Phase Complete
-Last activity: 2026-03-05 — Completed 07-02 (Animation Overlays)
+Last activity: 2026-03-05 — Completed 08-02 (Settings Page)
 
 Progress: [██████████] 100% (2/2 plans in phase)
 
@@ -61,6 +61,8 @@ Full v1.0 decision log archived to `.planning/milestones/v1.0-ROADMAP.md`.
 - [Phase 04-03]: React Router 7 SPA shell with bottom tab navigation, AppShell layout route with loading guard, Toaster for notifications
 - [Phase 07-01]: Installed motion library, AnimationPlayer queue consumer with AnimatePresence mode="wait", TierChangeBanner inline animation, shared utilities (springs, shake, particles, skip hook), MotionConfig reducedMotion="user"
 - [Phase 07-02]: Five animation overlays (PerfectDay, Capsule, DragonBall, Transformation, Shenron) wired into AnimationPlayer dispatcher with tap-to-skip and wish enforcement
+- [Phase 08-01]: Recharts 3.7.x with react-is override, calendar heatmap (div-based CSS grid, 4-color coding), neon glow SVG filter for charts, Scouter HUD stat cards with angular clip-path, total XP area chart with static attribute bars
+- [Phase 08-02]: useTheme hook with CSS class sync, CollapsibleSection accordion, PreferencesSection (sound/theme/name/off-day), CRUD bottom sheets for rewards/wishes/categories, generic DeleteConfirmDialog, HeroSection display name plate
 
 ### Pending Todos
 
@@ -68,13 +70,11 @@ None.
 
 ### Blockers/Concerns
 
-- 10 transformation form art assets must be sourced before Phase 5 avatar component
-- use-sound 5.0.0 React 19 compatibility unverified -- fallback is direct Howler.js (15-line hook in STACK.md)
-- Sound asset sourcing (~10 clips) must happen before Phase 6 -- source from Freesound.org (CC0), compile sprite sheet
-- recharts@3.7.x may need `react-is` in package.json overrides -- resolve at Phase 8 install time
+- recharts@3.7.x react-is override resolved in Phase 8 (package.json overrides)
+- All v1.1 phases complete — ready for milestone audit
 
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 07-02-PLAN.md (Phase 7 complete)
+Stopped at: Completed 08-02-PLAN.md (Phase 8 complete, milestone v1.1 complete)
 Resume file: None

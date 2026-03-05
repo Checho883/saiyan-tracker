@@ -34,7 +34,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 5: Dashboard Core & Habit Management** - Habit list with check/uncheck, aura bar, attributes, Dragon Balls, avatar, streaks, quotes, XP popup, habit CRUD
 - [ ] **Phase 6: Audio System** - SoundProvider with Howler.js sprite sheet, sound effects on every interaction, global mute toggle
 - [ ] **Phase 7: Animation Layer** - Animation queue, tier-change flash, Perfect Day explosion, capsule reveal, Dragon Ball trajectory, transformation, Shenron ceremony
-- [ ] **Phase 8: Analytics & Settings** - Calendar heatmap, progression charts, summary stats, rewards/wishes/categories CRUD, off-day management, preferences
+- [x] **Phase 8: Analytics & Settings** - Calendar heatmap, progression charts, summary stats, rewards/wishes/categories CRUD, off-day management, preferences (completed 2026-03-05)
 
 ## Phase Details
 
@@ -112,8 +112,8 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 08-01: TBD
-- [ ] 08-02: TBD
+- [x] 08-01-PLAN.md — Analytics page with recharts, calendar heatmap, stat cards, attribute/power charts, neon glow SVG filters (completed 2026-03-05)
+- [x] 08-02-PLAN.md — Settings page with preferences (sound/theme/name/off-day), CRUD sections for rewards/wishes/categories via bottom sheet forms, useTheme hook, HeroSection display name (completed 2026-03-05)
 
 ## Progress
 
@@ -127,7 +127,7 @@ Note: Phase 8 depends on Phase 5 (not Phase 7), so Phases 6/7 and 8 could theore
 | 2. Core Game Logic Services | v1.0 | 3/3 | Complete | 2026-03-04 |
 | 3. API Routes and Schemas | v1.0 | 2/2 | Complete | 2026-03-04 |
 | 4. Project Setup & Foundation | 4/4 | Complete   | 2026-03-05 | - |
-| 5. Dashboard Core & Habit Management | v1.1 | 0/? | Not started | - |
-| 6. Audio System | v1.1 | 0/? | Not started | - |
-| 7. Animation Layer | v1.1 | 0/? | Not started | - |
-| 8. Analytics & Settings | v1.1 | 0/? | Not started | - |
+| 5. Dashboard Core & Habit Management | v1.1 | 4/4 | Complete | 2026-03-05 |
+| 6. Audio System | v1.1 | 1/1 | Complete | 2026-03-05 |
+| 7. Animation Layer | v1.1 | 2/2 | Complete | 2026-03-05 |
+| 8. Analytics & Settings | v1.1 | 2/2 | Complete | 2026-03-05 |
