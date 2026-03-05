@@ -1,4 +1,25 @@
 import '@testing-library/jest-dom/vitest';
+import { vi } from 'vitest';
+
+// Mock Howler.js for test environment (jsdom has no Web Audio API)
+vi.mock('howler', () => {
+  class MockHowl {
+    play = vi.fn().mockReturnValue(1);
+    rate = vi.fn();
+    unload = vi.fn();
+    on = vi.fn();
+    off = vi.fn();
+    constructor(_opts?: Record<string, unknown>) {}
+  }
+  return {
+    Howl: MockHowl,
+    Howler: {
+      mute: vi.fn(),
+      volume: vi.fn(),
+      ctx: { state: 'running' },
+    },
+  };
+});
 
 // Polyfill IntersectionObserver for jsdom
 class MockIntersectionObserver {
