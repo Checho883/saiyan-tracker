@@ -1,166 +1,122 @@
-import axios from 'axios';
+import ky from 'ky';
 import type {
-  Task, TaskCategory, TaskCompletion, CompletionResult,
-  PowerLevel, TransformationInfo, PowerHistoryEntry,
-  Quote, WeeklyAnalytics, CategoryBreakdown,
-  OffDay, UserSettings,
-  Habit, HabitToday, HabitCheckResult, HabitCalendarResponse,
-} from '@/types';
+  HabitResponse,
+  HabitTodayResponse,
+  HabitCreate,
+  HabitUpdate,
+  CheckHabitRequest,
+  CheckHabitResponse,
+  PowerResponse,
+  AttributeDetail,
+  CategoryResponse,
+  CategoryCreate,
+  CategoryUpdate,
+  RewardResponse,
+  RewardCreate,
+  RewardUpdate,
+  WishResponse,
+  WishCreate,
+  WishUpdate,
+  WishGrantRequest,
+  WishGrantResponse,
+  OffDayResponse,
+  OffDayCreate,
+  OffDayMarkResponse,
+  QuoteResponse,
+  SettingsResponse,
+  SettingsUpdate,
+  AnalyticsSummary,
+  CapsuleHistoryItem,
+  WishHistoryItem,
+  CalendarDay,
+  ContributionDay,
+} from '../types';
 
-const api = axios.create({
-  baseURL: '/api/v1',
-  headers: { 'Content-Type': 'application/json' },
+const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000/api/v1';
+
+export const api = ky.extend({
+  prefixUrl: API_BASE,
+  retry: { limit: 2, methods: ['get'] },
+  hooks: {
+    afterResponse: [
+      async (_request, _options, response) => {
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error((body as Record<string, string>).detail ?? `HTTP ${response.status}`);
+        }
+      },
+    ],
+  },
 });
 
-// ============ HABITS ============
-
-export const habitApi = {
-  list: (includeInactive = false) =>
-    api.get<Habit[]>('/habits/', { params: { include_inactive: includeInactive } }).then(r => r.data),
-
-  create: (data: {
-    category_id: string;
-    title: string;
-    description?: string;
-    icon_emoji?: string;
-    base_points?: number;
-    frequency?: string;
-    custom_days?: string[];
-    target_time?: string;
-    is_temporary?: boolean;
-    end_date?: string;
-  }) => api.post<Habit>('/habits/', data).then(r => r.data),
-
-  update: (id: string, data: Partial<Habit>) =>
-    api.put<Habit>(`/habits/${id}`, data).then(r => r.data),
-
-  delete: (id: string) =>
-    api.delete(`/habits/${id}`).then(r => r.data),
-
-  today: () =>
-    api.get<HabitToday[]>('/habits/today/list').then(r => r.data),
-
-  check: (id: string) =>
-    api.post<HabitCheckResult>(`/habits/${id}/check`).then(r => r.data),
-
-  calendar: (year?: number, month?: number) =>
-    api.get<HabitCalendarResponse>('/habits/calendar/all', { params: { year, month } }).then(r => r.data),
-
-  stats: (id: string) =>
-    api.get(`/habits/${id}/stats`).then(r => r.data),
-
-  reorder: (habits: { id: string; sort_order: number }[]) =>
-    api.put('/habits/reorder', { habits }).then(r => r.data),
+// Habits
+export const habitsApi = {
+  list: () => api.get('habits/').json<HabitResponse[]>(),
+  create: (data: HabitCreate) => api.post('habits/', { json: data }).json<HabitResponse>(),
+  get: (id: string) => api.get(`habits/${id}`).json<HabitResponse>(),
+  update: (id: string, data: HabitUpdate) => api.put(`habits/${id}`, { json: data }).json<HabitResponse>(),
+  delete: (id: string) => api.delete(`habits/${id}`),
+  todayList: (date: string) => api.get('habits/today/list', { searchParams: { local_date: date } }).json<HabitTodayResponse[]>(),
+  check: (id: string, data: CheckHabitRequest) => api.post(`habits/${id}/check`, { json: data }).json<CheckHabitResponse>(),
+  calendarAll: (month: string) => api.get('habits/calendar/all', { searchParams: { month } }).json<CalendarDay[]>(),
+  contributionGraph: (id: string, days?: number) =>
+    api.get(`habits/${id}/contribution-graph`, { searchParams: days ? { days } : {} }).json<ContributionDay[]>(),
 };
 
-// ============ TASKS ============
-
-export const taskApi = {
-  list: (params?: { energy_level?: string; category_id?: string }) =>
-    api.get<Task[]>('/tasks/', { params }).then(r => r.data),
-
-  get: (id: string) =>
-    api.get<Task>(`/tasks/${id}`).then(r => r.data),
-
-  create: (data: {
-    category_id: string;
-    title: string;
-    description?: string;
-    base_points?: number;
-    energy_level?: string;
-    estimated_minutes?: number;
-  }) => api.post<Task>('/tasks/', data).then(r => r.data),
-
-  update: (id: string, data: Partial<Task>) =>
-    api.put<Task>(`/tasks/${id}`, data).then(r => r.data),
-
-  delete: (id: string) =>
-    api.delete(`/tasks/${id}`).then(r => r.data),
-};
-
-// ============ CATEGORIES ============
-
-export const categoryApi = {
-  list: () =>
-    api.get<TaskCategory[]>('/categories/').then(r => r.data),
-
-  create: (data: { name: string; point_multiplier: number; color_code: string; icon?: string }) =>
-    api.post<TaskCategory>('/categories/', data).then(r => r.data),
-
-  update: (id: string, data: { name: string; point_multiplier: number; color_code: string; icon?: string }) =>
-    api.put<TaskCategory>(`/categories/${id}`, data).then(r => r.data),
-};
-
-// ============ COMPLETIONS ============
-
-export const completionApi = {
-  complete: (data: { task_id: string; energy_at_completion?: string; notes?: string }) =>
-    api.post<CompletionResult>('/completions/', data).then(r => r.data),
-
-  today: () =>
-    api.get<TaskCompletion[]>('/completions/today').then(r => r.data),
-
-  undo: (id: string) =>
-    api.delete(`/completions/${id}`).then(r => r.data),
-};
-
-// ============ POWER ============
-
+// Power
 export const powerApi = {
-  current: () =>
-    api.get<PowerLevel>('/power/current').then(r => r.data),
-
-  transformations: () =>
-    api.get<TransformationInfo[]>('/power/transformations').then(r => r.data),
-
-  history: (days: number = 30) =>
-    api.get<PowerHistoryEntry[]>('/power/history', { params: { days } }).then(r => r.data),
+  current: () => api.get('power/current').json<PowerResponse>(),
+  attributes: () => api.get('attributes/').json<AttributeDetail[]>(),
 };
 
-// ============ QUOTES ============
-
-export const quoteApi = {
-  vegetaRoast: (missedDays: number = 1) =>
-    api.get<Quote>('/quotes/vegeta/roast', { params: { missed_days: missedDays } }).then(r => r.data),
-
-  gokuMotivation: (context: string = 'motivation') =>
-    api.get<Quote>('/quotes/goku/motivation', { params: { context } }).then(r => r.data),
-
-  contextual: () =>
-    api.get<Quote>('/quotes/contextual').then(r => r.data),
+// Categories
+export const categoriesApi = {
+  list: () => api.get('categories/').json<CategoryResponse[]>(),
+  create: (data: CategoryCreate) => api.post('categories/', { json: data }).json<CategoryResponse>(),
+  update: (id: string, data: CategoryUpdate) => api.put(`categories/${id}`, { json: data }).json<CategoryResponse>(),
+  delete: (id: string) => api.delete(`categories/${id}`),
 };
 
-// ============ ANALYTICS ============
+// Rewards
+export const rewardsApi = {
+  list: () => api.get('rewards/').json<RewardResponse[]>(),
+  create: (data: RewardCreate) => api.post('rewards/', { json: data }).json<RewardResponse>(),
+  update: (id: string, data: RewardUpdate) => api.put(`rewards/${id}`, { json: data }).json<RewardResponse>(),
+  delete: (id: string) => api.delete(`rewards/${id}`),
+};
 
+// Wishes
+export const wishesApi = {
+  list: () => api.get('wishes/').json<WishResponse[]>(),
+  create: (data: WishCreate) => api.post('wishes/', { json: data }).json<WishResponse>(),
+  update: (id: string, data: WishUpdate) => api.put(`wishes/${id}`, { json: data }).json<WishResponse>(),
+  delete: (id: string) => api.delete(`wishes/${id}`),
+  grant: (data: WishGrantRequest) => api.post('wishes/grant', { json: data }).json<WishGrantResponse>(),
+};
+
+// Off Days
+export const offDaysApi = {
+  list: (month?: string) => api.get('off-days/', { searchParams: month ? { month } : {} }).json<OffDayResponse[]>(),
+  create: (data: OffDayCreate) => api.post('off-days/', { json: data }).json<OffDayMarkResponse>(),
+  delete: (date: string) => api.delete(`off-days/${date}`),
+};
+
+// Quotes
+export const quotesApi = {
+  random: (triggerEvent?: string) =>
+    api.get('quotes/random', { searchParams: triggerEvent ? { trigger_event: triggerEvent } : {} }).json<QuoteResponse>(),
+};
+
+// Analytics
 export const analyticsApi = {
-  weekly: () =>
-    api.get<WeeklyAnalytics>('/analytics/weekly').then(r => r.data),
-
-  categoryBreakdown: (days: number = 30) =>
-    api.get<CategoryBreakdown[]>('/analytics/category-breakdown', { params: { days } }).then(r => r.data),
+  summary: (period?: 'week' | 'month' | 'all') =>
+    api.get('analytics/summary', { searchParams: period ? { period } : {} }).json<AnalyticsSummary>(),
+  capsuleHistory: () => api.get('analytics/capsule-history').json<CapsuleHistoryItem[]>(),
+  wishHistory: () => api.get('analytics/wish-history').json<WishHistoryItem[]>(),
 };
 
-// ============ OFF DAYS ============
-
-export const offDayApi = {
-  list: () =>
-    api.get<OffDay[]>('/off-days/').then(r => r.data),
-
-  create: (data: { reason: string; notes?: string; off_day_date?: string }) =>
-    api.post<OffDay>('/off-days/', data).then(r => r.data),
-
-  delete: (id: string) =>
-    api.delete(`/off-days/${id}`).then(r => r.data),
-};
-
-// ============ SETTINGS ============
-
+// Settings
 export const settingsApi = {
-  get: () =>
-    api.get<UserSettings>('/settings/').then(r => r.data),
-
-  update: (data: { daily_point_minimum?: number }) =>
-    api.put<{ daily_point_minimum: number }>('/settings/', data).then(r => r.data),
+  get: () => api.get('settings/').json<SettingsResponse>(),
+  update: (data: SettingsUpdate) => api.put('settings/', { json: data }).json<SettingsResponse>(),
 };
-
-export default api;

@@ -1,241 +1,305 @@
-// ============ CORE TYPES ============
+// types/index.ts -- Matches backend/app/schemas/*.py exactly
 
-export interface Task {
-  id: string;
-  user_id: string;
-  category_id: string;
+// -- Enums / Literals --
+export type Attribute = 'str' | 'vit' | 'int' | 'ki';
+export type Importance = 'normal' | 'important' | 'critical';
+export type Frequency = 'daily' | 'weekdays' | 'custom';
+export type Rarity = 'common' | 'rare' | 'epic';
+export type OffDayReason = 'sick' | 'vacation' | 'rest' | 'injury' | 'other';
+export type Theme = 'dark' | 'light';
+export type AnalyticsPeriod = 'week' | 'month' | 'all';
+
+// -- Habits --
+export interface HabitCreate {
   title: string;
-  description: string | null;
-  base_points: number;
-  energy_level: EnergyLevel;
-  estimated_minutes: number | null;
-  recurring: boolean;
-  recurrence_pattern: string | null;
-  is_active: boolean;
-  category_name?: string;
-  category_color?: string;
-  category_multiplier?: number;
-  effective_points?: number;
-  created_at: string;
+  attribute: Attribute;
+  importance?: Importance;
+  frequency?: Frequency;
+  custom_days?: number[] | null;
+  description?: string | null;
+  icon_emoji?: string;
+  category_id?: string | null;
+  target_time?: string | null;
+  is_temporary?: boolean;
+  start_date: string; // YYYY-MM-DD
+  end_date?: string | null;
+  sort_order?: number;
 }
 
-export interface TaskCategory {
+export interface HabitUpdate {
+  title?: string;
+  attribute?: Attribute;
+  importance?: Importance;
+  frequency?: Frequency;
+  custom_days?: number[] | null;
+  description?: string | null;
+  icon_emoji?: string;
+  category_id?: string | null;
+  target_time?: string | null;
+  is_temporary?: boolean;
+  start_date?: string;
+  end_date?: string | null;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface HabitResponse {
   id: string;
-  name: string;
-  point_multiplier: number;
-  color_code: string;
-  icon: string;
-}
-
-export interface TaskCompletion {
-  id: string;
-  task_id: string;
-  task_title?: string;
-  points_awarded: number;
-  energy_at_completion: string | null;
-  completed_at: string;
-  category_name?: string;
-}
-
-export interface CompletionResult {
-  completion_id: string;
-  points_awarded: number;
-  base_points: number;
-  bonus_points: number;
-  streak_bonus_pct: number;
-  new_total_power: number;
-  daily_points: number;
-  daily_minimum_met: boolean;
-  new_transformation: TransformationEvent | null;
-}
-
-// ============ POWER / GAMIFICATION ============
-
-export type TransformationLevel = 'base' | 'ssj' | 'ssj2' | 'ssj3' | 'ssg' | 'ssb' | 'ui';
-
-export interface PowerLevel {
-  total_power_points: number;
-  transformation_level: TransformationLevel;
-  transformation_name: string;
-  next_transformation: TransformationLevel | null;
-  next_transformation_name: string | null;
-  points_to_next: number | null;
-  progress_percentage: number;
-  daily_points_today: number;
-  current_streak: number;
-  daily_minimum: number;
-  daily_minimum_met: boolean;
-}
-
-export interface TransformationEvent {
-  new_level: TransformationLevel;
-  new_name: string;
-  total_points: number;
-}
-
-export interface TransformationInfo {
-  level: TransformationLevel;
-  name: string;
-  threshold: number;
-  unlocked: boolean;
-  unlocked_at?: string;
-}
-
-// ============ ENERGY ============
-
-export type EnergyLevel = 'low' | 'medium' | 'high';
-
-// ============ HABITS ============
-
-export interface Habit {
-  id: string;
-  user_id: string;
-  category_id: string;
   title: string;
   description: string | null;
   icon_emoji: string;
-  base_points: number;
-  frequency: 'daily' | 'weekdays' | 'custom';
-  custom_days: string[] | null;
+  importance: Importance;
+  attribute: Attribute;
+  frequency: Frequency;
+  custom_days: number[] | null;
   target_time: string | null;
   is_temporary: boolean;
-  start_date: string | null;
+  start_date: string;
   end_date: string | null;
   sort_order: number;
   is_active: boolean;
-  created_at: string;
-  category_name?: string;
-  category_color?: string;
-  category_multiplier?: number;
+  category_id: string | null;
+  created_at: string; // ISO datetime
 }
 
-export interface HabitToday {
-  id: string;
-  title: string;
-  icon_emoji: string;
-  base_points: number;
-  category_id: string;
-  category_name: string | null;
-  category_color: string | null;
-  category_multiplier: number | null;
+export interface HabitTodayResponse extends HabitResponse {
   completed: boolean;
-  completed_at: string | null;
-  points_awarded: number;
+  streak_current: number;
+  streak_best: number;
+}
+
+// -- Check Habit --
+export interface CheckHabitRequest {
+  local_date: string; // YYYY-MM-DD
+}
+
+export interface DailyLogSummary {
+  habits_due: number;
+  habits_completed: number;
+  completion_rate: number;
+  completion_tier: string;
+  xp_earned: number;
+  streak_multiplier: number;
+  zenkai_bonus_applied: boolean;
+  dragon_ball_earned: boolean;
+}
+
+export interface StreakInfo {
   current_streak: number;
   best_streak: number;
 }
 
-export interface HabitCheckResult {
-  habit_id: string;
-  completed: boolean;
-  points_awarded: number;
-  base_points: number;
-  streak_bonus_points: number;
-  habit_streak: number;
-  new_total_power: number;
-  daily_points: number;
-  daily_minimum_met: boolean;
-  all_habits_completed: boolean;
-  consistency_bonus_applied: boolean;
-  new_transformation: TransformationEvent | null;
+export interface TransformChange {
+  key: string;
+  name: string;
+  threshold: number;
 }
 
-export interface HabitCalendarDay {
-  date: string;
-  habits_due: number;
-  habits_completed: number;
-  completion_rate: number;
-  total_points: number;
+export interface DragonBallInfo {
+  dragon_balls_collected: number;
+  wish_available: boolean;
 }
 
-export interface HabitCalendarResponse {
-  year: number;
-  month: number;
-  days: HabitCalendarDay[];
+export interface CapsuleDropDetail {
+  id: string;
+  reward_id: string;
+  reward_title: string;
+  reward_rarity: Rarity;
 }
 
-// ============ QUOTES ============
-
-export interface Quote {
-  character: 'vegeta' | 'goku' | 'gohan';
+export interface QuoteDetail {
+  character: string;
   quote_text: string;
-  context: string;
-  severity: number;
-  source_saga?: string;
+  source_saga: string;
+  avatar_path: string;
 }
 
-// ============ ANALYTICS ============
+export interface CheckHabitResponse {
+  is_checking: boolean;
+  habit_id: string;
+  log_date: string;
+  attribute_xp_awarded: number;
+  is_perfect_day: boolean;
+  zenkai_activated: boolean;
+  daily_log: DailyLogSummary;
+  streak: StreakInfo;
+  habit_streak: StreakInfo;
+  power_level: number;
+  transformation: string;
+  transform_change: TransformChange | null;
+  dragon_ball: DragonBallInfo | null;
+  capsule: CapsuleDropDetail | null;
+  quote: QuoteDetail | null;
+}
 
-export interface DailyStats {
+// -- Power --
+export interface AttributeDetail {
+  attribute: Attribute;
+  raw_xp: number;
+  level: number;
+  title: string | null;
+  xp_for_current_level: number;
+  xp_for_next_level: number;
+  progress_percent: number;
+}
+
+export interface PowerResponse {
+  power_level: number;
+  transformation: string;
+  transformation_name: string;
+  next_transformation: string | null;
+  next_threshold: number | null;
+  dragon_balls_collected: number;
+  wishes_granted: number;
+  attributes: AttributeDetail[];
+}
+
+// -- Categories --
+export interface CategoryCreate {
+  name: string;
+  color_code: string;
+  icon: string;
+  sort_order?: number;
+}
+
+export interface CategoryUpdate {
+  name?: string;
+  color_code?: string;
+  icon?: string;
+  sort_order?: number;
+}
+
+export interface CategoryResponse {
+  id: string;
+  name: string;
+  color_code: string;
+  icon: string;
+  sort_order: number;
+  created_at: string;
+}
+
+// -- Rewards --
+export interface RewardCreate {
+  title: string;
+  rarity?: Rarity;
+}
+
+export interface RewardUpdate {
+  title?: string;
+  rarity?: Rarity;
+  is_active?: boolean;
+}
+
+export interface RewardResponse {
+  id: string;
+  title: string;
+  rarity: Rarity;
+  is_active: boolean;
+  created_at: string;
+}
+
+// -- Wishes --
+export interface WishCreate {
+  title: string;
+}
+
+export interface WishUpdate {
+  title?: string;
+  is_active?: boolean;
+}
+
+export interface WishResponse {
+  id: string;
+  title: string;
+  is_active: boolean;
+  times_wished: number;
+  created_at: string;
+}
+
+export interface WishGrantRequest {
+  wish_id: string;
+}
+
+export interface WishGrantResponse {
+  wish_title: string;
+  times_wished: number;
+  wishes_granted: number;
+}
+
+// -- Off Days --
+export interface OffDayCreate {
+  local_date: string; // YYYY-MM-DD
+  reason?: OffDayReason;
+  notes?: string | null;
+}
+
+export interface OffDayResponse {
+  id: string;
+  off_date: string;
+  reason: OffDayReason;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface OffDayMarkResponse {
+  off_date: string;
+  habits_reversed: number;
+  xp_clawed_back: number;
+}
+
+// -- Quotes --
+export interface QuoteResponse {
+  character: string;
+  quote_text: string;
+  source_saga: string;
+  avatar_path: string;
+}
+
+// -- Settings --
+export interface SettingsResponse {
+  display_name: string;
+  sound_enabled: boolean;
+  theme: Theme;
+}
+
+export interface SettingsUpdate {
+  display_name?: string;
+  sound_enabled?: boolean;
+  theme?: Theme;
+}
+
+// -- Analytics --
+export interface AnalyticsSummary {
+  perfect_days: number;
+  avg_completion: number;
+  total_xp: number;
+  days_tracked: number;
+  longest_streak: number;
+}
+
+export interface CapsuleHistoryItem {
+  id: string;
+  reward_title: string;
+  reward_rarity: Rarity;
+  habit_title: string;
+  dropped_at: string;
+}
+
+export interface WishHistoryItem {
+  id: string;
+  wish_title: string;
+  granted_at: string;
+}
+
+export interface CalendarDay {
   date: string;
-  points: number;
-  tasks_completed: number;
-  minimum_met: boolean;
+  is_perfect_day: boolean;
+  completion_tier: string;
+  xp_earned: number;
   is_off_day: boolean;
 }
 
-export interface CategoryBreakdown {
-  category_name: string;
-  category_color: string;
-  total_points: number;
-  percentage: number;
-  task_count: number;
-}
-
-export interface WeeklyAnalytics {
-  days: DailyStats[];
-  total_points: number;
-  average_daily: number;
-  days_minimum_met: number;
-}
-
-export interface PowerHistoryEntry {
+export interface ContributionDay {
   date: string;
-  total_power_points: number;
-  transformation_level: string;
+  completed: boolean;
 }
-
-// ============ OFF DAYS ============
-
-export interface OffDay {
-  id: string;
-  off_day_date: string;
-  reason: string;
-  notes: string | null;
-}
-
-// ============ SETTINGS ============
-
-export interface UserSettings {
-  daily_point_minimum: number;
-  username: string;
-  email: string;
-}
-
-// ============ CONSTANTS ============
-
-export const TRANSFORMATION_COLORS: Record<TransformationLevel, string> = {
-  base: '#888899',
-  ssj: '#FFD700',
-  ssj2: '#FFD700',
-  ssj3: '#FFD700',
-  ssg: '#FF4444',
-  ssb: '#1E90FF',
-  ui: '#C0C0FF',
-};
-
-export const TRANSFORMATION_NAMES: Record<TransformationLevel, string> = {
-  base: 'Base Form',
-  ssj: 'Super Saiyan',
-  ssj2: 'Super Saiyan 2',
-  ssj3: 'Super Saiyan 3',
-  ssg: 'Super Saiyan God',
-  ssb: 'Super Saiyan Blue',
-  ui: 'Ultra Instinct',
-};
-
-export const ENERGY_CONFIG: Record<EnergyLevel, { label: string; color: string; emoji: string }> = {
-  low: { label: 'Low Energy', color: '#10B981', emoji: '🔋' },
-  medium: { label: 'Medium Energy', color: '#F59E0B', emoji: '⚡' },
-  high: { label: 'Full Power', color: '#EF4444', emoji: '🔥' },
-};
