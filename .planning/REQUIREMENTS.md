@@ -122,7 +122,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DASH-01 | Phase 5 | Pending |
 | DASH-02 | Phase 5 | Pending |
 | DASH-03 | Phase 5 | Pending |
-| DASH-04 | Phase 5 | Pending |
+| DASH-04 | Phase 9 | Pending |
 | DASH-05 | Phase 5 | Pending |
 | DASH-06 | Phase 5 | Pending |
 | DASH-07 | Phase 5 | Pending |
@@ -132,36 +132,36 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DASH-11 | Phase 5 | Pending |
 | DASH-12 | Phase 5 | Pending |
 | DASH-13 | Phase 5 | Pending |
-| AUDIO-01 | Phase 6 | Pending |
+| AUDIO-01 | Phase 9 | Pending |
 | AUDIO-02 | Phase 6 | Pending |
 | AUDIO-03 | Phase 6 | Pending |
-| AUDIO-04 | Phase 6 | Pending |
+| AUDIO-04 | Phase 9 | Pending |
 | AUDIO-05 | Phase 6 | Pending |
 | AUDIO-06 | Phase 6 | Pending |
 | AUDIO-07 | Phase 6 | Pending |
 | AUDIO-08 | Phase 6 | Pending |
 | AUDIO-09 | Phase 6 | Pending |
-| ANIM-01 | Phase 7 | Complete |
-| ANIM-02 | Phase 7 | Complete |
-| ANIM-03 | Phase 7 | Complete |
-| ANIM-04 | Phase 7 | Complete |
-| ANIM-05 | Phase 7 | Complete |
-| ANIM-06 | Phase 7 | Complete |
-| ANIM-07 | Phase 7 | Complete |
-| ANIM-08 | Phase 7 | Complete |
-| ANIM-09 | Phase 7 | Complete |
-| ANLYT-01 | Phase 8 | Pending |
-| ANLYT-02 | Phase 8 | Pending |
-| ANLYT-03 | Phase 8 | Pending |
-| ANLYT-04 | Phase 8 | Pending |
-| ANLYT-05 | Phase 8 | Pending |
-| SET-01 | Phase 8 | Pending |
-| SET-02 | Phase 8 | Pending |
-| SET-03 | Phase 8 | Pending |
-| SET-04 | Phase 8 | Pending |
-| SET-05 | Phase 8 | Pending |
-| SET-06 | Phase 8 | Pending |
-| SET-07 | Phase 8 | Pending |
+| ANIM-01 | Phase 10 | Pending |
+| ANIM-02 | Phase 10 | Pending |
+| ANIM-03 | Phase 10 | Pending |
+| ANIM-04 | Phase 10 | Pending |
+| ANIM-05 | Phase 10 | Pending |
+| ANIM-06 | Phase 10 | Pending |
+| ANIM-07 | Phase 10 | Pending |
+| ANIM-08 | Phase 10 | Pending |
+| ANIM-09 | Phase 10 | Pending |
+| ANLYT-01 | Phase 10 | Pending |
+| ANLYT-02 | Phase 10 | Pending |
+| ANLYT-03 | Phase 10 | Pending |
+| ANLYT-04 | Phase 10 | Pending |
+| ANLYT-05 | Phase 10 | Pending |
+| SET-01 | Phase 10 | Pending |
+| SET-02 | Phase 10 | Pending |
+| SET-03 | Phase 10 | Pending |
+| SET-04 | Phase 10 | Pending |
+| SET-05 | Phase 10 | Pending |
+| SET-06 | Phase 10 | Pending |
+| SET-07 | Phase 10 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 49 total
@@ -170,4 +170,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-04*
-*Last updated: 2026-03-05 after Phase 7 completion*
+*Last updated: 2026-03-05 after gap closure phases 9-10 created*

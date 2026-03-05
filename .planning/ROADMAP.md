@@ -35,6 +35,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 6: Audio System** - SoundProvider with Howler.js sprite sheet, sound effects on every interaction, global mute toggle
 - [ ] **Phase 7: Animation Layer** - Animation queue, tier-change flash, Perfect Day explosion, capsule reveal, Dragon Ball trajectory, transformation, Shenron ceremony
 - [x] **Phase 8: Analytics & Settings** - Calendar heatmap, progression charts, summary stats, rewards/wishes/categories CRUD, off-day management, preferences (completed 2026-03-05)
+- [ ] **Phase 9: Cross-Phase Integration Fixes** - Fix SoundProvider settings sync, powerStore transformationName staleness, capsule reveal chime wiring
+- [ ] **Phase 10: Milestone Verification & Housekeeping** - Create Phase 7/8 VERIFICATION.md, fix SUMMARY frontmatter, update REQUIREMENTS.md checkboxes
 
 ## Phase Details
 
@@ -115,6 +117,35 @@ Plans:
 - [x] 08-01-PLAN.md — Analytics page with recharts, calendar heatmap, stat cards, attribute/power charts, neon glow SVG filters (completed 2026-03-05)
 - [x] 08-02-PLAN.md — Settings page with preferences (sound/theme/name/off-day), CRUD sections for rewards/wishes/categories via bottom sheet forms, useTheme hook, HeroSection display name (completed 2026-03-05)
 
+### Phase 9: Cross-Phase Integration Fixes
+**Goal**: Fix 3 integration bugs identified by milestone audit that break user-visible behavior — sound preference persistence, stale transformation name, and missing capsule reveal chime
+**Depends on**: Phase 8
+**Requirements**: SET-01, AUDIO-01, AUDIO-04, DASH-04
+**Gap Closure:** Closes integration gaps from v1.1 audit
+**Success Criteria** (what must be TRUE):
+  1. SoundProvider reads `rewardStore.settings.sound_enabled` on mount and syncs mute state — sound preference persists across page loads
+  2. `powerStore.updateFromCheck` updates `transformationName` alongside `transformation` — ScouterHUD shows correct form name immediately after transformation
+  3. CapsuleDropOverlay tap handler calls `play('reveal_chime')` during card-flip reveal — capsule open is no longer silent
+**Plans**: TBD
+
+Plans:
+- [ ] 09-01: TBD
+
+### Phase 10: Milestone Verification & Housekeeping
+**Goal**: Close all verification gaps from v1.1 audit — create missing VERIFICATION.md for Phases 7 and 8, fix Phase 7 SUMMARY frontmatter, and update all stale REQUIREMENTS.md checkboxes
+**Depends on**: Phase 9
+**Requirements**: ANIM-01, ANIM-02, ANIM-03, ANIM-04, ANIM-05, ANIM-06, ANIM-07, ANIM-08, ANIM-09, ANLYT-01, ANLYT-02, ANLYT-03, ANLYT-04, ANLYT-05, SET-01, SET-02, SET-03, SET-04, SET-05, SET-06, SET-07
+**Gap Closure:** Closes verification gaps from v1.1 audit
+**Success Criteria** (what must be TRUE):
+  1. Phase 7 VERIFICATION.md exists and confirms ANIM-01..09 against actual code
+  2. Phase 8 VERIFICATION.md exists and confirms ANLYT-01..05, SET-01..07 against actual code
+  3. Phase 7 SUMMARY frontmatter `requirements_completed` arrays are populated
+  4. REQUIREMENTS.md checkboxes reflect verified state — DASH-01..13, AUDIO-01..09 are `[x]`; ANIM and ANLYT/SET updated based on verification results
+**Plans**: TBD
+
+Plans:
+- [ ] 10-01: TBD
+
 ## Progress
 
 **Execution Order:**
@@ -131,3 +162,5 @@ Note: Phase 8 depends on Phase 5 (not Phase 7), so Phases 6/7 and 8 could theore
 | 6. Audio System | v1.1 | 1/1 | Complete | 2026-03-05 |
 | 7. Animation Layer | v1.1 | 2/2 | Complete | 2026-03-05 |
 | 8. Analytics & Settings | v1.1 | 2/2 | Complete | 2026-03-05 |
+| 9. Cross-Phase Integration Fixes | v1.1 | 0/1 | Pending | — |
+| 10. Milestone Verification & Housekeeping | v1.1 | 0/1 | Pending | — |
