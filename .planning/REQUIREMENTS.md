@@ -10,7 +10,7 @@ Requirements for the frontend experience. Each maps to roadmap phases.
 ### State & Foundation
 
 - [x] **STATE-01**: App renders a React 19 SPA with Vite 7, TypeScript, and Tailwind CSS v4
-- [ ] **STATE-02**: TypeScript types match all backend API response schemas (habits, completions, power, attributes, capsules, dragon-balls, quotes, settings, analytics)
+- [x] **STATE-02**: TypeScript types match all backend API response schemas (habits, completions, power, attributes, capsules, dragon-balls, quotes, settings, analytics)
 - [x] **STATE-03**: API client layer connects to all 9 backend endpoints with typed request/response
 - [x] **STATE-04**: Zustand stores (habit, power, reward, ui) hold all client state with selector discipline
 - [x] **STATE-05**: Dark theme applied by default with CSS custom properties for all colors
@@ -114,7 +114,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | STATE-01 | Phase 4 | Complete |
-| STATE-02 | Phase 4 | Pending |
+| STATE-02 | Phase 4 | Complete |
 | STATE-03 | Phase 4 | Complete |
 | STATE-04 | Phase 4 | Complete |
 | STATE-05 | Phase 4 | Complete |

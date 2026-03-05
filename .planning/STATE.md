@@ -8,7 +8,7 @@ progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Phase: 4 of 8 (Project Setup & Foundation)
-Plan: 1 of 4 in current phase
+Plan: 2 of 4 in current phase
 Status: Executing
-Last activity: 2026-03-05 — Completed 04-00 (Test Infrastructure)
+Last activity: 2026-03-05 — Completed 04-01 (Frontend Scaffold + Types + API Client)
 
-Progress: [██░░░░░░░░] 25% (1/4 plans in phase)
+Progress: [█████░░░░░] 50% (2/4 plans in phase)
 
 ## Performance Metrics
 
@@ -43,7 +43,7 @@ Progress: [██░░░░░░░░] 25% (1/4 plans in phase)
 | 1. DB & Models | 2 | 12 min | 6 min |
 | 2. Game Logic | 3 | 20 min | 6.7 min |
 | 3. API Routes | 2 | 12 min | 6 min |
-| 4. Project Setup | 1 | 5 min | 5 min |
+| 4. Project Setup | 2 | 14 min | 7 min |
 
 **Recent Trend:**
 - Last 5 plans: stable ~6 min each
@@ -56,6 +56,7 @@ Progress: [██░░░░░░░░] 25% (1/4 plans in phase)
 Decisions are logged in PROJECT.md Key Decisions table.
 Full v1.0 decision log archived to `.planning/milestones/v1.0-ROADMAP.md`.
 - [Phase 04]: Scaffolded Vite React+TS project as prerequisite for test infrastructure (frontend/ did not exist)
+- [Phase 04-01]: Used existing Vite 7 scaffold structure, added Tailwind v4 @theme with 28 color tokens, 43 TS types matching backend, typed ky API client for 9 endpoints
 
 ### Pending Todos
 
@@ -71,5 +72,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 04-00-PLAN.md
+Stopped at: Completed 04-01-PLAN.md
 Resume file: None
