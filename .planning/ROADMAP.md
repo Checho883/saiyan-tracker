@@ -30,7 +30,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Milestone Goal:** Build the complete frontend experience -- every habit check triggers sound, visual feedback, and dopamine-rewarding animations on top of the v1.0 backend.
 
-- [ ] **Phase 4: Project Setup & Foundation** - React 19 + Vite 7 scaffold, TypeScript types, API client, Zustand stores, dark theme, routing
+- [x] **Phase 4: Project Setup & Foundation** - React 19 + Vite 7 scaffold, TypeScript types, API client, Zustand stores, dark theme, routing (completed 2026-03-05)
 - [ ] **Phase 5: Dashboard Core & Habit Management** - Habit list with check/uncheck, aura bar, attributes, Dragon Balls, avatar, streaks, quotes, XP popup, habit CRUD
 - [ ] **Phase 6: Audio System** - SoundProvider with Howler.js sprite sheet, sound effects on every interaction, global mute toggle
 - [ ] **Phase 7: Animation Layer** - Animation queue, tier-change flash, Perfect Day explosion, capsule reveal, Dragon Ball trajectory, transformation, Shenron ceremony
@@ -125,7 +125,7 @@ Note: Phase 8 depends on Phase 5 (not Phase 7), so Phases 6/7 and 8 could theore
 | 1. Database and Model Integrity | v1.0 | 2/2 | Complete | 2026-03-04 |
 | 2. Core Game Logic Services | v1.0 | 3/3 | Complete | 2026-03-04 |
 | 3. API Routes and Schemas | v1.0 | 2/2 | Complete | 2026-03-04 |
-| 4. Project Setup & Foundation | v1.1 | 0/? | Not started | - |
+| 4. Project Setup & Foundation | 4/4 | Complete   | 2026-03-05 | - |
 | 5. Dashboard Core & Habit Management | v1.1 | 0/? | Not started | - |
 | 6. Audio System | v1.1 | 0/? | Not started | - |
 | 7. Animation Layer | v1.1 | 0/? | Not started | - |
