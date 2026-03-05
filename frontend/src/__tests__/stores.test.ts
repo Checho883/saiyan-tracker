@@ -168,4 +168,29 @@ describe('Zustand Stores (STATE-04)', () => {
     expect(state.powerLevel).toBe(9001);
     expect(state.transformation).toBe('super_saiyan');
   });
+
+  test('powerStore updateFromCheck with 3 args sets transformationName', () => {
+    usePowerStore.getState().updateFromCheck(9001, 'ssj', 'Super Saiyan');
+    const state = usePowerStore.getState();
+    expect(state.powerLevel).toBe(9001);
+    expect(state.transformation).toBe('ssj');
+    expect(state.transformationName).toBe('Super Saiyan');
+  });
+
+  test('powerStore updateFromCheck with 2 args leaves transformationName unchanged', () => {
+    // Set initial transformationName
+    usePowerStore.setState({ transformationName: 'Base Form' });
+    usePowerStore.getState().updateFromCheck(100, 'base');
+    const state = usePowerStore.getState();
+    expect(state.powerLevel).toBe(100);
+    expect(state.transformation).toBe('base');
+    expect(state.transformationName).toBe('Base Form');
+  });
+
+  test('powerStore updateFromCheck with undefined transformationName leaves existing unchanged', () => {
+    usePowerStore.setState({ transformationName: 'Base Form' });
+    usePowerStore.getState().updateFromCheck(100, 'base', undefined);
+    const state = usePowerStore.getState();
+    expect(state.transformationName).toBe('Base Form');
+  });
 });

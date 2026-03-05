@@ -16,7 +16,7 @@ interface PowerState {
   error: string | null;
 
   fetchPower: () => Promise<void>;
-  updateFromCheck: (powerLevel: number, transformation: string) => void;
+  updateFromCheck: (powerLevel: number, transformation: string, transformationName?: string) => void;
 }
 
 export const usePowerStore = create<PowerState>((set) => ({
@@ -53,8 +53,12 @@ export const usePowerStore = create<PowerState>((set) => ({
     }
   },
 
-  updateFromCheck: (powerLevel, transformation) => {
-    set({ powerLevel, transformation });
+  updateFromCheck: (powerLevel, transformation, transformationName?) => {
+    set({
+      powerLevel,
+      transformation,
+      ...(transformationName && { transformationName }),
+    });
   },
 }));
 

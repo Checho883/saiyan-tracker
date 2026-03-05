@@ -63,7 +63,11 @@ export const useHabitStore = create<HabitState>((set, get) => ({
       // Distribute to powerStore
       usePowerStore
         .getState()
-        .updateFromCheck(result.power_level, result.transformation);
+        .updateFromCheck(
+          result.power_level,
+          result.transformation,
+          result.transform_change?.name,
+        );
 
       // Distribute to uiStore animation queue
       const ui = useUiStore.getState();
