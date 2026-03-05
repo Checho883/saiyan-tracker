@@ -3,6 +3,7 @@ import { Check, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import type { HabitTodayResponse, Attribute } from '../../types';
 import { useHabitStore } from '../../store/habitStore';
 import { useUiStore } from '../../store/uiStore';
+import { useAudio } from '../../audio/useAudio';
 import { XpPopup } from './XpPopup';
 import { showCharacterQuote } from './CharacterQuote';
 
@@ -33,6 +34,7 @@ interface HabitCardProps {
 export function HabitCard({ habit }: HabitCardProps) {
   const checkHabit = useHabitStore((s) => s.checkHabit);
   const openModal = useUiStore((s) => s.openModal);
+  const { play } = useAudio();
   const [showXp, setShowXp] = useState(false);
   const [xpAmount, setXpAmount] = useState(0);
   const [showMenu, setShowMenu] = useState(false);
@@ -56,6 +58,11 @@ export function HabitCard({ habit }: HabitCardProps) {
       const today = new Date().toISOString().slice(0, 10);
       const result = await checkHabit(habit.id, today);
 
+      // Play undo sound when unchecking (check sound handled by useSoundEffect via xp_popup event)
+      if (!result.is_checking) {
+        play('undo');
+      }
+
       if (result.is_checking && result.attribute_xp_awarded > 0) {
         setXpAmount(result.attribute_xp_awarded);
         setShowXp(true);
@@ -67,7 +74,7 @@ export function HabitCard({ habit }: HabitCardProps) {
     } catch {
       // Error handled by store
     }
-  }, [checkHabit, habit.id, showMenu]);
+  }, [checkHabit, habit.id, showMenu, play]);
 
   return (
     <div
