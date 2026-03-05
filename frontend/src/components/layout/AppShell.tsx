@@ -2,6 +2,7 @@ import { Outlet } from 'react-router';
 import { useInitApp } from '../../hooks/useInitApp';
 import { LoadingScreen } from '../common/LoadingScreen';
 import { BottomTabBar } from './BottomTabBar';
+import { SoundProvider } from '../../audio/SoundProvider';
 
 export function AppShell() {
   const { isReady, error } = useInitApp();
@@ -26,9 +27,11 @@ export function AppShell() {
   }
 
   return (
-    <div className="min-h-screen bg-space-900 pb-16">
-      <Outlet />
-      <BottomTabBar />
-    </div>
+    <SoundProvider>
+      <div className="min-h-screen bg-space-900 pb-16">
+        <Outlet />
+        <BottomTabBar />
+      </div>
+    </SoundProvider>
   );
 }
