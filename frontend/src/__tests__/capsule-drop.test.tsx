@@ -2,6 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import React from 'react';
 
+const mockPlay = vi.fn();
+vi.mock('../audio/useAudio', () => ({
+  useAudio: () => ({ play: mockPlay, toggleMute: vi.fn(), isMuted: false }),
+}));
+
 vi.mock('motion/react', () => {
   const motion = new Proxy({} as Record<string, React.FC<any>>, {
     get: (_target, prop: string) =>
@@ -31,6 +36,7 @@ import { CapsuleDropOverlay } from '../components/animations/CapsuleDropOverlay'
 
 beforeEach(() => {
   vi.useFakeTimers();
+  mockPlay.mockClear();
 });
 
 afterEach(() => {
@@ -88,5 +94,37 @@ describe('CapsuleDropOverlay (ANIM-04, ANIM-05)', () => {
     });
 
     expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it('plays reveal_chime when capsule is tapped', () => {
+    const onComplete = vi.fn();
+    render(
+      <CapsuleDropOverlay rewardTitle="Senzu Bean" rarity="rare" onComplete={onComplete} />
+    );
+
+    fireEvent.click(screen.getByTestId('capsule-drop-overlay'));
+
+    expect(mockPlay).toHaveBeenCalledWith('reveal_chime');
+    expect(mockPlay).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not play reveal_chime on second tap', () => {
+    const onComplete = vi.fn();
+    render(
+      <CapsuleDropOverlay rewardTitle="Senzu Bean" rarity="rare" onComplete={onComplete} />
+    );
+
+    // First tap: reveal
+    fireEvent.click(screen.getByTestId('capsule-drop-overlay'));
+    expect(mockPlay).toHaveBeenCalledTimes(1);
+
+    // Advance past canDismiss threshold (1500ms)
+    act(() => {
+      vi.advanceTimersByTime(1500);
+    });
+
+    // Second tap: dismiss (should NOT play sound again)
+    fireEvent.click(screen.getByTestId('capsule-drop-overlay'));
+    expect(mockPlay).toHaveBeenCalledTimes(1);
   });
 });

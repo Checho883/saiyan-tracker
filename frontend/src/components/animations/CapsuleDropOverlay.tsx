@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SPRINGS } from './springs';
+import { useAudio } from '../../audio/useAudio';
 
 const rarityGlow: Record<string, string> = {
   common: '0 0 12px 4px rgba(255, 255, 255, 0.4)',
@@ -32,6 +33,7 @@ export function CapsuleDropOverlay({
 }: CapsuleDropOverlayProps) {
   const [isRevealed, setIsRevealed] = useState(false);
   const [canDismiss, setCanDismiss] = useState(false);
+  const { play } = useAudio();
 
   // Auto-dismiss 4s after reveal
   useEffect(() => {
@@ -47,6 +49,7 @@ export function CapsuleDropOverlay({
   const handleTap = () => {
     if (!isRevealed) {
       setIsRevealed(true);
+      play('reveal_chime');
     } else if (canDismiss) {
       onComplete();
     }
