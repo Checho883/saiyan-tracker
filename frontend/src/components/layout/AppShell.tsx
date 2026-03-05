@@ -1,8 +1,10 @@
 import { Outlet } from 'react-router';
+import { MotionConfig } from 'motion/react';
 import { useInitApp } from '../../hooks/useInitApp';
 import { LoadingScreen } from '../common/LoadingScreen';
 import { BottomTabBar } from './BottomTabBar';
 import { SoundProvider } from '../../audio/SoundProvider';
+import { AnimationPlayer } from '../animations/AnimationPlayer';
 
 export function AppShell() {
   const { isReady, error } = useInitApp();
@@ -28,10 +30,13 @@ export function AppShell() {
 
   return (
     <SoundProvider>
-      <div className="min-h-screen bg-space-900 pb-16">
-        <Outlet />
-        <BottomTabBar />
-      </div>
+      <MotionConfig reducedMotion="user">
+        <div className="min-h-screen bg-space-900 pb-16">
+          <Outlet />
+          <AnimationPlayer />
+          <BottomTabBar />
+        </div>
+      </MotionConfig>
     </SoundProvider>
   );
 }
