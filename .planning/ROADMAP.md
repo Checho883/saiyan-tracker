@@ -63,12 +63,13 @@ Plans:
   3. Four RPG attribute bars (STR/VIT/INT/KI) display current level and XP fill, Dragon Ball tracker shows 7 slots with glowing filled balls, and streak display shows current/best streak with visual scaling
   4. Saiyan avatar displays the current transformation form with form-appropriate aura effect, shows power level in scouter-style display, and shows progress bar to next form
   5. User can create a new habit via modal (title, description, importance, attribute, frequency, category), edit and delete existing habits, and see a character quote with avatar and attribution after each habit check
-**Plans**: TBD
+**Plans**: 4 plans in 3 waves
 
 Plans:
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
-- [ ] 05-03: TBD
+- [ ] 05-01-PLAN.md — Test scaffolds + habit list/cards with check/uncheck, XP popup, character quotes, streaks
+- [ ] 05-02-PLAN.md — Hero section (avatar, scouter HUD, aura gauge) + stats panel (attributes, Dragon Balls, streaks)
+- [ ] 05-03-PLAN.md — Dashboard page orchestration + habit CRUD (Vaul bottom sheet, form, delete)
+- [ ] 05-04-PLAN.md — Visual verification checkpoint for all 13 DASH requirements
 
 ### Phase 6: Audio System
 **Goal**: Every user interaction produces a sound effect -- the app is never silent when something happens
