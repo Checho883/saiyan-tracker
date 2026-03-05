@@ -1,13 +1,11 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { ThemeProvider } from './context/ThemeContext'
-import './index.css'
-import App from './App.tsx'
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import './index.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ThemeProvider>
-      <App />
-    </ThemeProvider>
+    <div className="min-h-screen bg-space-900 text-text-primary flex items-center justify-center">
+      <p className="text-saiyan-500 text-2xl">Saiyan Tracker</p>
+    </div>
   </StrictMode>,
-)
+);
