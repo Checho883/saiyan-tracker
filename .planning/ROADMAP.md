@@ -94,11 +94,11 @@ Plans:
   3. Capsule drop bounces in with scale spring and pulses to invite tap; capsule reveal plays 3D card flip (rotateY) showing reward with rarity-appropriate glow (white/blue/purple for common/rare/epic)
   4. New Dragon Ball earned flies into tracker slot with trajectory animation; transformation unlock plays form-specific visual (golden flash SSJ, lightning SSJ2, red SSG, blue SSB, silver UI) with avatar swap
   5. Shenron ceremony plays full-screen sequence (sky darkens, lightning, Shenron scales up, wish prompt, balls scatter, reset) and enforces minimum 1 active wish before allowing completion
-**Plans**: TBD
+**Plans**: 2 plans in 2 waves
 
 Plans:
-- [ ] 07-01: TBD
-- [ ] 07-02: TBD
+- [x] 07-01-PLAN.md — Animation infrastructure: motion install, AnimationPlayer queue consumer with AnimatePresence mode="wait", TierChangeBanner inline animation, shared utilities (springs, shake, particles, skip hook), MotionConfig reducedMotion="user" (completed 2026-03-05)
+- [x] 07-02-PLAN.md — Animation overlays: PerfectDayOverlay, CapsuleDropOverlay, DragonBallTrajectory, TransformationOverlay, ShenronCeremony wired into AnimationPlayer dispatcher with tap-to-skip and wish enforcement (completed 2026-03-05)
 
 ### Phase 8: Analytics & Settings
 **Goal**: Users can review their habit history through visual analytics and manage all app configuration (rewards, wishes, categories, preferences, off-days)
