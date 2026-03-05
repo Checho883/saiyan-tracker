@@ -2,6 +2,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 
+vi.mock('../audio/useAudio', () => ({
+  useAudio: () => ({ play: vi.fn(), toggleMute: vi.fn(), isMuted: false }),
+}));
+
 vi.mock('motion/react', () => {
   const motion = new Proxy({} as Record<string, React.FC<any>>, {
     get: (_target, prop: string) =>
