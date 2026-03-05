@@ -10,6 +10,7 @@ import { Howl, Howler } from 'howler';
 import { SPRITE_MAP, SPRITE_SRC } from './soundMap';
 import type { SoundId } from './soundMap';
 import { useSoundEffect } from './useSoundEffect';
+import { useRewardStore } from '../store/rewardStore';
 
 export interface AudioContextValue {
   play: (soundId: SoundId) => void;
@@ -29,6 +30,7 @@ export function SoundProvider({ children }: { children: ReactNode }) {
   const howlRef = useRef<Howl | null>(null);
   const [isMuted, setIsMuted] = useState(true); // Sound OFF by default
   const initializedRef = useRef(false);
+  const soundEnabled = useRewardStore((s) => s.settings?.sound_enabled);
 
   // Lazy-initialize Howl on first play (respects browser autoplay policy)
   const initAudio = useCallback(() => {
@@ -59,9 +61,19 @@ export function SoundProvider({ children }: { children: ReactNode }) {
     setIsMuted((prev) => {
       const newMuted = !prev;
       Howler.mute(newMuted);
+      useRewardStore.getState().updateSettings({ sound_enabled: !newMuted });
       return newMuted;
     });
   }, []);
+
+  // Sync mute state from backend settings
+  useEffect(() => {
+    if (soundEnabled !== undefined) {
+      const shouldMute = !soundEnabled;
+      setIsMuted(shouldMute);
+      Howler.mute(shouldMute);
+    }
+  }, [soundEnabled]);
 
   // Cleanup on unmount
   useEffect(() => {
