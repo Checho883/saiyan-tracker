@@ -58,6 +58,15 @@ vi.mock('../store/uiStore', () => ({
   ),
 }));
 
+// Mock audio module (HabitCard uses useAudio)
+vi.mock('../audio/useAudio', () => ({
+  useAudio: () => ({
+    play: vi.fn(),
+    toggleMute: vi.fn(),
+    isMuted: true,
+  }),
+}));
+
 // Mock react-hot-toast
 const mockToastCustom = vi.fn();
 vi.mock('react-hot-toast', () => ({

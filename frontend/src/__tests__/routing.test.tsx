@@ -102,6 +102,15 @@ vi.mock('react-hot-toast', () => ({
   default: { error: vi.fn() },
 }));
 
+// Mock audio module (BottomTabBar uses useAudio)
+vi.mock('../audio/useAudio', () => ({
+  useAudio: () => ({
+    play: vi.fn(),
+    toggleMute: vi.fn(),
+    isMuted: true,
+  }),
+}));
+
 function renderApp(initialRoute = '/') {
   return render(
     <MemoryRouter initialEntries={[initialRoute]}>
