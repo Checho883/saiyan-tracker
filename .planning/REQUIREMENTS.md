@@ -9,12 +9,12 @@ Requirements for the frontend experience. Each maps to roadmap phases.
 
 ### State & Foundation
 
-- [ ] **STATE-01**: App renders a React 19 SPA with Vite 7, TypeScript, and Tailwind CSS v4
+- [x] **STATE-01**: App renders a React 19 SPA with Vite 7, TypeScript, and Tailwind CSS v4
 - [ ] **STATE-02**: TypeScript types match all backend API response schemas (habits, completions, power, attributes, capsules, dragon-balls, quotes, settings, analytics)
-- [ ] **STATE-03**: API client layer connects to all 9 backend endpoints with typed request/response
-- [ ] **STATE-04**: Zustand stores (habit, power, reward, ui) hold all client state with selector discipline
-- [ ] **STATE-05**: Dark theme applied by default with CSS custom properties for all colors
-- [ ] **STATE-06**: Page routing between Dashboard, Analytics, and Settings views
+- [x] **STATE-03**: API client layer connects to all 9 backend endpoints with typed request/response
+- [x] **STATE-04**: Zustand stores (habit, power, reward, ui) hold all client state with selector discipline
+- [x] **STATE-05**: Dark theme applied by default with CSS custom properties for all colors
+- [x] **STATE-06**: Page routing between Dashboard, Analytics, and Settings views
 
 ### Dashboard
 
@@ -113,12 +113,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| STATE-01 | Phase 4 | Pending |
+| STATE-01 | Phase 4 | Complete |
 | STATE-02 | Phase 4 | Pending |
-| STATE-03 | Phase 4 | Pending |
-| STATE-04 | Phase 4 | Pending |
-| STATE-05 | Phase 4 | Pending |
-| STATE-06 | Phase 4 | Pending |
+| STATE-03 | Phase 4 | Complete |
+| STATE-04 | Phase 4 | Complete |
+| STATE-05 | Phase 4 | Complete |
+| STATE-06 | Phase 4 | Complete |
 | DASH-01 | Phase 5 | Pending |
 | DASH-02 | Phase 5 | Pending |
 | DASH-03 | Phase 5 | Pending |
