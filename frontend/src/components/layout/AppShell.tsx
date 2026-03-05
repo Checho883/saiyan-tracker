@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router';
 import { MotionConfig } from 'motion/react';
 import { useInitApp } from '../../hooks/useInitApp';
+import { useTheme } from '../../hooks/useTheme';
 import { LoadingScreen } from '../common/LoadingScreen';
 import { BottomTabBar } from './BottomTabBar';
 import { SoundProvider } from '../../audio/SoundProvider';
@@ -8,6 +9,8 @@ import { AnimationPlayer } from '../animations/AnimationPlayer';
 
 export function AppShell() {
   const { isReady, error } = useInitApp();
+  // Apply theme class to document.documentElement on mount
+  useTheme();
 
   if (error) {
     return (

@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePowerStore } from '../../store/powerStore';
+import { useRewardStore } from '../../store/rewardStore';
 import { useUiStore } from '../../store/uiStore';
 import { useAuraProgress } from '../../hooks/useAuraProgress';
 import { SaiyanAvatar } from './SaiyanAvatar';
@@ -19,6 +20,8 @@ export function HeroSection() {
         nextThreshold: s.nextThreshold,
       }))
     );
+
+  const displayName = useRewardStore((s) => s.settings?.display_name);
 
   const { percent, tier } = useAuraProgress();
 
@@ -48,6 +51,13 @@ export function HeroSection() {
           <TierChangeBanner tier={tierEvent.tier} onDismiss={handleTierDismiss} />
         )}
       </div>
+
+      {/* Display name plate */}
+      {displayName && (
+        <div className="bg-space-700/50 rounded-lg px-3 py-1">
+          <span className="text-lg font-bold text-text-primary">{displayName}</span>
+        </div>
+      )}
 
       {/* Scouter HUD below */}
       <ScouterHUD
