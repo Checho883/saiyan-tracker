@@ -9,6 +9,7 @@ import {
 import { Howl, Howler } from 'howler';
 import { SPRITE_MAP, SPRITE_SRC } from './soundMap';
 import type { SoundId } from './soundMap';
+import { useSoundEffect } from './useSoundEffect';
 
 export interface AudioContextValue {
   play: (soundId: SoundId) => void;
@@ -17,6 +18,12 @@ export interface AudioContextValue {
 }
 
 export const AudioContext = createContext<AudioContextValue | null>(null);
+
+/** Auto-subscribes to animation events and plays corresponding sounds */
+function SoundEffectListener() {
+  useSoundEffect();
+  return null;
+}
 
 export function SoundProvider({ children }: { children: ReactNode }) {
   const howlRef = useRef<Howl | null>(null);
@@ -69,6 +76,7 @@ export function SoundProvider({ children }: { children: ReactNode }) {
 
   return (
     <AudioContext.Provider value={{ play, toggleMute, isMuted }}>
+      <SoundEffectListener />
       {children}
     </AudioContext.Provider>
   );
