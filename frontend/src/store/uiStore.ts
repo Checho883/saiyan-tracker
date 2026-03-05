@@ -1,33 +1,45 @@
 import { create } from 'zustand';
-import type { Quote } from '@/types';
 
-interface UIState {
-  activeQuote: Quote | null;
-  showTaskForm: boolean;
-  showOffDayForm: boolean;
-  showTransformationAnimation: boolean;
-  pointsPopup: { points: number; x: number; y: number } | null;
+// -- Animation Event Types (skeleton for Phase 7) --
 
-  setActiveQuote: (q: Quote | null) => void;
-  setShowTaskForm: (v: boolean) => void;
-  setShowOffDayForm: (v: boolean) => void;
-  setShowTransformationAnimation: (v: boolean) => void;
-  triggerPointsPopup: (points: number) => void;
+export type AnimationEvent =
+  | { type: 'tier_change'; tier: string }
+  | { type: 'perfect_day' }
+  | { type: 'capsule_drop'; rewardTitle: string; rarity: string }
+  | { type: 'dragon_ball'; count: number }
+  | { type: 'transformation'; form: string; name: string }
+  | { type: 'xp_popup'; amount: number; attribute: string }
+  | { type: 'shenron' };
+
+interface UiState {
+  // Animation queue (skeleton for Phase 7)
+  animationQueue: AnimationEvent[];
+  enqueueAnimation: (event: AnimationEvent) => void;
+  dequeueAnimation: () => AnimationEvent | undefined;
+  clearAnimations: () => void;
+
+  // Modal state
+  activeModal: string | null;
+  openModal: (id: string) => void;
+  closeModal: () => void;
 }
 
-export const useUIStore = create<UIState>((set) => ({
-  activeQuote: null,
-  showTaskForm: false,
-  showOffDayForm: false,
-  showTransformationAnimation: false,
-  pointsPopup: null,
-
-  setActiveQuote: (q) => set({ activeQuote: q }),
-  setShowTaskForm: (v) => set({ showTaskForm: v }),
-  setShowOffDayForm: (v) => set({ showOffDayForm: v }),
-  setShowTransformationAnimation: (v) => set({ showTransformationAnimation: v }),
-  triggerPointsPopup: (points) => {
-    set({ pointsPopup: { points, x: window.innerWidth / 2, y: window.innerHeight / 2 } });
-    setTimeout(() => set({ pointsPopup: null }), 2000);
+export const useUiStore = create<UiState>((set, get) => ({
+  animationQueue: [],
+  enqueueAnimation: (event) =>
+    set((s) => ({ animationQueue: [...s.animationQueue, event] })),
+  dequeueAnimation: () => {
+    const [first, ...rest] = get().animationQueue;
+    set({ animationQueue: rest });
+    return first;
   },
+  clearAnimations: () => set({ animationQueue: [] }),
+
+  activeModal: null,
+  openModal: (id) => set({ activeModal: id }),
+  closeModal: () => set({ activeModal: null }),
 }));
+
+// Usage: import { useShallow } from 'zustand/react/shallow';
+// Multi-value: const { animationQueue, activeModal } = useUiStore(useShallow(s => ({ animationQueue: s.animationQueue, activeModal: s.activeModal })));
+// Single value: const activeModal = useUiStore(s => s.activeModal);

@@ -1,59 +1,63 @@
 import { create } from 'zustand';
-import type { PowerLevel, TransformationInfo, TransformationEvent } from '@/types';
-import { powerApi } from '@/services/api';
+import toast from 'react-hot-toast';
+import type { AttributeDetail } from '../types';
+import { powerApi } from '../services/api';
 
 interface PowerState {
-  power: PowerLevel | null;
-  transformations: TransformationInfo[];
-  newTransformation: TransformationEvent | null;
-  loading: boolean;
+  powerLevel: number;
+  transformation: string;
+  transformationName: string;
+  nextTransformation: string | null;
+  nextThreshold: number | null;
+  dragonBallsCollected: number;
+  wishesGranted: number;
+  attributes: AttributeDetail[];
+  isLoading: boolean;
+  error: string | null;
 
   fetchPower: () => Promise<void>;
-  fetchTransformations: () => Promise<void>;
-  setNewTransformation: (t: TransformationEvent | null) => void;
-  updateFromCompletion: (result: { new_total_power: number; daily_points: number; daily_minimum_met: boolean; new_transformation: TransformationEvent | null }) => void;
+  updateFromCheck: (powerLevel: number, transformation: string) => void;
 }
 
-export const usePowerStore = create<PowerState>((set, get) => ({
-  power: null,
-  transformations: [],
-  newTransformation: null,
-  loading: false,
+export const usePowerStore = create<PowerState>((set) => ({
+  powerLevel: 0,
+  transformation: '',
+  transformationName: '',
+  nextTransformation: null,
+  nextThreshold: null,
+  dragonBallsCollected: 0,
+  wishesGranted: 0,
+  attributes: [],
+  isLoading: false,
+  error: null,
 
   fetchPower: async () => {
-    set({ loading: true });
+    set({ isLoading: true, error: null });
     try {
-      const power = await powerApi.current();
-      set({ power, loading: false });
-    } catch {
-      set({ loading: false });
-    }
-  },
-
-  fetchTransformations: async () => {
-    try {
-      const transformations = await powerApi.transformations();
-      set({ transformations });
-    } catch {}
-  },
-
-  setNewTransformation: (t) => set({ newTransformation: t }),
-
-  updateFromCompletion: (result) => {
-    const current = get().power;
-    if (current) {
+      const data = await powerApi.current();
       set({
-        power: {
-          ...current,
-          total_power_points: result.new_total_power,
-          daily_points_today: result.daily_points,
-          daily_minimum_met: result.daily_minimum_met,
-        },
-        newTransformation: result.new_transformation || null,
+        powerLevel: data.power_level,
+        transformation: data.transformation,
+        transformationName: data.transformation_name,
+        nextTransformation: data.next_transformation,
+        nextThreshold: data.next_threshold,
+        dragonBallsCollected: data.dragon_balls_collected,
+        wishesGranted: data.wishes_granted,
+        attributes: data.attributes,
+        isLoading: false,
       });
+    } catch (err) {
+      const message = (err as Error).message;
+      toast.error(message, { duration: 4000 });
+      set({ error: message, isLoading: false });
     }
-    // Refresh full data
-    get().fetchPower();
-    get().fetchTransformations();
+  },
+
+  updateFromCheck: (powerLevel, transformation) => {
+    set({ powerLevel, transformation });
   },
 }));
+
+// Usage: import { useShallow } from 'zustand/react/shallow';
+// Multi-value: const { powerLevel, transformation, attributes } = usePowerStore(useShallow(s => ({ powerLevel: s.powerLevel, transformation: s.transformation, attributes: s.attributes })));
+// Single value: const powerLevel = usePowerStore(s => s.powerLevel);
