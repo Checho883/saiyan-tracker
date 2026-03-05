@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: The Dopamine Layer
 status: executing
-last_updated: "2026-03-05T05:38:00.000Z"
+last_updated: "2026-03-05T05:51:00.000Z"
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 ## Current Position
 
 Phase: 4 of 8 (Project Setup & Foundation)
-Plan: 2 of 4 in current phase
+Plan: 3 of 4 in current phase
 Status: Executing
-Last activity: 2026-03-05 — Completed 04-01 (Frontend Scaffold + Types + API Client)
+Last activity: 2026-03-05 — Completed 04-02 (Zustand Stores + useInitApp Hook)
 
-Progress: [█████░░░░░] 50% (2/4 plans in phase)
+Progress: [███████░░░] 75% (3/4 plans in phase)
 
 ## Performance Metrics
 
@@ -43,7 +43,7 @@ Progress: [█████░░░░░] 50% (2/4 plans in phase)
 | 1. DB & Models | 2 | 12 min | 6 min |
 | 2. Game Logic | 3 | 20 min | 6.7 min |
 | 3. API Routes | 2 | 12 min | 6 min |
-| 4. Project Setup | 2 | 14 min | 7 min |
+| 4. Project Setup | 3 | 18 min | 6 min |
 
 **Recent Trend:**
 - Last 5 plans: stable ~6 min each
@@ -57,6 +57,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 Full v1.0 decision log archived to `.planning/milestones/v1.0-ROADMAP.md`.
 - [Phase 04]: Scaffolded Vite React+TS project as prerequisite for test infrastructure (frontend/ did not exist)
 - [Phase 04-01]: Used existing Vite 7 scaffold structure, added Tailwind v4 @theme with 28 color tokens, 43 TS types matching backend, typed ky API client for 9 endpoints
+- [Phase 04-02]: Four Zustand stores (habit/power/reward/ui) with toast errors, optimistic habit checks with cross-store distribution, useInitApp hydration hook
 
 ### Pending Todos
 
@@ -72,5 +73,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 04-01-PLAN.md
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
