@@ -39,7 +39,7 @@ This roadmap delivers a Dragon Ball Z-themed habit tracker optimized for ADHD do
 **Milestone Goal:** Close every remaining gap between the PRD and the shipped product, plus dopamine and UX polish additions beyond the original spec.
 
 - [x] **Phase 11: Animation Queue Refactor + Tech Debt** - Priority-tiered animation system with batching to prevent overload, plus recharts stability fix (completed 2026-03-06)
-- [ ] **Phase 12: Backend Detection Services** - Extend check_habit() with achievement, streak, roast, and milestone detection; add new API endpoints
+- [x] **Phase 12: Backend Detection Services** - Extend check_habit() with achievement, streak, roast, and milestone detection; add new API endpoints (completed 2026-03-06)
 - [ ] **Phase 13: Pure Frontend Features** - History views, contribution graphs, nudge banner, daily summary, and power milestone celebrations using existing APIs
 - [ ] **Phase 14: Animation Overlays + Roast UI** - Zenkai recovery, attribute level-up, and achievement overlays plus Vegeta escalation roast display
 - [ ] **Phase 15: Drag-and-Drop + Calendar Popover** - Habit reordering with dnd-kit and calendar day detail popover with floating-ui
@@ -159,7 +159,7 @@ Note: Phase 13 depends only on Phase 11 and can execute in parallel with Phase 1
 | 9. Cross-Phase Integration Fixes | v1.1 | 1/1 | Complete | 2026-03-05 |
 | 10. Milestone Verification & Housekeeping | v1.1 | 1/1 | Complete | 2026-03-06 |
 | 11. Animation Queue Refactor + Tech Debt | 2/2 | Complete    | 2026-03-06 | - |
-| 12. Backend Detection Services | v1.2 | 0/3 | Not started | - |
+| 12. Backend Detection Services | 0/3 | Complete    | 2026-03-06 | - |
 | 13. Pure Frontend Features | v1.2 | 0/3 | Not started | - |
 | 14. Animation Overlays + Roast UI | v1.2 | 0/2 | Not started | - |
 | 15. Drag-and-Drop + Calendar Popover | v1.2 | 0/2 | Not started | - |
