@@ -15,22 +15,22 @@ export type SoundId =
 
 /**
  * Howler.js sprite map: each entry is [offset_ms, duration_ms].
- * Offsets are placeholders — update when real sprite sheet is compiled.
+ * Compiled from 13 synthesized sound effects with 100ms gaps.
  */
 export const SPRITE_MAP: Record<SoundId, [number, number]> = {
-  scouter_beep: [0, 500],
-  power_up: [600, 1200],
-  capsule_pop: [1900, 400],
-  reveal_chime: [2400, 600],
-  explosion: [3100, 2000],
-  radar_ping: [5200, 800],
-  thunder_roar: [6100, 2500],
-  transform: [8700, 3000],
-  swoosh: [11800, 200],
-  modal_open: [12100, 150],
-  modal_close: [12350, 150],
-  undo: [12600, 300],
-  error_tone: [13000, 250],
+  scouter_beep: [0, 267],
+  power_up: [367, 500],
+  capsule_pop: [967, 300],
+  reveal_chime: [1367, 500],
+  explosion: [1967, 1500],
+  radar_ping: [3567, 640],
+  thunder_roar: [4307, 2000],
+  transform: [6407, 1389],
+  swoosh: [7896, 200],
+  modal_open: [8196, 115],
+  modal_close: [8411, 214],
+  undo: [8725, 417],
+  error_tone: [9242, 200],
 };
 
 /** All sound IDs for iteration */
