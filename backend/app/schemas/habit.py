@@ -75,6 +75,24 @@ class HabitStatsResponse(BaseModel):
     total_xp_earned: int
 
 
+class DayDetailHabit(BaseModel):
+    id: uuid.UUID
+    title: str
+    icon_emoji: str
+    completed: bool
+    attribute_xp_awarded: int
+    is_excused: bool
+
+
+class DayDetailResponse(BaseModel):
+    date: str
+    total_xp: int
+    completion_tier: str
+    is_off_day: bool
+    is_perfect_day: bool
+    habits: list[DayDetailHabit]
+
+
 class ReorderRequest(BaseModel):
     habit_ids: list[uuid.UUID]
 

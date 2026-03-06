@@ -28,6 +28,8 @@ from app.schemas.check_habit import (
     TransformChange,
 )
 from app.schemas.habit import (
+    DayDetailHabit,
+    DayDetailResponse,
     HabitCalendarDay,
     HabitCreate,
     HabitResponse,
@@ -223,6 +225,70 @@ def calendar_all(
             )
 
     return sorted(result_map.values(), key=lambda d: d.date)
+
+
+# ── Day Detail (per-habit breakdown) ──────────────────────────────────
+
+
+@router.get("/calendar/day-detail", response_model=DayDetailResponse)
+def calendar_day_detail(
+    date: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Return per-habit completion breakdown for a specific date."""
+    # Get all habits that were due on this date
+    due_habits = get_habits_due_on_date(db, user.id, date)
+
+    # Check if it's an off day
+    off_day = is_off_day(db, user.id, date)
+
+    # Get completion logs for this date
+    habit_ids = [h.id for h in due_habits]
+    logs = (
+        db.query(HabitLog)
+        .filter(
+            HabitLog.habit_id.in_(habit_ids),
+            HabitLog.log_date == date,
+        )
+        .all()
+    )
+    log_map = {log.habit_id: log for log in logs}
+
+    # Get daily log for aggregate data
+    daily_log = (
+        db.query(DailyLog)
+        .filter(DailyLog.user_id == user.id, DailyLog.log_date == date)
+        .first()
+    )
+
+    total_xp = daily_log.xp_earned if daily_log else 0
+    completion_tier = daily_log.completion_tier if daily_log else "base"
+    is_perfect = daily_log.is_perfect_day if daily_log else False
+
+    # Build per-habit detail
+    habit_details = []
+    for habit in due_habits:
+        log = log_map.get(habit.id)
+        completed = log is not None and log.completed
+        xp = log.attribute_xp_awarded if log and log.completed else 0
+        habit_details.append(DayDetailHabit(
+            id=habit.id,
+            title=habit.title,
+            icon_emoji=habit.icon_emoji,
+            completed=completed,
+            attribute_xp_awarded=xp,
+            is_excused=off_day,
+        ))
+
+    return DayDetailResponse(
+        date=date,
+        total_xp=total_xp,
+        completion_tier=completion_tier,
+        is_off_day=off_day,
+        is_perfect_day=is_perfect,
+        habits=habit_details,
+    )
 
 
 # ── Reorder ────────────────────────────────────────────────────────────
