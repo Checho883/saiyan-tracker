@@ -8,10 +8,10 @@
 ### Feedback & Animations
 
 - [ ] **FEED-01**: User sees attribute level-up animation and title unlock notification when an attribute reaches a new level
-- [ ] **FEED-02**: User sees power level milestone celebration when hitting round numbers (1K, 5K, 10K, 50K)
+- [x] **FEED-02**: User sees power level milestone celebration when hitting round numbers (1K, 5K, 10K, 50K)
 - [ ] **FEED-03**: User sees Zenkai recovery animation with visual feedback on first Perfect Day after a streak break
-- [ ] **FEED-04**: User sees "You're close!" nudge banner when 1-2 habits remain for 100% completion
-- [ ] **FEED-05**: User sees daily summary toast after checking last habit (closure signal showing %, tier, XP even on imperfect days)
+- [x] **FEED-04**: User sees "You're close!" nudge banner when 1-2 habits remain for 100% completion
+- [x] **FEED-05**: User sees daily summary toast after checking last habit (closure signal showing %, tier, XP even on imperfect days)
 - [x] **FEED-06**: Animation queue supports priority tiers and batching to prevent overload from simultaneous events
 
 ### Character & Roasts
@@ -28,9 +28,9 @@
 
 ### Analytics & History
 
-- [ ] **ANLT-01**: User can view capsule drop history in Analytics page
-- [ ] **ANLT-02**: User can view wish grant history in Analytics page
-- [ ] **ANLT-03**: User can view per-habit contribution graph (GitHub-style 90-day grid)
+- [x] **ANLT-01**: User can view capsule drop history in Analytics page
+- [x] **ANLT-02**: User can view wish grant history in Analytics page
+- [x] **ANLT-03**: User can view per-habit contribution graph (GitHub-style 90-day grid)
 - [ ] **ANLT-04**: User can click any calendar day to see popover with per-habit breakdown and XP earned
 - [ ] **ANLT-05**: Per-habit calendar and stats API endpoints exist (GET /habits/{id}/calendar, GET /habits/{id}/stats)
 
@@ -73,10 +73,10 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | FEED-01 | Phase 14 | Pending |
-| FEED-02 | Phase 13 | Pending |
+| FEED-02 | Phase 13 | Complete |
 | FEED-03 | Phase 14 | Pending |
-| FEED-04 | Phase 13 | Pending |
-| FEED-05 | Phase 13 | Pending |
+| FEED-04 | Phase 13 | Complete |
+| FEED-05 | Phase 13 | Complete |
 | FEED-06 | Phase 11 | Complete |
 | CHAR-01 | Phase 12 | Pending |
 | CHAR-02 | Phase 12 | Pending |
@@ -84,9 +84,9 @@
 | ACHV-02 | Phase 12 | Pending |
 | ACHV-03 | Phase 14 | Pending |
 | ACHV-04 | Phase 12 | Pending |
-| ANLT-01 | Phase 13 | Pending |
-| ANLT-02 | Phase 13 | Pending |
-| ANLT-03 | Phase 13 | Pending |
+| ANLT-01 | Phase 13 | Complete |
+| ANLT-02 | Phase 13 | Complete |
+| ANLT-03 | Phase 13 | Complete |
 | ANLT-04 | Phase 15 | Pending |
 | ANLT-05 | Phase 12 | Pending |
 | HMGT-01 | Phase 15 | Pending |
@@ -104,4 +104,4 @@
 
 ---
 *Requirements defined: 2026-03-06*
-*Last updated: 2026-03-06 after roadmap creation*
+*Last updated: 2026-03-06 after Phase 13 completion*
