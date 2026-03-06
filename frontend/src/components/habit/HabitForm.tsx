@@ -23,7 +23,7 @@ const FREQUENCY_OPTIONS: { value: Frequency; label: string }[] = [
   { value: 'custom', label: 'Custom' },
 ];
 
-const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 interface HabitFormProps {
   habit?: HabitTodayResponse;
@@ -44,6 +44,9 @@ export function HabitForm({ habit, onClose }: HabitFormProps) {
   const [description, setDescription] = useState(habit?.description ?? '');
   const [iconEmoji, setIconEmoji] = useState(habit?.icon_emoji ?? '');
   const [targetTime, setTargetTime] = useState(habit?.target_time ?? '');
+  const [isTemporary, setIsTemporary] = useState(habit?.is_temporary ?? false);
+  const [startDate, setStartDate] = useState(habit?.start_date ?? new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(habit?.end_date ?? '');
   const [showMore, setShowMore] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -67,6 +70,9 @@ export function HabitForm({ habit, onClose }: HabitFormProps) {
           description: description.trim() || null,
           icon_emoji: iconEmoji || undefined,
           target_time: targetTime || null,
+          is_temporary: isTemporary,
+          start_date: isTemporary ? startDate : undefined,
+          end_date: isTemporary ? (endDate || null) : null,
         });
       } else {
         await createHabit({
@@ -78,7 +84,9 @@ export function HabitForm({ habit, onClose }: HabitFormProps) {
           custom_days: frequency === 'custom' ? customDays : null,
           description: description.trim() || null,
           icon_emoji: iconEmoji || '⚡',
-          start_date: today,
+          is_temporary: isTemporary,
+          start_date: isTemporary ? startDate : today,
+          end_date: isTemporary ? (endDate || null) : null,
           target_time: targetTime || null,
         });
       }
@@ -175,6 +183,99 @@ export function HabitForm({ habit, onClose }: HabitFormProps) {
         </select>
       </div>
 
+      {/* Frequency — always visible (not behind "More options") */}
+      <div>
+        <label className="block text-sm font-medium text-text-secondary mb-1">Frequency</label>
+        <div className="flex gap-2">
+          {FREQUENCY_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setFrequency(opt.value)}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                frequency === opt.value
+                  ? 'bg-saiyan-500 text-white'
+                  : 'bg-space-700 text-text-secondary'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Custom Days — circular iOS-style day picker */}
+      {frequency === 'custom' && (
+        <div className="flex justify-center gap-2">
+          {DAY_LABELS.map((label, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => toggleCustomDay(i)}
+              className={`w-9 h-9 rounded-full text-sm font-semibold transition-colors ${
+                customDays.includes(i)
+                  ? 'bg-saiyan-500 text-white'
+                  : 'bg-space-700 text-text-secondary'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Temporary Habit Toggle */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium text-text-secondary">Temporary habit</label>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={isTemporary}
+            onClick={() => setIsTemporary(!isTemporary)}
+            className={`relative w-11 h-6 rounded-full transition-colors ${
+              isTemporary ? 'bg-saiyan-500' : 'bg-space-600'
+            }`}
+          >
+            <div
+              className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                isTemporary ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {isTemporary && (
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label htmlFor="habit-start-date" className="block text-xs text-text-muted mb-1">
+                Start date
+              </label>
+              <input
+                id="habit-start-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full bg-space-700 border border-space-600 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-saiyan-500"
+              />
+            </div>
+            <div className="flex-1">
+              <label htmlFor="habit-end-date" className="block text-xs text-text-muted mb-1">
+                End date
+              </label>
+              <input
+                id="habit-end-date"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                min={startDate}
+                className="w-full bg-space-700 border border-space-600 rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-saiyan-500"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* More Options Toggle */}
       <button
         type="button"
@@ -187,47 +288,6 @@ export function HabitForm({ habit, onClose }: HabitFormProps) {
 
       {showMore && (
         <div className="space-y-4">
-          {/* Frequency */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">Frequency</label>
-            <div className="flex gap-2">
-              {FREQUENCY_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setFrequency(opt.value)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    frequency === opt.value
-                      ? 'bg-saiyan-500 text-white'
-                      : 'bg-space-700 text-text-secondary'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Custom Days */}
-          {frequency === 'custom' && (
-            <div className="flex gap-1">
-              {DAY_LABELS.map((label, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => toggleCustomDay(i)}
-                  className={`flex-1 py-1.5 rounded text-xs font-medium transition-colors ${
-                    customDays.includes(i)
-                      ? 'bg-saiyan-500 text-white'
-                      : 'bg-space-700 text-text-secondary'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-
           {/* Description */}
           <div>
             <label htmlFor="habit-description" className="block text-sm font-medium text-text-secondary mb-1">
@@ -277,7 +337,7 @@ export function HabitForm({ habit, onClose }: HabitFormProps) {
       {/* Submit */}
       <button
         type="submit"
-        disabled={isSubmitting || !title.trim()}
+        disabled={isSubmitting || !title.trim() || (frequency === 'custom' && customDays.length === 0) || (isTemporary && !endDate)}
         className="w-full bg-saiyan-500 text-white rounded-lg py-3 font-bold disabled:opacity-50 flex items-center justify-center gap-2"
       >
         {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}

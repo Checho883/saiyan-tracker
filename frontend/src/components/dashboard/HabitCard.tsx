@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Check, MoreVertical, Pencil, Trash2, BarChart3, GripVertical } from 'lucide-react';
+import { Check, MoreVertical, Pencil, Trash2, BarChart3, GripVertical, Clock } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -197,6 +197,13 @@ export function HabitCard({ habit }: HabitCardProps) {
         >
           {habit.attribute}
         </span>
+
+        {habit.is_temporary && (
+          <span className="flex items-center gap-0.5 text-xs text-text-muted">
+            <Clock className="w-3 h-3" />
+            temp
+          </span>
+        )}
 
         {habit.streak_current > 0 && (
           <span className="text-xs text-text-secondary">
