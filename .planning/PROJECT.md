@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A Dragon Ball Z-themed daily habit tracker built exclusively for Sergio. It weaponizes ADHD dopamine-seeking behavior through percentage-based daily completion, sound effects on every interaction, randomized loot boxes, screen-shaking 100% explosions, and a Dragon Ball collection macro-reward loop. No tasks, no punishment — only habits and positive reinforcement. The backend is fully built with 15 database models, complete game logic (XP, tiers, streaks, capsules, Dragon Balls, transformations), and 9 REST API endpoints — all testable via Swagger.
+A Dragon Ball Z-themed daily habit tracker built exclusively for Sergio. It weaponizes ADHD dopamine-seeking behavior through percentage-based daily completion, sound effects on every interaction, randomized loot boxes, screen-shaking 100% explosions, and a Dragon Ball collection macro-reward loop. No tasks, no punishment — only habits and positive reinforcement. The full stack is now live: 15 database models with complete game logic, 9 REST API endpoints, and a React 19 frontend with dashboard, audio, animations, analytics, and settings — all delivering dopamine on every habit check.
 
 ## Core Value
 
@@ -21,20 +21,21 @@ Every habit check must feel like something happened — a sound, a visual pulse,
 - ✓ Off-day system with XP/Dragon Ball clawback — v1.0
 - ✓ 9 REST API routers with full Pydantic schemas (222 tests) — v1.0
 - ✓ 118 seeded quotes across 6 characters and 7 trigger events — v1.0
+- ✓ Percentage-based daily aura (all habits equal weight toward 100%) — v1.1
+- ✓ Saiyan attributes (STR/VIT/INT/KI) with per-habit XP visualization — v1.1
+- ✓ Capsule Corp loot boxes with visual drop/reveal animations — v1.1
+- ✓ Dragon Ball tracker UI (7 slots with glow effects) — v1.1
+- ✓ Full-screen 100% Perfect Day explosion with audio — v1.1
+- ✓ Saiyan avatar with visual transformation (10 forms: Base through Beast) — v1.1
+- ✓ Sound effects on every interaction (scouter beep, ki charge, explosions) — v1.1
+- ✓ Character quote system with trigger routing — v1.1
+- ✓ Calendar heatmap with gold/blue/red/gray color coding — v1.1
+- ✓ Attribute progression charts and power level tracking — v1.1
+- ✓ Settings: capsule reward CRUD, Shenron wish CRUD, sound toggle, theme — v1.1
 
 ### Active
 
-- [ ] Percentage-based daily aura (all habits equal weight toward 100%)
-- [ ] Saiyan attributes (STR/VIT/INT/KI) with per-habit XP visualization
-- [ ] Capsule Corp loot boxes with visual drop/reveal animations
-- [ ] Dragon Ball tracker UI (7 slots with glow effects)
-- [ ] Full-screen 100% Perfect Day explosion with audio
-- [ ] Saiyan avatar with visual transformation (10 forms: Base through Beast)
-- [ ] Sound effects on every interaction (scouter beep, ki charge, explosions)
-- [ ] Character quote system with trigger routing and Vegeta escalation
-- [ ] Calendar heatmap with gold/blue/red/gray color coding
-- [ ] Attribute progression charts and per-habit contribution graphs
-- [ ] Settings: capsule reward CRUD, Shenron wish CRUD, sound toggle, theme
+(None — next milestone will define new requirements via `/gsd:new-milestone`)
 
 ### Out of Scope
 
@@ -43,39 +44,24 @@ Every habit check must feel like something happened — a sound, a visual pulse,
 - Mobile app — web-first (PWA later in v2)
 - Real-time sync — local SQLite, no cloud
 - Social features — solo tracker, no leaderboards with others
-
-## Current Milestone: v1.1 The Dopamine Layer
-
-**Goal:** Build the complete frontend experience — every habit check triggers sound, visual feedback, and dopamine-rewarding animations on top of the v1.0 backend.
-
-**Target features:**
-- Percentage-based daily aura (all habits equal weight toward 100%)
-- Saiyan attributes (STR/VIT/INT/KI) with per-habit XP visualization
-- Capsule Corp loot boxes with visual drop/reveal animations
-- Dragon Ball tracker UI (7 slots with glow effects)
-- Full-screen 100% Perfect Day explosion with audio
-- Saiyan avatar with visual transformation (10 forms: Base through Beast)
-- Sound effects on every interaction (scouter beep, ki charge, explosions)
-- Character quote system with trigger routing and Vegeta escalation
-- Calendar heatmap with gold/blue/red/gray color coding
-- Attribute progression charts and per-habit contribution graphs
-- Settings: capsule reward CRUD, Shenron wish CRUD, sound toggle, theme
+- Vegeta escalation roast system — deferred to v1.2 polish
+- Per-habit contribution graphs — deferred to v1.2 polish
 
 ## Context
 
-Shipped v1.0 Backend Foundation with 5,967 LOC Python (3,292 app + 2,675 tests).
-Tech stack: Python 3.14 + FastAPI + SQLAlchemy 2.0 + SQLite.
-222 tests passing across 3 phases. All game mechanics verified via TDD.
-Frontend stack ready: React 19 + Vite 7 + TypeScript + Zustand + Framer Motion + Tailwind CSS v4.
-Next milestone covers Phases 4-8: frontend state, dashboard UI, audio/animations, analytics/settings, quote polish.
+Shipped v1.1 The Dopamine Layer with 7,783 LOC TypeScript frontend on top of 5,967 LOC Python backend.
+Tech stack: React 19 + Vite 7 + TypeScript + Zustand + Motion + Tailwind CSS v4 (frontend), Python 3.14 + FastAPI + SQLAlchemy 2.0 + SQLite (backend).
+49/49 v1.1 requirements verified complete across 7 phases (16 plans, 88 commits).
+All game mechanics have full visual representation: aura gauge, scouter HUD, attribute bars, Dragon Ball tracker, 5 animation overlays, 13 sound effects.
+Known tech debt: recharts@3.7.x react-is override in package.json, placeholder audio sprite (needs real sound files).
 
 ## Constraints
 
-- **Tech stack**: React 19 + Vite 7 + TypeScript frontend, Python 3.14 + FastAPI backend, SQLite database, Zustand state, Framer Motion animations, Tailwind CSS
+- **Tech stack**: React 19 + Vite 7 + TypeScript frontend, Python 3.14 + FastAPI backend, SQLite database, Zustand state, Motion animations, Tailwind CSS v4
 - **Quality**: Build it right the first time — solid architecture over speed
 - **Depth**: Comprehensive coverage — the PRD is detailed and every mechanic matters
 - **Solo user**: No auth system needed, single default user
-- **Audio**: Every interaction must have a sound effect (use-sound or Howler.js)
+- **Audio**: Every interaction must have a sound effect (Howler.js sprite sheet)
 
 ## Key Decisions
 
@@ -91,7 +77,13 @@ Next milestone covers Phases 4-8: frontend state, dashboard UI, audio/animations
 | check_habit() flushes but doesn't commit | API layer manages transaction boundaries | ✓ Good |
 | Services don't add to session | Caller manages transaction boundaries for composability | ✓ Good |
 | Pure functions for XP math | Composable, testable, no DB dependency | ✓ Good |
-| 8-phase bottom-up build order | DB → Services → API → Frontend → UI → Audio → Analytics → Polish | ✓ Good |
+| 10-phase bottom-up build order | DB → Services → API → Scaffold → Dashboard → Audio → Animations → Analytics → Integration → Verification | ✓ Good |
+| Tailwind v4 @theme with 28 color tokens | Consistent DBZ theming via CSS custom properties | ✓ Good |
+| Zustand with useShallow selectors | Prevents re-renders from multi-value subscriptions | ✓ Good |
+| Howler.js sprite sheet for audio | Single file load, 13 sounds, playbackRate variation for freshness | ✓ Good |
+| AnimatePresence mode="wait" queue | Sequential animation playback prevents visual chaos | ✓ Good |
+| Optimistic UI with rollback | Instant habit check feedback, revert on API error | ✓ Good |
+| Recharts with react-is override | Best React charting lib despite peer dep conflict | ⚠️ Revisit |
 
 ---
-*Last updated: 2026-03-04 after v1.1 milestone start*
+*Last updated: 2026-03-06 after v1.1 milestone*

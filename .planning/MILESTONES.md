@@ -1,5 +1,28 @@
 # Milestones
 
+## v1.1 The Dopamine Layer (Shipped: 2026-03-06)
+
+**Phases completed:** 7 phases, 16 plans
+
+**Key accomplishments:**
+- React 19 + Vite 7 scaffold with Tailwind v4 dark theme, 43 TypeScript types, typed ky API client for 9 endpoints, 4 Zustand stores with selector discipline
+- Full dashboard: habit list grouped by category, check/uncheck with optimistic UI, XP popup, aura gauge with tier labels, saiyan avatar with scouter HUD, 4 attribute bars, Dragon Ball tracker, streaks, character quotes
+- Howler.js audio system with 13 sound effects, playbackRate variation, global mute toggle, and SoundEffectListener for animation events
+- Animation layer: sequential queue with AnimatePresence, 5 choreographed overlays (Perfect Day explosion, Capsule drop/reveal, Dragon Ball trajectory, Transformation, Shenron ceremony with wish enforcement)
+- Analytics page: calendar heatmap (4-color coding), attribute progression chart, power level chart, scouter-style stat cards with neon glow SVG filters
+- Settings page: sound/theme/name preferences, off-day management, CRUD for capsule rewards, Shenron wishes, and categories
+- Cross-phase integration fixes: SoundProvider settings sync, powerStore transformation name propagation, capsule reveal chime wiring
+
+**Stats:**
+- Frontend code: 7,783 LOC TypeScript
+- Files changed: 182
+- Net change: +24,616 / -5,778 lines
+- Timeline: 2 days (2026-03-04 → 2026-03-06)
+- Git range: v1.0..b862480 (88 commits)
+- Requirements: 49/49 verified complete
+
+---
+
 ## v1.0 Backend Foundation (Shipped: 2026-03-04)
 
 **Phases completed:** 3 phases, 7 plans, 0 tasks
