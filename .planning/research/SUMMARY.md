@@ -1,254 +1,181 @@
 # Project Research Summary
 
-**Project:** Saiyan Tracker v1.1 Frontend — The Dopamine Edition
-**Domain:** DBZ-themed gamified habit tracker (animation-heavy, audio-driven, ADHD-optimized, single-user React SPA integrating with existing FastAPI backend)
-**Researched:** 2026-03-04
+**Project:** Saiyan Tracker v1.2 -- PRD Complete
+**Domain:** Gamified habit tracker feature expansion (18 features on existing DBZ-themed, ADHD-optimized app)
+**Researched:** 2026-03-06
 **Confidence:** HIGH
 
 ## Executive Summary
 
-Saiyan Tracker v1.1 is a frontend-only build that integrates with a fully built and tested FastAPI + SQLite backend (222 passing tests). The product is a dopamine-engineered habit tracker where audio and visual feedback on every interaction is non-negotiable — if the app is silent and still, it has failed. The recommended approach is a React 19 SPA using Vite 7, Tailwind CSS v4 (CSS-first config), Zustand 5 for all state management, Motion 12 for animations, Howler.js with an audio sprite sheet for sound, and Recharts for the analytics page only. The architecture is driven by a single critical data flow: the `POST /habits/{id}/check` response fans out to 3 Zustand stores and a FIFO animation queue that plays up to 5 sequential celebration animations per habit check.
+Saiyan Tracker v1.2 adds 18 features to an already-functional gamified habit tracker built on React 19, FastAPI, and SQLite. The existing codebase has substantial infrastructure already in place -- DB models, constants, API endpoints, and frontend stores -- that many v1.2 features simply need to wire up and surface to the user. The recommended approach is to treat this as a "complete the wiring" milestone rather than a greenfield build: most backend models exist, most API data flows exist, and most frontend patterns are established. The stack additions are minimal (3 dnd-kit packages, @floating-ui/react, and a react-is peer dep fix -- totaling ~30kb gzipped), with several features explicitly building custom components rather than adding dependencies.
 
-The central design challenge is animation orchestration. A single habit check can trigger an XP popup, tier-change banner, capsule drop reveal, transformation unlock, Perfect Day explosion, and Shenron ceremony — all from one API response. These must play sequentially using a queue pattern in `uiStore`, not simultaneously, or the experience degrades into visual and audio chaos. The `CheckHabitResponse` was engineered by the backend to return all downstream state changes in a single payload, so the frontend never needs follow-up API calls after a check. All power level, transformation, dragon ball, and streak state comes from the check response directly — the frontend stores are mirrors of backend truth, never independent calculators.
+The central architectural challenge is extending the `check_habit()` pipeline -- the 10-step atomic transaction that every habit tap flows through. Five new detection steps (streak milestones, attribute level-ups, power milestones, achievements, roast context) must be inserted into this pipeline, and five new animation event types must flow through the existing AnimationPlayer queue. The single highest-risk pitfall is animation queue overload: a single habit check can already trigger 6 animations, and v1.2 adds 5 more event types. Without a priority/batching system, the worst case produces 10+ sequential overlays taking 20+ seconds -- completely unacceptable for an ADHD-optimized app where instant feedback is the core value proposition.
 
-The biggest risks are setup-phase configuration mistakes that are expensive to fix later: installing the wrong animation library package (`framer-motion` instead of `motion`), creating a `tailwind.config.js` in a Tailwind v4 project (silently ignored), using TanStack Query alongside Zustand (creates two-source-of-truth bugs that break the animation dispatch pattern), and skipping Zustand selector discipline (re-render storms across the entire dashboard on every habit check). These are all zero-cost to prevent and medium-to-high cost to recover from. The ARCHITECTURE.md provides complete working code examples for all 5 architectural patterns, so implementation is well-specified.
-
----
+Key risks beyond animation overload include: retroactive milestone spam on first deploy (seeding existing achievements is mandatory), temporary habit date boundary bugs corrupting completion percentages, drag-and-drop conflicting with tap-to-check on mobile, and Vegeta roasts creating negative emotional associations that drive app avoidance. All of these have clear prevention strategies documented in the research. The overall confidence is HIGH because every recommendation is grounded in direct codebase analysis of the existing architecture.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The stack is fully resolved with HIGH confidence. React 19.2 + Vite 7.3 is the foundation, requiring Node 20.19+ (Vite 7 dropped Node 18). Tailwind CSS v4.2 uses CSS-first configuration via `@theme` directives — no `tailwind.config.js` exists. Motion 12 (renamed from Framer Motion) handles all overlay animations and sequencing; install via `npm install motion` and import from `motion/react`. Zustand 5 manages all state in 4 stores with no TanStack Query — Zustand stores call API functions directly and handle animation dispatch atomically in the same synchronous call, which a separate server-state library's async scheduler would prevent. Howler.js via a SoundProvider context with a single sprite sheet handles audio. The `ky` HTTP client (3.6kb) replaces both raw fetch and Axios (13kb).
+The existing stack (React 19, Vite 7, TypeScript, Zustand 5, Motion 12, Tailwind v4, Recharts, Howler.js, ky, react-hot-toast, vaul, lucide-react, react-router 7) remains unchanged. Only 5 new packages are needed.
 
-**Core technologies:**
-- **React 19.2**: UI framework — concurrent rendering handles animation-heavy UIs; requires Node 20.19+
-- **Vite 7.3**: Build tool — Rolldown Rust bundler, sub-second HMR, `@tailwindcss/vite` first-party plugin
-- **TypeScript 5.7 (strict)**: Type safety — critical for typing `CheckHabitResponse` (the 15-field composite response that drives all state)
-- **Zustand 5.0**: State management — 4 stores (habitStore, powerStore, rewardStore, uiStore); synchronous action dispatch enables atomic API-response-to-animation-queue updates; use `useShallow` for multi-value selections
-- **Motion 12**: Animations — `AnimatePresence mode="wait"` for sequenced overlays, spring physics for aura bar, 3D `rotateY` card flip for capsule reveal, screen shake wrapper
-- **Tailwind CSS v4.2**: Styling — CSS-first `@theme` config with 9 DBZ-specific color tokens; no `tailwind.config.js`
-- **React Router 7.13**: Routing — 3 routes (Dashboard, Analytics, Settings); v7 supports React 19 transitions
-- **Howler.js 2.2 via SoundProvider context**: Audio — single sprite sheet loaded once at app mount; `useAudio().play('scouter_beep')` from any component; NOT individual `use-sound` hooks (creates duplicate Howler instances per component)
-- **ky 3.6kb**: HTTP client — typed API wrapper; base URL configured; components never import from `api/` directly
-- **Recharts 3.7**: Charts — Analytics page only; Dashboard attribute bars use CSS progress bars (10x lighter)
-- **canvas-confetti 1.9**: Particles — Perfect Day and Dragon Ball bursts; direct API, not `react-canvas-confetti` (unmaintained 2+ years)
-- **sonner**: Toast notifications — 2-3kb, DBZ-themed custom styling
+**New dependencies:**
+- **@dnd-kit/core + sortable + utilities (6.3.x):** Habit card reordering -- modular, accessible, touch-friendly, stable. Chosen over hello-pangea/dnd (heavier) and pragmatic-drag-and-drop (immature docs). The experimental @dnd-kit/react 0.3.x was explicitly rejected as pre-1.0.
+- **@floating-ui/react (0.27.x):** Calendar day popover positioning -- lightweight (~8kb), handles viewport collision correctly. Chosen over Radix Popover (91kb, overkill for one component) and CSS-only (positioning is hard).
+- **react-is (19.0.0):** Explicit install to satisfy recharts 3.7.x peer dependency, replacing the fragile `overrides` workaround in package.json.
 
-**Critical version notes:**
-- `use-sound@5.0.0` has LOW confidence React 19 compatibility — if peer dep conflicts, use the custom 15-line Howler wrapper provided in STACK.md
-- `recharts@3.7.x` may need `react-is` in `package.json` overrides during install
-- **Node 20.19+ required** — Vite 7 dropped Node 18; verify before starting
+**Explicitly rejected:** No library for contribution graphs (custom SVG, ~80 LOC), day-of-week picker (7 toggle buttons), date pickers (native `<input type="date">`), or additional toast/animation libraries (existing Motion + react-hot-toast cover all needs).
 
 ### Expected Features
 
-**Must have — Core daily loop (v1.1 Core):**
-- Habit list with check/uncheck and optimistic UI — the primary interaction; every other feature flows from here
-- Daily aura progress bar with tier labels (Kaio-ken x3/x10/x20) — the visual centerpiece; uses CSS `scaleX` not Motion
-- RPG attribute bars STR/VIT/INT/KI with XP fill and level numbers
-- Dragon Ball tracker (7 slots; filled balls glow with `box-shadow: 0 0 20px #FF6B00`)
-- Saiyan avatar with form-appropriate aura (10 transformation forms, color per form)
-- Streak display (current + best, per-habit on habit cards)
-- Character quote display — embedded in check response; no extra API call needed
-- Habit CRUD modal (title, importance, attribute, frequency, category)
-- XP popup animation floating up from checked habit card (`"+22 STR XP"`)
-- SoundProvider with sound effects on every interaction — PRD core value; not optional
-- Dark theme with DBZ CSS custom properties
+**Must have (table stakes) -- fill gaps in shipped v1.1:**
+- Achievement system + streak milestone badges (DB model exists, zero service/API/UI)
+- Capsule drop and wish grant history views (API endpoints exist, zero UI)
+- Calendar day popover with per-habit breakdown (PRD-specified interaction)
+- Habit drag-and-drop reordering (sort_order field exists, no endpoint or UI)
+- Archived habits view + restore (soft-delete exists, no way to see/restore)
+- Per-habit calendar + stats API (contribution graph exists, monthly calendar does not)
+- recharts react-is tech debt resolution
 
-**Must have — Dopamine layer (v1.1 Dopamine):**
-- Tier change flash banner at 50%/80% thresholds (Kaio-ken x3/x10!)
-- Perfect Day explosion — full-screen 8-step choreographed sequence; THE climax moment; screen shake + particles + XP reveal
-- Capsule drop reveal — 3D card flip, rarity glow, user-defined real-life rewards; notification badge pattern (not blocking popup)
-- Transformation animation — milestone event (~10 times ever); form-specific aura colors
-- Shenron ceremony — 7 Dragon Balls collected, user selects a wish; requires at least 1 active wish in DB
+**Should have (differentiators) -- deepen the "Dopamine Edition" identity:**
+- Vegeta escalation roast system (severity field exists, no detection logic)
+- Per-habit contribution graphs (API exists, no frontend component)
+- Zenkai recovery animation (response flag exists, zero visual feedback)
+- Attribute level-up animation + title unlock (backend calculates levels, no celebration)
+- Power level milestone celebrations (primary progression number gets no fanfare between transformations)
+- "You're close!" nudge banner (ADHD dopamine cliff prevention)
+- Daily summary toast on last check (closure signal)
+- Temporary habit support (model fields exist, form does not expose them)
+- Custom frequency day picker polish (basic UI exists, needs UX upgrade)
+- Real audio sprite files (replace placeholders)
 
-**Should have — Complete the feature set (v1.1 Complete):**
-- Calendar heatmap (gold/blue/red/gray 4-tier coloring via `@uiw/react-heat-map`)
-- Attribute progression charts (Recharts `AreaChart` on Analytics page)
-- Analytics summary stat cards (perfect days, avg %, total XP, longest streak)
-- Settings page (sound/theme toggle, Reward CRUD, Wish CRUD, Category CRUD)
-- Off-day management modal
-
-**Defer to v1.x (post-validation):**
-- Per-habit 90-day contribution graph
-- Vegeta escalating roast system (mild/medium/savage, triggers at session start after missed day — never mid-session)
-- Streak milestone badges (Piccolo at 21 days, Whis at 60+)
-- Calendar day drill-down popover with per-habit breakdown
-
-**Defer to v2+:**
-- PWA with offline support, VPS + PostgreSQL, Training Arc challenges, Tournament mode vs past self
-
-**Anti-features — explicitly excluded:**
-- Task/to-do list — dilutes clean 100% model; enables ADHD hyperfocus exploit
-- HP loss / punishment — ADHD abandonment trigger; Zenkai halving covers this
-- Leaderboards or social features — triggers shame in neurodivergent users
-- Multi-user auth or cloud sync — single-tenant SQLite design; zero value for solo app
-- Notification/reminder system — notification fatigue; the dopamine loop IS the reminder
+**Defer (v2+):**
+- Push/browser notifications (hostile UX, ADHD users experience as nagging)
+- Undo streak break / manual streak editing (undermines Zenkai recovery mechanic)
+- Batch "complete all" button (destroys the per-check dopamine loop)
+- Complex per-habit trend charts (contribution grid + calendar is sufficient)
+- Social/sharing features (solo tracker by design)
 
 ### Architecture Approach
 
-The architecture is a React SPA with clean layer separation: ky API client → 4 Zustand stores → Motion animation layer → React components. The key architectural decision is **Zustand-only state management with no TanStack Query**: stores call API functions directly so that the `checkHabit` action can atomically update 3 stores AND populate the animation queue in one synchronous block. An `AnimationLayer` component in `App.tsx` renders above all content via `position: fixed; z-index: 50`, watches `uiStore.currentAnimation` using `AnimatePresence mode="wait"`, and calls `dequeueAnimation()` on each animation's exit. The SoundProvider wraps the entire app with a single Howler sprite sheet. The backend requires one addition before the frontend can communicate: CORSMiddleware in `main.py` restricted to `localhost:5173`.
+All 18 features integrate into an existing three-layer architecture (React frontend with Zustand stores and AnimationPlayer queue, FastAPI service layer with the central `check_habit()` pipeline, SQLite via SQLAlchemy). The key integration pattern is: backend detection services produce new optional fields in `CheckHabitResponse`, the frontend `habitStore.checkHabit()` reads those fields and enqueues animation events, and the `AnimationPlayer` renders overlays sequentially. Six features need zero backend work (existing APIs or pure frontend state derivation). Seven features need new backend endpoints or service logic. Five features are purely animation/UI overlays consuming data that the enhanced `check_habit()` response provides.
 
 **Major components:**
-1. **API client layer** (`api/client.ts` + per-resource modules) — ky instance with typed wrappers; 1 file per backend router; stores call these, components never import from `api/` directly
-2. **Zustand stores** (4 stores: habitStore, powerStore, rewardStore, uiStore) — `habitStore.checkHabit()` is the hub: optimistic toggle → POST → update 3 stores → populate animation queue
-3. **SoundProvider context** — singleton Howler instance with sprite sheet (`~500KB-1MB`); `useAudio().play('scouter_beep')` from any component; preloads all sounds at mount
-4. **AnimationLayer** in `App.tsx` — `AnimatePresence mode="wait"` rendering overlay animations sequentially from FIFO queue in uiStore; each calls `dequeueAnimation()` on completion
-5. **Dashboard page** — HabitList, DailyAuraBar (CSS), SaiyanAvatar, AttributeBars (CSS), DragonBallTracker, StreakDisplay; all read-only displays driven by store subscriptions with fine-grained selectors
-6. **Analytics page** — CalendarHeatmap, AttributeChart (Recharts), SummaryCards; parallel API fetches on mount; independent of animation system
-7. **Settings page** — RewardManager, WishManager, CategoryManager, sound/theme toggles; parallel API fetches on mount
-
-**Recommended build order (dependency-driven):**
-Types → API client → 4 Zustand stores → App shell + CORS + Vite proxy → Dashboard core (habit check e2e verified) → Dashboard context components → Audio system (parallel) → Animation layer → Modals → Settings → Analytics
+1. **check_habit() pipeline extension** -- Insert 4 new detection steps (streak milestone, attribute level-up, power milestone, achievement check) into the existing 10-step transaction
+2. **AnimationPlayer queue system** -- Add 5 new event types with a priority/batching system to prevent queue overload
+3. **New backend endpoints** -- PUT /habits/reorder, GET /habits/archived, PUT /habits/{id}/restore, GET /habits/{id}/calendar, GET /habits/{id}/stats, GET /habits/calendar/day-detail, GET /achievements
+4. **New frontend components** -- ContributionGraph (custom SVG), CapsuleHistoryList, WishHistoryList, CalendarDayPopover, NudgeBanner, ArchivedHabitsSection, AchievementGrid, 5 animation overlays
 
 ### Critical Pitfalls
 
-1. **Wrong Motion package** — Install `motion` (not `framer-motion`); import from `motion/react`. `framer-motion` is the legacy package, no longer the primary dev target. Zero-cost to prevent at setup; 30-minute fix if caught early.
+1. **Animation queue overload** -- A single habit check can trigger 10+ sequential overlays (20+ seconds of waiting). Implement priority tiers: exclusive overlays (perfect_day, transformation), banner/badge overlays (streak milestone, power milestone), inline non-blocking (xp_popup, daily summary). Cap queued overlays at 3; batch extras into a combo summary. This refactor must happen BEFORE any new event types are added.
 
-2. **Tailwind v4 config paradigm shift** — Do NOT create `tailwind.config.js`. All custom colors go in `@theme {}` in `index.css`. Border defaults changed to `currentColor` (was `gray-200`); ring defaults to 1px (was 3px blue). Always specify explicit color and width on borders and rings. Medium recovery cost via `npx @tailwindcss/upgrade`.
+2. **Retroactive milestone spam on deploy** -- If milestone detection checks "streak >= N" without dedup, existing streaks trigger past milestones on first app load. Run a one-time migration to seed the achievements table with already-passed milestones. Detection must happen ONLY inside check_habit(), never on app load.
 
-3. **Audio autoplay policy** — Browser `AudioContext` starts suspended until a user gesture. The SoundProvider must call `audioContext.resume()` on first interaction. Do NOT call `play()` in `useEffect` or on mount. The first habit check naturally satisfies the gesture requirement — wire sound calls inside click handlers only. Test on cold browser tab after every new sound event.
+3. **Temporary habit date boundaries corrupt completion %** -- Ambiguous end_date semantics (inclusive vs exclusive) cause denominator shifts in completion rate. Document and test that end_date is the last active day (inclusive). Never recalculate historical daily_log snapshots.
 
-4. **Animation avalanche / jank** — Multiple animations firing simultaneously produces dropped frames and audio/visual desync. Use the `uiStore` FIFO queue for strict sequential playback with `AnimatePresence mode="wait"`. Animate only `transform` and `opacity` — never `width`, `height`, `backgroundColor`, or `boxShadow` (these trigger layout/paint). The aura bar fill must use CSS `scaleX` transition, not a Motion value, to keep the JS animation budget free for celebrations.
+4. **Drag-and-drop vs tap-to-check conflict on mobile** -- The entire HabitCard is currently a tap target. Adding drag makes taps ambiguous. Use a dedicated drag handle (visible only in reorder mode) and never use delay-based activation constraints.
 
-5. **Zustand re-render storms** — Never call `useStore()` without a selector. Always: `useHabitStore((s) => s.todayHabits)`. Use `useShallow` for multi-value selections. 6 habit cards + avatar + attribute bars + aura bar + dragon balls all re-rendering on every single habit check is catastrophic for performance. Define all 4 store boundaries and document the selector pattern before building any components.
-
-6. **XP calculation authority** — The backend is the only source of truth for XP, power level, and transformation state. `powerStore` sets values from API responses only: `power_level = response.power_level`, never `power_level += calculated_xp`. Optimistic UI for habit completion uses a toggle (checked/unchecked state), not an XP increment.
-
-7. **CORS + Vite proxy** — Configure the Vite proxy in `vite.config.ts` as the primary CORS solution. All API calls use relative URLs (`/api/v1/habits`), never absolute. Add restricted CORSMiddleware to FastAPI backend as a fallback for Swagger UI access only. Do not use both simultaneously with wildcard origins.
-
----
+5. **Vegeta roasts create app avoidance** -- "Savage" roasts as the first thing a returning user sees creates shame-based punishment. Always show a welcome_back Goku quote first. Vegeta appears as secondary, never modal. Add a Settings toggle for roast intensity.
 
 ## Implications for Roadmap
 
-Based on the combined research — dependency graph from ARCHITECTURE.md, pitfall-to-phase mapping from PITFALLS.md, and feature priority tiers from FEATURES.md — the following 5-phase structure is recommended:
+Based on research, suggested phase structure:
 
-### Phase 1: Project Setup and Foundation
-**Rationale:** Seven pitfalls require prevention at setup time. Wrong packages, wrong config paradigms, CORS misconfiguration, and React 19 library incompatibilities are all zero-cost to prevent and medium-to-high cost to fix after components are built. This phase must complete before any component work begins.
-**Delivers:** Working project scaffold with Vite 7 + React 19 + TypeScript 5.7 strict; Tailwind v4 configured with all 9 DBZ color tokens in `@theme`; `motion` (not `framer-motion`) installed and import path verified; ky API client with typed wrappers; TypeScript types in `types/index.ts` mirroring all backend schemas; Vite proxy confirmed working (first `GET /api/v1/habits/today/list` succeeds); CORSMiddleware added to FastAPI backend; all library peer dependencies verified for React 19
-**Addresses:** TypeScript types for `CheckHabitResponse` (foundational for type safety across all subsequent work)
-**Avoids:**
-- Pitfall 2: `motion` not `framer-motion`; `motion/react` import path
-- Pitfall 7: Tailwind v4 CSS-first `@theme`; no `tailwind.config.js`; explicit border and ring classes
-- Pitfall 6 (React 19): All libraries verified; new JSX transform configured; no `defaultProps` on function components
-- Pitfall 9: Vite proxy configured; relative API URLs throughout; CORSMiddleware added with restricted origin
-**Research flag:** Standard patterns — official docs are authoritative. Verify `use-sound@5.0.0` React 19 peer dep at install time; fall back to custom Howler hook if warnings appear.
+### Phase 1: Animation Queue Refactor + Tech Debt
+**Rationale:** The animation queue is the single highest-risk integration point. Every subsequent feature that adds animations depends on a healthy queue system. The recharts override should also be resolved early to stabilize charts before new analytics features.
+**Delivers:** Priority-tiered animation system with batching/caps, recharts stability
+**Addresses:** Animation overload pitfall (Critical Pitfall 1), recharts tech debt (feat 18)
+**Avoids:** 15-25 second animation slideshows on combo events
 
-### Phase 2: State Management and Core Data Flow
-**Rationale:** Zustand stores are the spine of the app. Components are useless without data. The animation queue in `uiStore` must exist before the animation layer can be built. All 4 stores must be defined with proper selectors and documented patterns before any component consumes state, or re-render bugs are baked in from the start.
-**Delivers:** 4 Zustand stores with typed state shapes, API-calling actions, cross-store communication pattern (`usePowerStore.getState()` inside `habitStore.checkHabit()`), `processCheckResult()` function that builds the animation queue from a check response, `dequeueAnimation()` action; custom hooks encapsulating selectors (`useTodayHabits()` etc.); `useShallow` documented and enforced; `local_date` sent in every check request
-**Addresses:** Habit check data flow (the most critical flow), optimistic UI toggle with rollback on error
-**Avoids:**
-- Pitfall 5: 4 stores, selector discipline documented, `useShallow` for multi-value selections
-- Pitfall 8 (XP authority): `powerStore` sets values from check response only; no local XP math
-- Pitfall 12 (timezone): `local_date: "YYYY-MM-DD"` in every check request body
-- Anti-pattern: No TanStack Query; Zustand owns server state for atomic animation dispatch
-**Research flag:** Standard patterns — Zustand 5 architecture is well-documented; ARCHITECTURE.md has complete working code for all store shapes and the `processCheckResult` function.
+### Phase 2: Backend Detection Services + check_habit() Extension
+**Rationale:** Seven frontend features are blocked by backend detection logic. Building all detections together allows a single, coordinated extension of CheckHabitResponse rather than multiple partial integrations.
+**Delivers:** Achievement service + API, streak milestone detection, attribute level-up detection, power milestone detection, Vegeta roast service, PUT /habits/reorder, per-habit calendar/stats endpoints, archived habits endpoints, calendar day-detail endpoint
+**Addresses:** Features 1-3, 7-10, 14 (backend portions)
+**Avoids:** Retroactive milestone spam (seed migration), multiple partial response extensions
 
-### Phase 3: Dashboard Core and Audio Foundation
-**Rationale:** The habit-check loop must work end-to-end before animation or analytics work begins. Audio is foundational infrastructure — nearly every feature needs sound, and the SoundProvider autoplay pattern must be established before individual sounds are wired. These two tracks can be built in parallel (audio has no dependency on UI components).
-**Delivers:** Working daily habit-check loop with optimistic UI; DailyAuraBar with CSS `scaleX` transition and spring physics; HabitList + HabitCard components; SaiyanAvatar (transformation-aware, 10 form images); AttributeBars (CSS, not Recharts); DragonBallTracker (7 slots, glow CSS); StreakDisplay; XP popup float animation; SoundProvider with Howler sprite sheet; `useAudio()` hook; all ~10 sound clips sourced and sprite sheet compiled; global mute toggle respected
-**Addresses:** Habit list + check/uncheck (table stakes), daily aura progress bar (visual centerpiece), streak display, character quote display, XP popup, sound on every interaction (PRD core value)
-**Avoids:**
-- Pitfall 3: SoundProvider `audioContext.resume()` on first user gesture; `play()` only inside click handlers; tested on cold browser tab
-- Pitfall 4: Audio priority queue; `interrupt: true` for short repeated sounds; single Howler context, not one per component
-- Pitfall 1: Aura bar uses CSS `scaleX`, not Motion — keeps JS animation budget free for celebrations
-- Pitfall 10: Dashboard uses CSS progress bars for attributes, not Recharts
-**Research flag:** Sound asset sourcing requires attention — source ~10 clips from Freesound.org (CC0) and compile sprite sheet with `audiosprite` or ffmpeg before this phase starts. This is a prerequisite, not a Phase 3 task.
+### Phase 3: Pure Frontend Features (No Backend Needed)
+**Rationale:** Six features use existing API data or derive from local state. They can ship immediately after Phase 1's animation refactor, in parallel with or after Phase 2.
+**Delivers:** Capsule history view, wish history view, contribution graphs, nudge banner, daily summary toast, power level milestone celebrations
+**Addresses:** Features 4, 5a, 5b, 11, 12, 13
+**Uses:** Custom SVG component, react-hot-toast, derived Zustand state
 
-### Phase 4: Animation Layer and Dopamine Mechanics
-**Rationale:** The animation layer requires a working dashboard to overlay on top of and a working audio system to trigger sounds. Building animations first without real data makes integration testing impossible. This phase delivers the features that differentiate the app from every competitor — the celebrations that make it feel like a game.
-**Delivers:** `AnimationLayer` in `App.tsx` with `AnimatePresence mode="wait"`; `PerfectDayExplosion` (8-step choreographed sequence: blackout → screen shake → canvas-confetti particles → "100% COMPLETE" title → XP counter → Dragon Ball earned → Goku quote → wind-down); `CapsuleDropPopup` (notification badge → 3D card flip reveal); `TransformationReveal` (form-specific aura color, avatar swap); `ShenronAnimation` (sky darkens, Shenron scales up, wish selection, Dragon Balls scatter); `TierChangeBanner` (Kaio-ken x3/x10!); `XpPopup`; `ScreenShake` wrapper; all animations call `dequeueAnimation()` on exit; UI is non-blocking during animations (habit checkbox remains interactive)
-**Addresses:** All P1 dopamine differentiators: Perfect Day explosion, capsule loot reveal, transformation milestone, Shenron ceremony, tier-change flash, Dragon Ball trajectory animation
-**Avoids:**
-- Pitfall 1: `AnimatePresence mode="wait"` enforces sequential playback; animate only `transform`/`opacity`; `PerfectDayExplosion` unmounts on completion to release GPU layers
-- Pitfall 11 (reward saturation): Capsule shows notification badge, not blocking popup mid-habit-check flow; skippable open animation under 2 seconds
-- Anti-pattern 3: Animations play sequentially via queue, never simultaneously
-- UX pitfall: Screen shake reserved for 100% and transformation only; Vegeta roast triggers at session start only, never mid-session
-**Research flag:** The Perfect Day 8-step choreography and Shenron ceremony flow need explicit step-by-step planning before implementation. The multi-step timing using `onAnimationComplete` chaining (not `setTimeout`) is the most complex UI sequence in the project. Plan the state machine explicitly before coding.
+### Phase 4: Animation Overlays + Vegeta Roasts
+**Rationale:** Animation overlays consume the detection data from Phase 2 and rely on the refactored queue from Phase 1. Vegeta roast frontend needs the backend roast service from Phase 2.
+**Delivers:** Zenkai recovery animation, streak milestone overlay, attribute level-up overlay, achievement overlay, Vegeta escalation UI with Settings toggle
+**Addresses:** Features 1-3, 6, 10 (frontend portions)
+**Avoids:** Vegeta roast app-avoidance pitfall (welcome_back first, Settings toggle)
 
-### Phase 5: Analytics and Settings
-**Rationale:** Analytics and Settings have no dependencies on the animation system. Settings is needed to manage the rewards and wishes required for the Shenron/capsule system to be fully tested end-to-end — making it a prerequisite for validating Phase 4 completeness. Analytics is lowest dependency and appropriate for the final phase.
-**Delivers:** CalendarHeatmap (`@uiw/react-heat-map`, 4-tier gold/blue/red/gray coloring, click-to-detail); Recharts `AreaChart` for attribute progression with `useMemo`-wrapped data and `React.memo`-wrapped components; Analytics summary stat cards; Settings page with sound/theme toggles, Reward CRUD, Wish CRUD, Category CRUD; Off-day modal; UI guard enforcing minimum 1 active wish before Shenron ceremony can complete; guard against empty rewards list when capsule drop triggers
-**Addresses:** All P2 features: analytics visualization, user configuration, Shenron wish management, capsule reward customization
-**Avoids:**
-- Pitfall 10: All Recharts components wrapped in `React.memo`; chart data memoized with `useMemo`; formatter functions with `useCallback`; no Recharts on Dashboard
-- Shenron crash: UI enforces minimum 1 active wish guard
-- Capsule crash: Guard against empty rewards list when capsule drop triggers backend response
-**Research flag:** Standard patterns — `@uiw/react-heat-map` and Recharts APIs are straightforward with the memoization discipline established here.
+### Phase 5: Drag-and-Drop + Calendar Popover + Analytics Polish
+**Rationale:** These are the highest-complexity frontend features requiring new library integration (@dnd-kit, @floating-ui/react). They depend on Phase 2 backend endpoints (reorder, day-detail). History views need pagination added.
+**Delivers:** Habit reordering with dnd-kit, calendar day popover, achievement display grid, history pagination
+**Addresses:** Features 7, 8 (frontend portions), analytics polish
+**Uses:** @dnd-kit/core + sortable, @floating-ui/react
+**Avoids:** Drag-tap conflict (dedicated handle), calendar popover mobile failure (vaul drawer on mobile), unbounded history data (pagination from start)
+
+### Phase 6: Settings Enhancements + Form Features + Audio
+**Rationale:** Lower-priority features that enhance existing forms and settings. Audio sprites must come last because all new sound IDs need to be defined first, then compiled once.
+**Delivers:** Archived habits view + restore, temporary habit form support, custom frequency day picker polish, real audio sprite files
+**Addresses:** Features 14-17 (frontend portions)
+**Avoids:** sort_order collision on restore (MAX+1 strategy), temporary habit date bugs (boundary tests), day picker weekday mismatch (ISO weekday constants), audio sprite desync (automated manifest generation)
 
 ### Phase Ordering Rationale
 
-- **Setup before everything**: 7 of 12 pitfalls must be prevented at setup time. Wrong packages and config paradigms compound into every subsequent phase and grow more expensive to fix as the codebase grows.
-- **State before components**: Zustand store boundaries and selector discipline must be established before any component consumes state. Retrofitting selectors and `useShallow` across a completed component tree is a full-day task and requires touching every consumer.
-- **Dashboard core before animations**: A working `checkHabit()` flow with real API data is required to test the animation queue. Animations built against mock data frequently break during integration because the response shape is richer than mocks capture.
-- **Audio parallel with dashboard**: The SoundProvider context has no component dependencies — it can be built during Phase 3 alongside dashboard components and wired in at the end of the phase.
-- **Analytics last**: Recharts and heatmap components are read-only with no Zustand write dependencies. They are completely independent and appropriate for the final phase, where they benefit from real accumulated data for meaningful testing.
+- **Animation refactor first** because every subsequent phase adds animation events. Building on a broken queue compounds the problem.
+- **Backend detections grouped** because they all modify `check_habit()` and `CheckHabitResponse`. Doing them in one phase avoids repeated schema migrations and partial integration states.
+- **Pure frontend features early** because they are low-risk, high-visibility wins that can ship while backend work is in progress. They demonstrate progress and are independently testable.
+- **DnD and popover together** because they are the two features requiring new library integration and have the highest frontend complexity.
+- **Audio last** because the sprite must include all sound IDs (existing + new). Adding sounds for features that do not exist yet wastes effort if features change.
 
 ### Research Flags
 
-Phases needing implementation attention during planning:
+Phases likely needing deeper research during planning:
+- **Phase 1 (Animation Queue Refactor):** The priority/batching system is a novel pattern for this codebase. Needs careful design of tier definitions and batching logic. Research the interaction between AnimatePresence mode="wait" and dynamically-typed overlays.
+- **Phase 5 (DnD + Calendar Popover):** dnd-kit integration with existing Motion layoutId animations needs testing. Calendar popover mobile/desktop switching (popover vs vaul drawer) needs UX research.
 
-- **Phase 1**: Verify `use-sound@5.0.0` React 19 compatibility before committing to it; have the custom 15-line Howler hook fallback from STACK.md ready to drop in
-- **Phase 3 prerequisite**: Sound asset sourcing must happen before Phase 3 begins — source ~10 clips from Freesound.org and compile sprite sheet. Plan this as pre-Phase 3 work.
-- **Phase 3 prerequisite**: Character image assets (10 transformation forms, 7 Dragon Ball images, Shenron image) must be sourced or commissioned before Phase 4 can build the components that use them
-- **Phase 4**: Perfect Day 8-step choreography is the most complex UI sequence in the project; plan the step machine (state-driven, not setTimeout-based) before implementation
-
-Phases with standard patterns (can skip `/gsd:research-phase`):
-
-- **Phase 2**: Zustand 5 store patterns are well-documented; ARCHITECTURE.md has complete working code for all store shapes, `processCheckResult`, and cross-store communication
-- **Phase 5**: Recharts `ResponsiveContainer` + `React.memo` pattern is established; `@uiw/react-heat-map` has adequate documentation
-
----
+Phases with standard patterns (skip research-phase):
+- **Phase 2 (Backend Services):** All backend additions follow the existing service-layer pattern. check_habit() extension is well-documented in ARCHITECTURE.md.
+- **Phase 3 (Pure Frontend):** Data display components using existing APIs. Straightforward React patterns.
+- **Phase 6 (Settings + Forms):** Standard form enhancements. The only risk (day picker weekday mismatch) is well-documented with a clear fix.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All core libraries verified against official docs and npm. One LOW-confidence item: `use-sound@5.0.0` React 19 peer dep — documented fallback (custom Howler hook) exists |
-| Features | HIGH | Backend API contracts are fixed (222 passing tests). Feature set derived from API response shapes and PRD. CheckHabitResponse schema is the authoritative feature spec. |
-| Architecture | HIGH | Complete working TypeScript code examples for all 5 architectural patterns in ARCHITECTURE.md. Build order is dependency-graph-derived with explicit rationale. |
-| Pitfalls | MEDIUM-HIGH | 10 of 12 pitfalls backed by official sources (MDN, React blog, Tailwind docs, Motion docs, Chrome for Developers). 2 are behavioral/UX based on ADHD gamification research (MEDIUM confidence). |
+| Stack | HIGH | Only 5 new packages, all verified for React 19 compatibility. Explicit rejection rationale for every considered-but-rejected library. |
+| Features | HIGH | All 18 features analyzed with existing infrastructure mapped. Clear dependency graph. Competitor analysis validates feature choices. |
+| Architecture | HIGH | Based on direct codebase analysis of every integration touchpoint. check_habit() pipeline, AnimationPlayer queue, and store patterns are thoroughly documented. |
+| Pitfalls | HIGH | 11 pitfalls identified with specific code references (file names, line numbers). Each has prevention strategy, warning signs, and phase mapping. |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **`use-sound` React 19 compatibility**: LOW confidence. Attempt install first; if peer dep warnings appear, use the custom Howler hook (15 lines in STACK.md). Resolve in Phase 1 before any audio work begins.
-- **Sound asset sourcing**: The ~10 audio clips (scouter beep, ki charge, explosion, capsule pop, item reveal, dragon radar ping, shenron roar, transform power-up, achievement fanfare) must be sourced or created before Phase 3. Freesound.org has CC0 options. Sprite sheet creation requires `audiosprite` npm package or manual ffmpeg. This is pre-Phase 3 work.
-- **Character image assets**: 10 transformation form images (Base through Beast/UI) and 7 Dragon Ball images (1-star through 7-star) must exist before Phase 4 components can be built. Shenron image also required. Source or commission before Phase 4 starts.
-- **`recharts@3.7.x` peer dep**: May require adding `react-is` to `package.json` overrides. Minor — resolve at install time in Phase 5.
-- **Capsule crash guard**: When capsule drop triggers but rewards table is empty, the frontend must gracefully handle a null/empty capsule response. Backend behavior under this condition should be verified before Phase 4 capsule animation is wired.
-
----
+- **Animation priority tier definitions:** Research identified the need for priority tiers but the exact tier assignments need validation during Phase 1 planning. Which events are truly "exclusive overlay" vs "banner" vs "inline" requires UX testing.
+- **Audio sourcing quality:** Royalty-free sound-alikes recommended, but actual sound quality and DBZ-feel cannot be evaluated until files are sourced. May need iteration.
+- **Custom day picker existing state:** The ARCHITECTURE.md notes a potential bug where frontend 0-indexed days may not match backend ISO weekdays (1-7). This must be verified against actual stored data before building the day picker enhancement.
+- **Capsule/wish history data volume:** Pagination recommended, but actual data volumes after months of use are unknown. The 50-item default page size is a reasonable guess but may need adjustment.
+- **Calendar popover information density:** Research recommends minimal content (date, %, habit names, XP) but optimal layout needs UX validation on actual mobile viewports.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [React 19.2 blog](https://react.dev/blog/2025/10/01/react-19-2) — v19.2.4 stable, concurrent rendering, ref as regular prop
-- [React 19 Upgrade Guide](https://react.dev/blog/2024/04/25/react-19-upgrade-guide) — removed APIs, new JSX transform, `act` import path
-- [Vite 7.0 announcement](https://vite.dev/blog/announcing-vite7) — Rolldown, Node 20.19+ requirement
-- [Motion docs](https://motion.dev/docs/react) — renamed from framer-motion, `motion/react` import path, AnimatePresence, v12 React 19 support
-- [Tailwind CSS v4 docs + upgrade guide](https://tailwindcss.com/docs/upgrade-guide) — `@theme` directive, CSS-first config, border/ring default changes
-- [Zustand GitHub v5.0.11](https://github.com/pmndrs/zustand) — React 19 peerDep, `useShallow`, selector patterns, cross-store `getState()`
-- [Howler.js](https://howlerjs.com/) — audio sprites, singleton `AudioContext`, Web Audio API fallback, `play(spriteId)`
-- [canvas-confetti GitHub](https://github.com/catdad/canvas-confetti) — `shapeFromPath`, particle count limits for 60fps
-- [MDN Autoplay Guide](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay) — `AudioContext` suspension policy, cross-browser gesture requirement
-- [Chrome Web Audio Autoplay Policy](https://developer.chrome.com/blog/web-audio-autoplay) — `context.resume()` in event handler
-- [Vite Server Proxy docs](https://vite.dev/config/server-options) — proxy configuration, `changeOrigin`, path rewriting
-- [ky GitHub](https://github.com/sindresorhus/ky) — 3.6kb fetch wrapper, TypeScript-first, error throwing on 4xx/5xx
+- Direct codebase analysis of all integration touchpoints (habit_service.py, habitStore.ts, uiStore.ts, AnimationPlayer.tsx, constants.py, package.json)
+- [dnd-kit official docs](https://docs.dndkit.com/) -- sortable preset, useSortable hook
+- [Floating UI React docs](https://floating-ui.com/docs/react) -- useFloating + useClick pattern
+- [recharts react-is discussion #5701](https://github.com/recharts/recharts/discussions/5701) -- peer dependency migration
+- [recharts React 19 issue #4558](https://github.com/recharts/recharts/issues/4558) -- compatibility status
 
 ### Secondary (MEDIUM confidence)
-- [Recharts npm + React 19 issue #4558](https://github.com/recharts/recharts/issues/4558) — `react-is` override workaround
-- [use-sound GitHub](https://github.com/joshwcomeau/use-sound) — v5.0.0, last update Feb 2025, `interrupt` option, sprite `playbackRate` limitation, null guard on `sound` object
-- [Recharts Performance Guide](https://recharts.github.io/en-US/guide/performance/) — `React.memo`, `useMemo` for chart data
-- [Gamification UX research — ALMAX Agency](https://almaxagency.com/gamification-in-ux-ui/) — 40% exit rate from visual noise, 20% interface saturation threshold
-- [Variable reward psychology — Nir Eyal](https://www.nirandfar.com/want-to-hook-your-users-drive-them-crazy/) — capsule drop rate justification and habituation risk
-- [Gamification in habit tracking — Cohorty](https://blog.cohorty.app/gamification-in-habit-tracking-does-it-work-research-real-user-data) — real-user dropout data
+- [Puck: Top 5 DnD Libraries for React 2026](https://puckeditor.com/blog/top-5-drag-and-drop-libraries-for-react) -- dnd-kit vs alternatives comparison
+- [Reclaim: 10 Best Habit Tracker Apps 2026](https://reclaim.ai/blog/habit-tracker-apps) -- feature expectations
+- [Trophy: 20 Productivity App Gamification Examples 2025](https://trophy.so/blog/productivity-gamification-examples) -- gamification patterns
+- [Pixabay Sound Effects](https://pixabay.com/sound-effects/) -- royalty-free audio sourcing
 
 ### Tertiary (LOW confidence)
-- `use-sound@5.0.0` React 19 peer dep compatibility — needs empirical verification at install time in Phase 1; fallback documented
+- [@uiw/react-heat-map](https://github.com/uiwjs/react-heat-map) -- React 19 compatibility unverified (rejected for custom build)
+- [The Sounds Resource](https://sounds.spriters-resource.com/) -- game audio rips (copyrighted, personal use only)
 
 ---
-*Research completed: 2026-03-04*
+*Research completed: 2026-03-06*
 *Ready for roadmap: yes*

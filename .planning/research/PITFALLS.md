@@ -1,340 +1,288 @@
 # Pitfalls Research
 
-**Domain:** Gamified habit tracker (DBZ-theme, ADHD-targeted, animation-heavy, audio-driven)
-**Researched:** 2026-03-04
-**Confidence:** MEDIUM-HIGH — web search + official docs verified; single-user scope reduces some concerns
-
----
+**Domain:** Adding 19 features to an existing gamified DBZ habit tracker (v1.2)
+**Researched:** 2026-03-06
+**Confidence:** HIGH (based on direct codebase analysis of uiStore, AnimationPlayer, habitStore, habit_service.py, streak_service.py, soundMap, HabitCard + ecosystem knowledge)
 
 ## Critical Pitfalls
 
-### Pitfall 1: Animation Avalanche — Simultaneous Framer Motion Components Causing Jank
+### Pitfall 1: Animation Queue Overload — Single Habit Check Enqueues 8+ Overlays
 
 **What goes wrong:**
-Every major event in Saiyan Tracker triggers a visual animation: habit check pulses the aura bar, a PointsPopup floats up, the DragonBallTracker might glow, and the transformation meter updates — all at the same moment. When 4-6 animations fire simultaneously on a React component tree, Framer Motion's JavaScript-driven animation engine becomes the bottleneck. On mid-range hardware, this manifests as dropped frames (jank), stuttering aura fills, and audio falling out of sync with visuals.
+A single `checkHabit()` call already enqueues up to 6 animation events: `xp_popup`, `tier_change`, `capsule_drop`, `transformation`, `perfect_day`, and `dragon_ball`. v1.2 adds `streak_milestone`, `attribute_level_up`, `power_level_milestone`, `zenkai_recovery`, and `daily_summary` events. The worst case is the "last habit of a perfect day at a streak milestone that also crosses a power level milestone and triggers an attribute level-up with a capsule drop" -- that is 9-10 queued events. The `AnimationPlayer` uses `AnimatePresence mode="wait"` and processes one overlay at a time. With each overlay taking 2-3 seconds, the user stares at sequential animations for 15-25 seconds before they can interact.
 
 **Why it happens:**
-Framer Motion does not use the Web Animations API (WAAPI) by default — it runs its own JS-driven timing engine. Each `<motion.div>` executing simultaneous property interpolations blocks or competes on the main thread. The perfect-day explosion sequence (screen shake + full-screen overlay + XP counter animate + Dragon Ball appear + quote fade-in) is the worst-case scenario: 5+ animated components firing concurrently. Heavy nested layouts with multiple motion components reduce frame rates and animation smoothness under load.
+The current `habitStore.checkHabit()` (lines 73-119 of habitStore.ts) enqueues every event independently with zero deduplication, priority, or batching. The `AnimationPlayer` renders the first `QUEUED_TYPES` match from the queue, waits for completion, dequeues, then renders the next. Each new v1.2 feature gets naively added the same way: "if result has X, enqueue X animation."
 
 **How to avoid:**
-- Sequence the perfect-day explosion using `AnimatePresence` and staggered `delay` props rather than firing all components at once.
-- Animate only `transform` and `opacity` — never `width`, `height`, `top`, `backgroundColor`, or `boxShadow` directly; these trigger layout/paint, not just composite.
-- Avoid applying `willChange` broadly; use it only on the one element that will animate immediately.
-- The aura bar fill animation (the most frequent event) must be a CSS transition on `scaleX` transform, not a Framer Motion value, to avoid adding to the JS animation budget on every single habit check.
-- The `PerfectDayAnimation` overlay should unmount when complete — use `AnimatePresence` with `mode="wait"` so it releases GPU layers after the sequence ends.
-- For layout animations, add the `layoutScroll` prop to scroll containers so Framer Motion correctly measures positions, and use `layoutRoot` for any fixed-position elements.
+- Implement animation priority tiers. Events in the same tier batch into one overlay:
+  - **Tier 1 (exclusive overlay):** `shenron`, `perfect_day`, `transformation` -- only one plays, highest priority wins
+  - **Tier 2 (banner/badge, shown inside Tier 1 overlay or standalone):** `streak_milestone`, `power_level_milestone`, `attribute_level_up`, `zenkai_recovery`
+  - **Tier 3 (inline, non-blocking):** `xp_popup`, `tier_change`, `daily_summary`
+  - **Tier 4 (deferred notification):** `capsule_drop` -- show as a badge/indicator, user opens it later
+- When `perfect_day` fires, embed streak milestone and power milestone badges INSIDE the perfect day overlay instead of as separate overlays.
+- Cap total queued overlays to 3. If more would queue, show a single "combo summary" overlay listing all events.
+- The `QUEUED_TYPES` set in `AnimationPlayer.tsx` (line 12-18) must be updated to only include Tier 1 events. Tier 2 events render as toast/badge, not full-screen overlays.
 
 **Warning signs:**
-- Chrome DevTools Performance tab shows long paint/composite tasks (>16ms frame budget) during habit check
-- Audio plays before the visual completes (misaligned feedback)
-- The aura bar "jumps" instead of smoothly growing
-- `console.log` timings inside animation callbacks show delayed execution
+- Testing the "last habit of the day" scenario produces 4+ sequential overlays.
+- User has to wait more than 5 seconds before they can interact after a habit check.
+- The `animationQueue` array length exceeds 5 at any point.
 
-**Phase to address:** Animation & Feedback Phase — treat `PerfectDayAnimation` and `ShenronAnimation` as performance-constrained from day one, not as "optimize later" components.
+**Phase to address:**
+Animation queue refactor must happen FIRST, before any new event types are added. Adding new events to the current unbounded queue is the single highest-risk integration pitfall.
 
 ---
 
-### Pitfall 2: Framer Motion Package Name Change — Installing the Wrong Package
+### Pitfall 2: Streak Milestone Detection Fires Retroactively on App Load
 
 **What goes wrong:**
-Framer Motion has been rebranded to "Motion" and moved to a new package. Installing `framer-motion` still works but is the legacy package. The new package is `motion` with imports from `motion/react`. Tutorials and Stack Overflow answers from pre-2025 reference the old import paths. Using `framer-motion` imports in a new project means missing v11 improvements, including better React 19 concurrent rendering support and performance fixes.
+The `Achievement` model exists in the DB (table 8.14) but has zero service logic. `STREAK_MILESTONES = [3, 7, 21, 30, 60, 90, 365]` is defined in `constants.py` (line 64) but not consumed by any service. When someone implements milestone detection, the naive approach is: check all streaks against milestones, fire notifications for any met. If Sergio already has a 14-day streak when this ships, he gets bombarded with 3-day and 7-day milestone notifications he already passed. Every page refresh re-triggers because nothing records that the milestone was already acknowledged.
 
 **Why it happens:**
-Framer Motion became independent from Framer in late 2024, rebranding as Motion with a new home at motion.dev. The old `framer-motion` package continues to exist for backward compatibility but is no longer the primary development target. Developers following older tutorials install the wrong package.
+No `achievement_service.py` exists yet. The first implementation checks `streak.current_streak >= milestone` without querying the `achievements` table for already-recorded milestones. The detection logic gets put in `fetchToday()` or app load instead of inside `check_habit()`.
 
 **How to avoid:**
-- Install `motion` (not `framer-motion`): `npm install motion`
-- Import from `motion/react` not `framer-motion`: `import { motion, AnimatePresence } from "motion/react"`
-- The v11 release includes improvements for React 19 concurrent rendering — use it.
-- If any tutorial or library example uses `framer-motion` imports, mentally translate to `motion/react`.
+- Milestone detection MUST ONLY fire inside `check_habit()` in `habit_service.py`, specifically between step 5 (update streaks) and step 6 (recalculate XP). Never on app load, never in `fetchToday()`.
+- Before enqueuing any milestone animation, query: `SELECT id FROM achievements WHERE achievement_type = 'streak_milestone' AND achievement_key = 'streak_7' AND user_id = ?`. If a row exists, skip.
+- Create `achievement_service.py` with `check_and_record_milestones(db, user_id, current_streak) -> list[dict]` that atomically checks + inserts in the same transaction.
+- On first deploy: run a one-time migration that seeds the `achievements` table with already-passed milestones based on `streak.current_streak` and `streak.best_streak`.
 
 **Warning signs:**
-- `package.json` shows `framer-motion` as a dependency
-- Import statements use `from "framer-motion"`
-- Missing features or deprecation warnings that were fixed in motion v11
+- Achievement notifications appear on page refresh.
+- Same achievement fires multiple times.
+- User opens app after feature deploy and sees 3+ celebration overlays immediately.
 
-**Phase to address:** Project Setup Phase — get the correct package from the start. Migrating imports later is trivial but annoying.
+**Phase to address:**
+Achievement system phase. The achievement service and migration must be built BEFORE streak milestone UI, and streak milestone detection must be added INSIDE `check_habit()`, not alongside it.
 
 ---
 
-### Pitfall 3: Audio Firing on App Load — Browser Autoplay Policy Silencing Everything
+### Pitfall 3: Temporary Habits Corrupt Daily Completion Percentage
 
 **What goes wrong:**
-The app starts, loads the user's daily state, and immediately plays a "welcome back" sound or queues the aura charging sound. The browser blocks it. The AudioContext is in `suspended` state until the user performs a gesture (click, tap, keypress). All audio calls before that first gesture are silently swallowed. The user never hears the scouter beep on their first habit check of the session if the AudioContext was not resumed in the same synchronous call stack as the click.
+The completion rate calculation in `check_habit()` (lines 131-148 of habit_service.py) uses `get_habits_due_on_date()` to count habits due and completed. Temporary habits with `end_date` boundaries create three failure modes:
+
+1. **Off-by-one:** A habit with `end_date = "2026-03-05"` -- is it due on March 5th? The current filter `habit.end_date < local_date` (line 55) excludes it on March 5th. This means the LAST day set by the user is NOT included, which is counterintuitive. A user who creates a "7-day challenge ending March 5th" expects it to appear on March 5th.
+
+2. **Denominator shift:** Expired temporary habits no longer count in `habits_due_count`, which changes the completion rate formula. If the user had 6 habits (5 permanent + 1 temporary), checking 5/6 = 83%. After the temporary habit expires: 5/5 = 100%. The user's historical analytics show 83% for that day, but the current calculation says 100%. Which is truth?
+
+3. **Phantom habit:** Frontend shows the temporary habit (fetched from active habits list) but backend does not count it as due (because end_date passed). User checks it, but it does not affect completion %.
 
 **Why it happens:**
-All major browsers (Chrome, Firefox, Safari) enforce an autoplay policy: `AudioContext` starts suspended, and `context.resume()` must be called from inside a user-initiated event. `use-sound` and Howler.js both rely on Web Audio API and hit this restriction identically. Safari is strictest — it will not play audio unless the resume call is in the same synchronous call stack as the user gesture. You can check the policy with `navigator.getAutoplayPolicy()` which returns "allowed", "disallowed", or "allowed-muted".
+The `end_date` semantics are ambiguous. The current code uses `<` (strictly before), making end_date the first day the habit is NOT due. But users think of end_date as "last active day" (inclusive). The `daily_log` table already snapshots `habits_due` and `habits_completed` at check time, which is correct -- but if the frontend recalculates locally, it will drift.
 
 **How to avoid:**
-- Implement a `SoundProvider` context that calls `audioContext.resume()` on the first user interaction anywhere in the app (a click/touch on the habit checkbox immediately satisfies this).
-- Do NOT try to pre-warm or pre-play audio on `useEffect` or component mount.
-- Store the `AudioContext` in a singleton (Howler.js does this automatically), not one per component — multiple contexts compound the permission problem.
-- For the habit check sound specifically: the `play()` call must happen in the click handler directly, not in a `setTimeout` or `useEffect` triggered by a state change.
-- Test the audio flow on first app load in a new browser tab every time a new sound event is added.
+- Change the filter to `habit.end_date < local_date` -> `habit.end_date is not None and habit.end_date < local_date`. The current code already does this (line 55-56), but the comparison should be inclusive: the habit IS due on its end_date. Change to `habit.end_date < local_date` (strictly before today, meaning end_date is the last active day). Actually the current behavior IS correct for "end_date = last active day" IF we document it.
+- Document the semantic explicitly: `end_date` is the LAST day the habit is due (inclusive). The filter `end_date < local_date` means "skip if end_date is before today" which correctly includes end_date itself.
+- Write explicit boundary test cases: `end_date = today` -> IS due. `end_date = yesterday` -> NOT due.
+- Frontend habit form must display end_date as "Last active day" not "End date" to avoid ambiguity.
+- NEVER recalculate historical daily_log values. The snapshot is truth.
 
 **Warning signs:**
-- First habit check of the day is silent; subsequent ones have sound
-- Console shows `AudioContext was not allowed to start` warning
-- Sounds work in development (localhost often has fewer restrictions) but fail in production
-- Transformation sounds don't play when triggered by a state change (XP threshold crossed) rather than a direct click
+- Completion % shows 4/5 when user sees 5 habits on screen.
+- Temporary habit appears on dashboard but checking it does not change the aura bar.
+- Historical calendar heatmap changes colors after a temporary habit expires.
 
-**Phase to address:** Audio Foundation Phase — establish the `SoundProvider` singleton and gesture-resume pattern before wiring up any individual sounds.
+**Phase to address:**
+Temporary habit phase. Must include boundary date tests and frontend label clarity.
 
 ---
 
-### Pitfall 4: Overlapping Audio on Rapid Habit Checks
+### Pitfall 4: Drag-and-Drop vs. Checkbox Tap Conflict on HabitCard
 
 **What goes wrong:**
-Sergio checks habit 1 (scouter beep), then immediately checks habit 2 before the first sound finishes. Two scouter beeps stack. He checks 3-4 habits quickly (ADHD rapid-fire behavior) and 4 beeps are layered over each other. The capsule-drop sound overlaps the habit sound. The Kaio-ken tier-up sound fires on top of both. The dashboard sounds like audio soup.
+`HabitCard` (line 81-89 of HabitCard.tsx) uses the entire card as a click target with `role="button"` and `onClick={handleTap}`. Adding drag-and-drop makes the card a drag source. On touch devices, a tap and a drag start identically (touchstart). Without disambiguation: (a) every drag attempt also toggles the habit completion, or (b) every tap has a 200ms+ delay while the library determines intent, violating the "every interaction must feel instant" core value.
 
 **Why it happens:**
-`use-sound` and Howler.js both allow multiple instances of the same sound to play simultaneously by default. Each `play()` call creates a new audio sprite instance. The `sound` object returned by `use-sound` is `null` for the first few moments after component mount, so early plays may silently fail while later rapid plays stack.
+The existing card is designed as a single large tap target. Drag-and-drop libraries wrap items in drag containers that also capture pointer events. The click handler and drag handler fight over the same gesture. Using `activationConstraint` with a distance or delay threshold makes taps feel sluggish.
 
 **How to avoid:**
-- For short per-event sounds (scouter beep): use `interrupt: true` in `use-sound` so each new play stops the previous instance.
-- For the aura-charging ambient hum: use a single Howler.js instance, adjust its `rate` or `volume` over time, never spawn new instances.
-- For the perfect-day explosion: gate behind a flag so it cannot be triggered while already playing.
-- Implement a global sound priority queue: at most 2 sounds playing simultaneously (foreground event sound + possible background ambient).
-- Assign sound priority tiers: explosion/transformation (tier 1, interrupts everything), capsule/achievement (tier 2), habit-check beep (tier 3, lowest).
-- When using sprites in `use-sound`, note that `playbackRate` is NOT reactive — only the initial value is used. If you need dynamic rate, use Howler directly.
+- Add a dedicated drag handle (3-line grip icon) to the left side of the HabitCard. Only the handle initiates drag. The rest of the card continues to work as a tap-to-check target.
+- Only show drag handles in "reorder mode" toggled by a button in the habit list header. In normal mode, the card works exactly as today -- zero changes to the existing tap behavior.
+- Use `@hello-pangea/dnd` for the drag library -- it is purpose-built for vertical list reordering, has excellent touch support, and its `DragHandleProps` isolate the drag zone.
+- NEVER use delay-based activation (`activationConstraint: { delay: 200 }`) -- it makes every interaction feel broken for an ADHD user who expects instant feedback.
 
 **Warning signs:**
-- Audio sounds muddy or distorted during rapid habit checks
-- The perfect-day explosion is drowned out by leftover habit sounds
-- `sound` object is null when trying to call methods on it during early component lifecycle
+- Habit check takes >100ms to respond after adding drag-and-drop.
+- Dragging a card also toggles its completion state.
+- Mobile users report they "can't check habits" or "can't reorder."
 
-**Phase to address:** Audio Foundation Phase — build the priority queue and interrupt logic before any individual sounds are wired.
+**Phase to address:**
+Drag-and-drop reorder phase. Must be tested on mobile touch with both tap and drag gestures.
 
 ---
 
-### Pitfall 5: Zustand Store Design — Fat Stores, Missing Selectors, Re-render Storms
+### Pitfall 5: Vegeta Roast System Feels Punishing — ADHD User Avoids the App
 
 **What goes wrong:**
-All dashboard state lives in one monolithic `habitStore` that contains habits, todayHabits, calendar data, daily progress, loading flags, and error states. Every habit check updates `completion_rate`, which re-renders the SaiyanAvatar (subscribed to power level), the DragonBallTracker (subscribed to dragon balls), the AttributeBars (subscribed to attributes), and every HabitCard (subscribed to habits array). The entire dashboard tree re-renders on every single interaction.
+The PRD says "No punishment -- only positive reinforcement + Vegeta verbal roasts." But a Vegeta quote saying "You call yourself a Saiyan? Disgraceful" after 3 missed days IS punishment. If the roast is the first thing Sergio sees when he opens the app after missing days, it creates negative emotional association with the app. For ADHD users, this is the death spiral: miss days -> feel bad -> avoid the app -> miss more days.
 
 **Why it happens:**
-Zustand's simplicity makes it easy to `useHabitStore()` with no selector (equivalent to `(s) => s`), which subscribes a component to EVERY state change in the store. Developers pass objects from store selectors without shallow comparison, causing re-renders even when the specific values haven't changed. Stores grow endlessly as features are added because "it's just one more property."
+The quote `severity` field (mild/medium/savage) exists in the database but no escalation logic exists yet. The developer implements the escalation spec literally (1 day = mild, 2 days = medium, 3+ days = savage) without testing the emotional impact. The "savage" quotes read as insulting rather than motivating.
 
 **How to avoid:**
-- Use 4 stores as the PRD specifies: `habitStore`, `powerStore`, `rewardStore`, `uiStore`. Do NOT merge them.
-- NEVER use `useHabitStore()` without a selector. Always: `useHabitStore((s) => s.todayHabits)`.
-- When selecting multiple values, use `useShallow` from `zustand/react/shallow`: `useHabitStore(useShallow((s) => ({ habits: s.todayHabits, rate: s.completionRate })))`.
-- Keep server state (API responses) separate from UI state (modals, animation flags). `uiStore` handles what's visible; data stores handle what the backend returned.
-- Export custom hooks that encapsulate selectors: `useTodayHabits()` instead of raw store access. This prevents selector mistakes at every call site.
-- Actions (functions that modify state) should be defined inside the store with `set`, not as standalone functions that capture stale closures over store state.
-- If using `persist` middleware, test hydration: the store loads default state on first render, then overwrites with persisted state — this can cause a visible flash/flicker of default values.
+- Roasts must NEVER be the first thing the user sees when returning. Show a `welcome_back` Goku quote first ("You came back! That's what makes you a true Saiyan!"). Only show Vegeta on the SECOND interaction or as a small character quote bar, not a modal.
+- Add a "Vegeta mode" toggle in Settings (default: ON, but can be turned off or set to "mild only").
+- Review ALL roast quotes for tone. Reframe from insults to challenges: "A true Saiyan wouldn't stay down" (pride-based) instead of "Disgraceful" (shame-based).
+- Never show roasts mid-session while the user is actively checking habits.
+- The `check_zenkai_recovery()` function (streak_service.py, line 52-93) already detects gaps. Use its `zenkai_activated` flag to trigger roasts -- do not add a second gap-detection system.
 
 **Warning signs:**
-- React DevTools Profiler shows 10+ components re-rendering on a single habit check
-- Components re-render even when their specific data hasn't changed
-- Console logging in a component shows it rendering when completely unrelated state changes
-- Store has 20+ properties and growing
+- Vegeta quote appears as a modal dialog blocking the dashboard.
+- Roast is the first UI element visible after returning from absence.
+- No Settings toggle to control roast behavior.
+- Analytics show longer gaps after missed days (user avoidance pattern).
 
-**Phase to address:** State Management Phase — define store boundaries and selector patterns before building any components that consume state.
+**Phase to address:**
+Vegeta roast system phase. Must include a Settings toggle, tone review, and UX flow that shows welcome_back first.
 
 ---
 
-### Pitfall 6: React 19 Breaking Changes Catching You Off Guard
+### Pitfall 6: Audio Sprite Replacement Breaks All 13 Existing Sound Mappings
 
 **What goes wrong:**
-The project targets React 19 but developers follow React 18 patterns. `defaultProps` on function components is silently ignored (removed in React 19). `PropTypes` checks are silently removed. String refs throw errors. The `ref` prop now works as a regular prop (no more `forwardRef` needed for most cases), but third-party libraries may not have updated. `act()` was moved from `react-dom/test-utils` to `react` — test imports break.
+The current `soundMap.ts` has 13 sounds with hardcoded `[offset_ms, duration_ms]` sprite coordinates (lines 20-34). The sprite file at `/audio/sprite.webm` and `/audio/sprite.mp3` is a placeholder. Replacing it with real audio files means every single offset changes. If even one offset is wrong, the wrong sound plays (`explosion` sound plays for `scouter_beep`), or sounds clip/overlap. v1.2 also adds new sounds (achievement fanfare, streak chime, Vegeta grunt, zenkai whoosh, nudge tone) -- these must be integrated into the same sprite.
 
 **Why it happens:**
-React 19 removed several deprecated APIs that were long-warned-about but widely used. Key removals: `createFactory`, `render` from `react-dom` (use `createRoot`), string refs, `PropTypes` in React package, `defaultProps` on function components. Real-world migration reports show that the biggest surprise is third-party libraries that relied on React internals breaking silently.
+Audio sprite compilation tools generate new offset maps. The developer updates the audio file but manually edits `SPRITE_MAP` offsets -- one typo silently misaligns every subsequent sound. Or: the developer compiles the sprite in a different order than the `SPRITE_MAP` expects.
 
 **How to avoid:**
-- Use ES6 default parameters instead of `defaultProps` on all function components.
-- Use `ref` as a regular prop — no need for `forwardRef` wrapper components in React 19.
-- Verify ALL third-party libraries support React 19 before adding them: check their `peerDependencies` in `package.json`. Libraries to verify: `motion` (supported), `zustand` (supported since v5), `recharts` (check version), `use-sound` (check — it wraps Howler, may need testing).
-- For testing: import `act` from `react` not `react-dom/test-utils`.
-- React 19 uses the new JSX transform — ensure TypeScript config targets it correctly. Explicit `Promise<JSX.Element>` return type annotations may cause type errors because the JSX namespace moved.
-- Since this is a greenfield frontend, there's no migration — but EVERY tutorial and Stack Overflow answer predating Dec 2024 uses React 18 patterns. Be skeptical of examples.
+- Use an automated sprite compilation pipeline that outputs BOTH the audio file and a JSON manifest of offsets. Parse the JSON to generate the TypeScript `SPRITE_MAP`.
+- Keep individual source sound files in a `/audio/sources/` directory. The sprite is compiled from these, never hand-edited.
+- Define ALL new v1.2 sound IDs before compiling: `achievement_fanfare`, `streak_chime`, `vegeta_grunt`, `zenkai_whoosh`, `nudge_tone`. Compile the sprite ONCE with all sounds.
+- Write a smoke test: load the Howler sprite, play each sound ID, verify the duration matches the expected range (within 100ms tolerance).
+- Update `EVENT_SOUND_MAP` in `useSoundEffect.ts` (lines 8-16) for all new animation event types at the same time.
 
 **Warning signs:**
-- TypeScript errors mentioning `JSX.Element` or namespace issues
-- `defaultProps` values not appearing in components
-- `forwardRef` being used unnecessarily (not wrong, just unnecessary boilerplate)
-- Test utilities import errors after setup
+- One sound plays but it is the wrong sound for the event.
+- Some sounds are silent (offset points to gap between sounds).
+- New sounds play correctly but existing sounds are now broken.
 
-**Phase to address:** Project Setup Phase — configure React 19 correctly from the start, set up TypeScript with the new JSX transform, and verify all library compatibility before writing any components.
+**Phase to address:**
+Audio sprite phase. Must happen AFTER all new sound IDs for v1.2 are defined (so the sprite is compiled once) but BEFORE other features that need those sounds.
 
 ---
 
-### Pitfall 7: Tailwind CSS v4 Configuration Paradigm Shift
+### Pitfall 7: recharts react-is Override Removal Breaks Chart Rendering
 
 **What goes wrong:**
-The developer creates a `tailwind.config.js` file (v3 pattern), defines custom colors (`#050510`, `#FF6B00`, `#1E90FF`), custom animations, and extends the theme. None of it works. Tailwind v4 moved from JavaScript configuration to CSS-first configuration using `@theme` directives in CSS. The `tailwind.config.js` file is ignored or only partially supported via a compatibility layer. Default behavior changes (border defaults to `currentColor` instead of `gray-200`, ring width defaults to `1px` instead of `3px`) break expected styling.
+The `package.json` has `"overrides": { "react-is": "^19.0.0" }` (line 26-28). This forces recharts' `react-is` dependency to use the React 19 version. Removing this override to "fix" the tech debt without verifying recharts has internalized the fix causes `Cannot read properties of undefined` errors in recharts components. Charts silently fail or crash during render, breaking the existing calendar heatmap and attribute progression charts.
 
 **Why it happens:**
-Tailwind CSS v4 is a ground-up rewrite. The configuration paradigm changed fundamentally:
-- `@tailwind base/components/utilities` directives replaced by `@import "tailwindcss"`
-- Theme customization via `@theme { }` in CSS, not `tailwind.config.js`
-- Legacy class names renamed: `bg-gradient-to-r` -> check for canonical v4 names
-- `rotate`/`scale`/`translate` utilities now use individual CSS properties instead of composing into `transform`
-- Requires Safari 16.4+, Chrome 111+, Firefox 128+
+recharts 3.7.x still lists `react-is` as a peer dependency. Per the [recharts discussion #5701](https://github.com/recharts/recharts/discussions/5701), the maintainers moved react-is to peerDependencies. The override forces npm to resolve it to v19. Removing the override lets npm resolve to whatever recharts requests (v18), which is incompatible with React 19 internals.
 
 **How to avoid:**
-- Do NOT create a `tailwind.config.js`. Define all custom theme values in CSS using `@theme`:
-  ```css
-  @import "tailwindcss";
-  @theme {
-    --color-bg-dark: #050510;
-    --color-card-dark: #0D0D1A;
-    --color-accent-orange: #FF6B00;
-    --color-accent-blue: #1E90FF;
-  }
-  ```
-- Run the official v4 upgrade tool (`npx @tailwindcss/upgrade`) on any existing code — it handles 90% of class renames automatically.
-- Be aware that custom component classes (via `@apply` in complex scenarios) are second-class citizens in v4 compared to utility classes. Keep custom CSS minimal.
-- Test border and ring styling early — the default color/width changes will make borders invisible or wrong without explicit values.
-- For dark mode, the `class` strategy still works but configuration is different: `@variant dark (&:where(.dark, .dark *))` in CSS.
+- Check if a newer recharts version (3.8+) has dropped `react-is` entirely before attempting removal. If not, KEEP the override.
+- If keeping the override, add a comment in `package.json`: `// REQUIRED: recharts 3.7.x needs react-is override for React 19 compat`.
+- If upgrading recharts, test ALL chart components (calendar heatmap, attribute charts, any new contribution graphs) with both empty and populated datasets.
+- Evaluate honestly: if the override causes zero runtime issues, mark this tech debt as "acceptable, documented" and move on. The override is a single line with no real cost.
 
 **Warning signs:**
-- Custom colors not appearing despite being defined in config
-- Borders appearing as `currentColor` (usually black) instead of expected gray
-- Ring utilities looking different than expected
-- Build errors mentioning `@tailwind` directives
+- Charts render in development but crash in production build.
+- `npm install` shows peer dependency warnings after override removal.
+- Charts work for some data shapes but crash for empty datasets.
 
-**Phase to address:** Project Setup Phase — configure Tailwind v4 CSS-first theme with all custom colors and design tokens before building any components. This is foundational.
+**Phase to address:**
+Tech debt phase. Attempt early so charts are stable for new analytics features. Must include immediate rollback plan (restore override).
 
 ---
 
-### Pitfall 8: XP Calculation Drift Between Frontend and Backend
+### Pitfall 8: Calendar Day Popover Fails on Mobile Touch
 
 **What goes wrong:**
-The frontend Zustand store calculates and displays XP optimistically (before the API responds). The backend calculates XP authoritatively. They use slightly different rounding, slightly different streak multiplier values, or slightly different tier boundaries. After 30 days, the displayed power level is 47 XP higher than the database value. The user sees a transformation milestone fire in the UI at 1,000 XP, but the backend hasn't crossed 1,000 yet. A page refresh "uncrosses" the transformation.
+Calendar day cells in the heatmap are dense and small (typically 16-20px). A popover positioned absolutely relative to a clicked cell renders off-screen on narrow mobile viewports. On touch devices, there is no hover state -- the user does not know cells are tappable. Closing the popover requires a click-outside handler that conflicts with the calendar grid's own tap handlers (tapping another day should close the current popover AND open a new one, not just close).
 
 **Why it happens:**
-The XP formula has multiple multiplication steps with `floor()` calls: `floor(base_daily_xp * completion_rate * tier_multiplier * (1 + streak_bonus))`. Floating-point arithmetic in Python and JavaScript can produce different results at the sub-integer boundary. If the frontend recalculates on state change and the backend recalculates on receipt, one rounding call difference compounds over hundreds of days.
+Calendar heatmaps are designed for information display, not interaction. The click-to-detail requirement is being retrofitted onto a component that was built for passive viewing. Popover positioning libraries assume desktop viewport widths.
 
 **How to avoid:**
-- The backend is the single source of truth for all XP values. The frontend NEVER independently calculates XP — it only displays what the backend returns.
-- The `POST /habits/{id}/check` response already returns `daily_xp_so_far`, `attribute_xp_awarded`, `completion_tier` — use these directly, do not recalculate them in the store.
-- The `powerStore` sets values from API responses, never derives them locally. `power_level = response.power_level`, not `power_level += calculated_xp`.
-- For optimistic UI: show a loading/pending state on the XP counter during the API call rather than optimistically incrementing by a client-calculated amount.
+- Use `vaul` (already in `package.json`, line 22) as a bottom drawer on mobile viewports (<768px). Use a positioned popover only on desktop.
+- Switch between the two presentations using a `window.matchMedia('(min-width: 768px)')` check.
+- Make calendar cells at least 28x28px with 2px gap on mobile for adequate touch targets.
+- Popover/drawer content: date, completion %, list of habits with check/miss icons, XP earned. No charts inside -- keep it scannable.
+- Tapping a different day while popover is open: close current, open new. Do not require explicit dismiss first.
 
 **Warning signs:**
-- Displayed power level after refresh differs from displayed power level before refresh
-- Transformation animation fires on frontend but backend still shows previous form
-- Streak bonus percentages displayed in UI don't match analytics summary stats
+- Calendar day tap does nothing on iOS Safari.
+- Popover renders off the right edge on iPhone SE viewport.
+- Popover opens but tapping outside does not close it.
 
-**Phase to address:** State Management Phase — establish the calculation-authority contract before any UI is built. The `powerStore` must only be a mirror of backend state.
+**Phase to address:**
+Calendar popover phase. Must be tested on actual mobile device or Safari/Chrome emulator.
 
 ---
 
-### Pitfall 9: CORS and Vite Proxy Misconfiguration with FastAPI
+### Pitfall 9: Archived Habit Restore Creates sort_order Conflicts
 
 **What goes wrong:**
-The React frontend on `localhost:5173` makes API calls to FastAPI on `localhost:8000`. Without configuration, every request fails with CORS errors. The developer adds FastAPI's `CORSMiddleware` — it works. They also add a Vite proxy — now requests go through two CORS handling paths, and preflight responses conflict. Or worse: the Vite proxy rewrites paths incorrectly, stripping the `/api/v1` prefix when it shouldn't, or preserving it when it should be stripped. In production, the proxy doesn't exist, and the app breaks because it was built to rely on dev-server path rewriting.
+When a habit is archived (`is_active = false`), its `sort_order` value is preserved. While archived, the user reorders remaining active habits via drag-and-drop. Habit B now occupies archived Habit A's `sort_order` position. Restoring Habit A creates a collision: two active habits with the same `sort_order`. The habit list renders in unpredictable order or, if there is a unique constraint, the restore fails.
 
 **Why it happens:**
-Two independent CORS solutions exist and developers use both without understanding their interaction:
-1. **FastAPI CORSMiddleware** — backend handles CORS headers directly
-2. **Vite dev server proxy** — proxy bypasses CORS entirely by same-originating the request
-
-Using both creates confusion. The Vite proxy's `rewrite` function can silently mangle paths. The `changeOrigin` flag adjusts the `Host` header but not the `Origin` header, leading to subtle issues.
+Archive is currently a soft delete (`is_active = false`) that preserves all fields including `sort_order`. The restore path is just `is_active = true`. Nobody checks for collisions. The drag-and-drop reorder feature (new in v1.2) makes this worse because `sort_order` values are now actively user-managed.
 
 **How to avoid:**
-- Pick ONE approach and stick with it. For this project, use the **Vite proxy** because:
-  - It eliminates CORS entirely in development (requests go from browser -> Vite -> FastAPI, all same-origin from the browser's perspective)
-  - It mirrors the production setup where a reverse proxy (nginx) serves both frontend and API
-  - It avoids exposing `*` CORS headers in development that hide production CORS problems
-- Vite proxy config in `vite.config.ts`:
-  ```typescript
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-        // Do NOT rewrite — FastAPI routes already include /api/v1
-      }
-    }
-  }
-  ```
-- In the API service layer, use relative URLs (`/api/v1/habits`) not absolute (`http://localhost:8000/api/v1/habits`). This way the same code works through the proxy in dev and through the reverse proxy in production.
-- Still add `CORSMiddleware` to FastAPI as a fallback for Swagger UI access and any direct API testing, but restrict origins to `localhost:5173`, not `*`.
+- On restore: always assign `sort_order = MAX(sort_order of active habits) + 1`. The restored habit goes to the bottom of the list. The user can drag it to their preferred position.
+- The restore API response should include the new `sort_order` so the frontend inserts correctly.
+- Archived habits view should sort by archive date (or original created_at), not by sort_order -- sort_order is meaningless for inactive habits.
+- The `PUT /habits/reorder` endpoint should only accept active habit IDs. Validate that all submitted IDs are `is_active = true`.
 
 **Warning signs:**
-- API calls fail with CORS errors in the browser console
-- API calls work in Postman but fail in the browser
-- Different behavior between `fetch('/api/v1/habits')` and `fetch('http://localhost:8000/api/v1/habits')`
-- API calls work in dev but fail when deployed
+- After restoring a habit, two habits appear at the same position.
+- Drag-and-drop reorder saves, but the restored habit jumps to an unexpected position on refresh.
+- Reorder endpoint accepts archived habit IDs and silently corrupts sort_order.
 
-**Phase to address:** Project Setup Phase — configure the Vite proxy and API service base URL before making the first API call.
+**Phase to address:**
+Archived habits phase. Must coordinate with drag-and-drop reorder to ensure sort_order management is consistent.
 
 ---
 
-### Pitfall 10: Recharts Re-render Performance on Dashboard Updates
+### Pitfall 10: History Views Load Unbounded Data Without Pagination
 
 **What goes wrong:**
-The Analytics page renders attribute progression charts, calendar heatmaps, and capsule history using Recharts. Every time the user navigates to Analytics, all charts re-render from scratch. If the dashboard uses Recharts for the attribute bars or any real-time display, every habit check causes the entire chart to re-render because the parent component's state changed, even if the chart data didn't.
+The capsule history and wish history API endpoints (`/analytics/capsule-history`, `/analytics/wish-history`) return ALL records. After 6 months: ~540 capsule drops (6 habits x 25% rate x 180 days x avg 2 checks/habit = ~540). The frontend renders all items in a single list, causing scroll jank and slow initial render on the Analytics page.
 
 **Why it happens:**
-Recharts components re-render when ANY parent prop changes, including object references that are recreated on each render cycle. Passing `data={[...transformedData]}` creates a new array reference every render. Passing inline `tickFormatter={(value) => ...}` creates a new function reference every render. Recharts doesn't deep-compare its props.
+The existing analytics endpoints have no `limit`/`offset` parameters. This works fine for month 1 but degrades linearly. The contribution graph is naturally bounded (90 days) but history lists grow unbounded.
 
 **How to avoid:**
-- Wrap chart data with `useMemo`: `const chartData = useMemo(() => transformData(rawData), [rawData])`.
-- Wrap formatter functions with `useCallback` or define them outside the component.
-- Isolate charts into their own components and wrap with `React.memo` — if the chart's specific data slice hasn't changed, it won't re-render.
-- For the attribute bars on the dashboard, do NOT use Recharts. Simple CSS progress bars with CSS transitions are 10x lighter and more performant for 4 horizontal bars.
-- Reserve Recharts for the Analytics page where it renders once and stays static until data changes.
-- For large datasets (90-day contribution graph), aggregate/sample data to reduce rendering points.
+- Add `?limit=50&offset=0` pagination to both history endpoints from the start.
+- Frontend uses "load more" button or infinite scroll, never renders the full list.
+- Default to showing most recent 50 items, sorted by date descending.
+- Contribution graphs and calendar are naturally bounded -- no pagination needed.
 
 **Warning signs:**
-- Navigating to Analytics page takes >500ms to render
-- Charts visibly flicker or redraw when unrelated state changes
-- Performance profiler shows Recharts components in the "slow renders" list
-- Main thread blocking during chart rendering
+- Analytics page takes >500ms to load after 3+ months.
+- Capsule history list scrolls endlessly with no performance concern addressed.
+- Browser DevTools shows 500+ DOM nodes for history list.
 
-**Phase to address:** Analytics Phase — set up chart components with proper memoization from the start. Use CSS for simple bars on the dashboard.
+**Phase to address:**
+Analytics history views phase. Pagination must be part of initial API design.
 
 ---
 
-### Pitfall 11: Reward System Saturation — 25% Capsule Rate Feels Spammy by Week 3
+### Pitfall 11: Custom Frequency Day Picker — JavaScript vs ISO Weekday Mismatch
 
 **What goes wrong:**
-The 25% capsule drop rate feels exciting on day 1. By week 3, Sergio has accumulated 15 unclaimed capsules in history. The popup interrupts habit checking every third check. The slot-machine thrill habituates. Research shows 40% of users exit gamified apps due to visual noise, and 35% abandon apps due to perceived clutter or irrelevance. Opening capsules becomes a chore rather than a delight.
+The backend uses Python's `date.isoweekday()` (1=Monday through 7=Sunday) in `get_habits_due_on_date()` (line 65 of habit_service.py): `target.isoweekday() in habit.custom_days`. The existing `custom_days` JSON stores isoweekday integers. A new frontend day picker component might use JavaScript's `Date.getDay()` (0=Sunday through 6=Saturday). If the frontend sends JavaScript indices, a habit set to "Monday" (JS getDay=1, ISO=1) works by coincidence, but "Sunday" (JS getDay=0, ISO=7) becomes "no valid day" or the wrong day.
 
 **Why it happens:**
-25% per habit check on 6 habits = statistically ~1.5 capsules per day. In a week, that's 10+ common rewards. Variable reward schedules require that the reward feels genuinely surprising, which habituates fast at consistent 25%. If gamification mechanics are too repetitive or predictable, users grow bored or fatigued. Studies show limiting gamified features to ~20% of the interface is optimal.
+Python and JavaScript use different weekday numbering with different zero points and different start days. The existing data format uses ISO convention, but a new UI component may default to JS convention. The off-by-one-and-different-start confusion is a classic date handling bug.
 
 **How to avoid:**
-- The 25% rate is correct for the PRD. Do NOT inflate it during testing.
-- Implement a "pending capsule" notification badge rather than an immediate popup interrupt. The user opens capsules when they want to, not mid-habit-check flow.
-- The capsule opening animation must be short (<2 seconds) and skippable.
-- Reserve screen shake exclusively for 100% perfect day and transformation unlocks — never for individual habit checks.
-- Vegeta roast triggers only at session start (opening the app after a missed day), never during an active habit-check session.
-- The dashboard hierarchy must be clear: completion % is huge and primary; everything else is secondary, smaller, less prominent. ADHD cognitive overload from too many visible numbers (Power Level + 4 attributes + streak + completion % + XP earned) must be avoided.
+- The day picker component MUST emit isoweekday values (1-7, Mon=1, Sun=7) to match the existing backend convention and stored data.
+- Define a mapping constant: `const ISO_WEEKDAY = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 } as const`.
+- Display the day picker starting with Monday (not Sunday) to match ISO convention visually.
+- Write an integration test: create habit with `custom_days: [1, 3, 5]`, verify it appears on Monday, Wednesday, Friday and NOT on Tuesday, Thursday, Saturday, Sunday.
+- Test Sunday specifically: `custom_days: [7]` must match `isoweekday() == 7`.
 
 **Warning signs:**
-- Capsule history shows large unclaimed backlog
-- The habit-check flow feels interrupted and annoying rather than exciting
-- User wants to disable animations/popups
+- Habit set to "Mon/Wed/Fri" appears on wrong days.
+- Habit set to "Sun" never appears as due (0 is not in the 1-7 range check).
+- Day picker shows Sunday first (American convention) but backend starts weeks on Monday (ISO).
 
-**Phase to address:** Reward System & Animation Phase — establish the UX pattern of "notification badge, open when ready" from the start.
-
----
-
-### Pitfall 12: Streak Breaking at Midnight / Timezone Boundary
-
-**What goes wrong:**
-Sergio completes all habits at 11:58 PM. The backend records the completion with the server's local date. He opens the app at 12:02 AM — the frontend sends today's date (now the next calendar day). If the server is in UTC and the user is UTC-6, "today" on the server became the next day 6 hours ago. The streak incorrectly breaks.
-
-**Why it happens:**
-Streak logic using `date.today()` on the server computes the date in the server's timezone, not the user's. SQLite's `DATE` type stores dates as `YYYY-MM-DD` strings, which are timezone-naive. DST transitions creating 23-hour or 25-hour days further complicate naive date arithmetic.
-
-**How to avoid:**
-- All `log_date` values must be stored using the client's local date in `YYYY-MM-DD` format, sent explicitly in the API request body.
-- The `POST /habits/{id}/check` request should include `local_date: "2026-03-04"`.
-- Streak evaluation compares `last_active_date` to the client-provided `local_date`, never to `datetime.now()`.
-- All date arithmetic uses Python's `datetime.date` subtraction (pure date objects, no time component).
-
-**Warning signs:**
-- Streaks break "when I'm sure I completed all my habits yesterday"
-- Streak resets consistently happen around midnight or on DST transition dates
-- `last_active_date` in the database shows UTC date, not local date
-
-**Phase to address:** Already handled by v1.0 backend — verify the frontend sends `local_date` correctly when calling habit check endpoints.
+**Phase to address:**
+Custom frequency day picker phase. Must include backend integration test.
 
 ---
 
@@ -342,139 +290,102 @@ Streak logic using `date.today()` on the server computes the date in the server'
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Calculate XP in frontend Zustand store | Instant UI without waiting for API | XP drift, inconsistent transformation triggers, rollback complexity | Never — the backend must own all XP math |
-| Use `(s) => s` Zustand selector (no selector) | Quick prototyping | Every state change re-renders that component and all children | Never in production components |
-| Use `framer-motion` package instead of `motion` | Familiar import paths | Missing v11 React 19 improvements, eventual deprecation | Never for a new project |
-| Create `tailwind.config.js` instead of CSS `@theme` | Familiar v3 patterns | Config partially ignored, dark mode and theme values don't work correctly | Never in v4 — use CSS-first config |
-| Animate `backgroundColor` and `boxShadow` directly | Simpler code, fewer transform workarounds | Browser paint on every frame, jank on mid-range hardware | Never for high-frequency animations (aura bar) |
-| One `AudioContext` per component | Simpler sound wiring | Exceeds browser limits (6 concurrent contexts), permission issues | Never |
-| Skip `interrupt: true` on short sounds | Simpler sound setup | Audio soup during rapid habit checks | Never |
-| Pre-populate all 10 transformation animations on load | No lazy-load delay during transformation unlock | Bundle size balloons; animations 8-10 never seen by week-1 users | Only if transformation unlock latency is perceptible |
-| Use absolute URLs in API service (`http://localhost:8000/...`) | Works immediately | Breaks with Vite proxy, breaks in production, hardcodes dev URL | Never — always use relative `/api/v1/...` |
-| Use `defaultProps` on function components | Familiar React 18 pattern | Silently ignored in React 19 | Never — use ES6 default parameters |
-
----
+| Adding new AnimationEvent types without priority system | Each feature ships faster | Animation queue becomes a 15-25 second slideshow on combo events | Never -- add priority in the same PR as new event types |
+| Keeping recharts override without documenting | Avoids investigation | Next developer removes it and breaks charts | Acceptable if documented with inline comment |
+| Hardcoding streak milestone values in frontend AND backend | Quick milestone badge display | Lists drift when one is updated but not the other | Never -- single source of truth in constants.py, frontend fetches from API |
+| Skipping pagination on history endpoints | Faster initial development | Analytics page degrades after 3 months | Only if pagination is committed to within this milestone |
+| Using inline `animate` props for new animations instead of variants | Faster prototyping | Animation definitions scattered, inconsistent durations/easings | Acceptable for one-off animations; use variants for any animation used in 2+ components |
 
 ## Integration Gotchas
 
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| Motion (Framer Motion) + React 19 | Installing `framer-motion` package; using old import paths | Install `motion`; import from `motion/react` |
-| use-sound + AudioContext | Calling `play()` before user gesture (app load, useEffect) | Call `play()` only inside click/tap handlers; implement `SoundProvider` that resume()s context on first interaction |
-| use-sound + sprite playbackRate | Expecting `playbackRate` to be reactive when using sprites | `playbackRate` is NOT reactive with sprites — only initial value is used; use Howler directly for dynamic rate |
-| use-sound + early access | Accessing `sound` object immediately after mount | `sound` is null for first few moments after mount — guard with null check before calling methods |
-| Zustand + persist middleware | Assuming hydrated state is available on first render | Store loads defaults first, then overwrites with persisted state — causes UI flash; use `onRehydrateStorage` callback |
-| Tailwind v4 + `@tailwind` directives | Using `@tailwind base; @tailwind components; @tailwind utilities;` | Use `@import "tailwindcss";` — single import replaces all three directives |
-| Tailwind v4 + border utility | Expecting `border` to produce `gray-200` border | v4 defaults border color to `currentColor` — always specify: `border border-gray-200` |
-| Tailwind v4 + ring utility | Expecting `ring` to produce 3px blue ring | v4 defaults ring to 1px `currentColor` — explicitly set `ring-2 ring-blue-500` |
-| Vite proxy + FastAPI | Using both Vite proxy AND FastAPI CORSMiddleware with conflicting CORS headers | Pick one; prefer Vite proxy for dev, add restricted CORSMiddleware for Swagger |
-| Recharts + parent re-renders | Passing inline functions and new array references as props | Memoize data with `useMemo`, functions with `useCallback`, wrap chart in `React.memo` |
-| React 19 + `forwardRef` | Wrapping components in `forwardRef` unnecessarily | In React 19, `ref` is a regular prop — `forwardRef` wrapper is no longer needed |
-| React 19 + test utils | Importing `act` from `react-dom/test-utils` | In React 19, import `act` from `react` directly |
-| AnimatePresence + missing keys | Not setting unique `key` on animated overlays — exit animation doesn't fire | Every overlay (`PerfectDayAnimation`, `ShenronAnimation`) needs a unique key that changes when re-triggered |
-| react-canvas-confetti + particle count | Using high particle counts for energy blast effects | Keep under 100 particles for 60fps; use `useWorker` option for off-main-thread rendering |
-
----
+| Integration Point | Common Mistake | Correct Approach |
+|-------------------|----------------|------------------|
+| New AnimationEvent type in uiStore | Adding to `AnimationEvent` union but forgetting `QUEUED_TYPES` set, `renderOverlay` switch, AND `EVENT_SOUND_MAP` | Checklist: update all 4 locations (type union, QUEUED_TYPES if overlay, renderOverlay, EVENT_SOUND_MAP) |
+| Achievement service + check_habit() | Calling achievement check AFTER transaction commits, creating race condition or missed recording | Add achievement check INSIDE `check_habit()` between steps 5 and 6, within the same flush |
+| New CheckHabitResponse fields + habitStore | Adding fields to backend response but not consuming them in `habitStore.checkHabit()` distribution logic | Update `habitStore.checkHabit()` to distribute new fields (achievement, milestone) to the correct stores |
+| New SoundId + sprite | Adding ID to `SoundId` type but not to `SPRITE_MAP` offsets or `EVENT_SOUND_MAP` | Update all 3: `SoundId` union, `SPRITE_MAP` with correct offset, `EVENT_SOUND_MAP` for the event type |
+| Drag-and-drop + optimistic reorder | Reordering in UI state but not calling `PUT /habits/reorder`, so refresh reverts | Send reorder API call on dragEnd; only update local state after API success (or optimistic with rollback) |
+| Vegeta roast + streak service | Adding a second gap-detection system for roasts when `check_zenkai_recovery()` already detects gaps | Reuse `zenkai_info["zenkai_activated"]` from check_habit() to determine if roast should trigger |
+| Archived habit restore + sort_order | Restoring with original sort_order that now conflicts with active habits | Assign `MAX(sort_order) + 1` on restore; let user drag to desired position |
+| Temporary habit + fetchToday | Frontend shows expired temp habit because `is_active` is still true | `fetchToday` must use the same `get_habits_due_on_date()` filtering logic (which checks end_date) |
 
 ## Performance Traps
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Animating all 6 habit cards simultaneously on load | Dashboard load causes visible card stagger lag | Stagger with `delay: index * 0.05` for sequential card entry | Immediately visible with 6+ habits |
-| `motion.div` on every habit card list item | React DevTools shows 6x motion wrappers re-rendering on any state change | Only animate the specific property that changes (checkbox state); use CSS for static card layout | Noticeable on slower hardware |
-| Howler.js loading all audio files at startup | First paint delayed 1-2 seconds while audio buffers load | Lazy-load audio files; only preload the most frequent sound (habit-check beep) | At page load, especially on slower connections |
-| Recharts rendering all charts on Analytics page at once | Analytics page takes 500ms+ to render; visible layout shift | Lazy-load charts below the fold; use `React.memo` on each chart component | With 4+ charts on one page |
-| Zustand store re-rendering entire dashboard | Every habit check causes all dashboard components to re-render | Use fine-grained selectors and `useShallow` for multi-value selections | Immediately, as component tree grows |
-| Confetti/particle effects on every habit check | Frame drops, battery drain on longer sessions | Reserve particles for 100% and transformations only; cap at 80 particles | On mobile and mid-range devices |
-| Large sound files in assets | Bundle size grows; initial load slowed | Compress to OGG/MP3 at 64-96kbps; sounds are <3 seconds, don't need high bitrate | At build time if assets exceed 2MB total |
-
----
+| Contribution graph (90 days x N habits) re-rendering on every habit check | Analytics page stutters when navigated to after a check | Memoize with `React.memo` + stable data reference via `useMemo` | When contribution graphs share a page with reactive components |
+| Unbounded capsule history query | Analytics page load time grows linearly | `LIMIT 50 OFFSET 0` with pagination in API | After ~200 capsule drops (3 months of use) |
+| Multiple achievement checks per habit check | Each check queries achievements table for each milestone type | Batch query: `SELECT achievement_key FROM achievements WHERE achievement_type = 'streak_milestone'` once, then compare in Python | Unlikely to be a real performance issue for single-user, but clean code practice |
+| Drag-and-drop with all HabitCards as Motion components | Drag causes all cards to re-render during position animation | Use `layoutId` on Motion components for smooth reorder; avoid animating non-moving cards | With 8+ habits in the list |
+| Calendar heatmap rendering 12 months eagerly | Analytics initial load takes 2+ seconds | Render only visible month; lazy-load adjacent months on navigation | After 6+ months of tracked data |
 
 ## UX Pitfalls
 
 | Pitfall | User Impact | Better Approach |
 |---------|-------------|-----------------|
-| Animation plays then locks UI during it | ADHD users cannot check the next habit until previous animation finishes; frustration | Animations must be non-blocking; the aura fill plays while the next habit is already checkable |
-| Screen shake on every habit check (not just 100%) | Overstimulation by habit 3; screen shake becomes noise, not reward | Reserve screen shake exclusively for 100% perfect day and transformation unlocks |
-| Vegeta roast appears mid-session | User is actively trying to complete habits; a roast interrupts flow and feels punishing | Vegeta roast triggers only at session start when previous day was missed, never during an active session |
-| No visual distinction between "completed this session" and "completed earlier today" | User cannot tell if an undo/recheck is happening | Completed habits show time on hover; recently completed habits have a brief highlight that fades |
-| Sound volume not calibrated across events | Habit beep is quiet; explosion is deafening | All sounds normalized to same peak volume; drama comes from animation, not decibels |
-| Too many visible numbers simultaneously | ADHD cognitive overload; decision paralysis | Completion % is huge and primary; everything else is secondary, smaller, less prominent |
-| Capsule popup interrupts habit check flow | User is in "check habits" mode; popup demanding interaction breaks flow | Queue capsule notification, show badge; user opens capsule drawer intentionally |
-| Rewards are too predictable after 2 weeks | Variable reward circuit fails when user can predict outcomes | Vary capsule opening animations slightly each time; occasional "double drop" surprise |
-
----
+| Achievement popups for all past milestones on feature deploy | User closes 5+ dialogs before using the app | Seed achievements table with migration; only notify on NEW milestones earned after deploy |
+| Vegeta roast as first UI element after absence | User feels punished for returning; avoidance spiral | Show welcome_back Goku quote first; Vegeta appears as secondary quote bar text, not modal |
+| "You're close!" nudge banner that never goes away | Nag banner stays visible during active checking; feels pushy | Auto-dismiss when user checks the next habit; only show after 30+ seconds of inactivity with 1-2 habits remaining |
+| Daily summary toast blocks habit cards | Toast covers the area where user taps habits | Use non-blocking bottom toast with auto-dismiss in 3 seconds; position below the habit list |
+| Drag handle too small on mobile | User cannot grab the handle to initiate drag | Handle must be at least 44x44px touch target; use visible grip lines affordance |
+| Calendar popover with too much info | Information overload on a small popover surface | Show only: date, %, habit names with check/miss icon, total XP. No charts or graphs inside |
+| Capsule drop overlay interrupts habit-checking flow | User is in "rapid check" mode; overlay forces them to wait | Change capsule to notification badge; user opens capsule drawer when they choose to |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Tailwind v4 theme:** Custom colors (`#050510`, `#FF6B00`, `#1E90FF`) are defined via `@theme` in CSS, not `tailwind.config.js` — verify colors render correctly in both dark and light mode
-- [ ] **React 19 compatibility:** All third-party libraries (`motion`, `zustand`, `recharts`, `use-sound`) verified to support React 19 peerDependencies — check npm for each
-- [ ] **Motion package:** `package.json` shows `motion` (not `framer-motion`) as dependency; imports use `motion/react`
-- [ ] **Zustand selectors:** No component uses `useStore()` without a selector — search codebase for bare store hook calls
-- [ ] **Audio on cold load:** Open a new browser tab, do NOT click anything before checking a habit — verify the sound plays (SoundProvider resume pattern works)
-- [ ] **Rapid habit checks:** Check all 6 habits within 5 seconds — verify no audio stacking/soup, no jank in aura bar fill
-- [ ] **Perfect day sequence:** Trigger 100% completion — verify the full sequence (darken -> explosion -> XP counter -> Dragon Ball -> quote) plays in order without overlap
-- [ ] **XP display consistency:** Displayed power level after page refresh matches displayed power level before refresh (no drift)
-- [ ] **Vite proxy:** API calls use relative URLs (`/api/v1/habits`), not absolute URLs — verify calls work through proxy
-- [ ] **Transformation unlock:** Cross an XP threshold — verify transformation animation fires exactly once even if the user rapidly checks habits at the boundary
-- [ ] **Dragon Ball 7th collection:** Collect 7th Dragon Ball — verify Shenron animation fires and `dragon_balls_collected` resets to 0 in the database (not just UI)
-- [ ] **Capsule at 0 rewards:** Open the app with capsule reward list empty — verify habit check doesn't crash when capsule drop triggers but no rewards exist
-- [ ] **Border/ring defaults:** All borders and rings have explicit color/width classes — no reliance on v3 defaults
-
----
+- [ ] **Streak milestones:** Achievement row inserted in DB, not just animation fired -- `SELECT * FROM achievements WHERE achievement_type = 'streak_milestone'` has rows
+- [ ] **Drag-and-drop reorder:** `PUT /habits/reorder` called on dragEnd -- sort_order persists across page refresh
+- [ ] **Vegeta roasts:** Severity matches consecutive missed days accurately -- 1 missed = mild (not savage); 0 missed = no roast
+- [ ] **Temporary habits:** End date is inclusive (last active day) -- habit with `end_date = today` IS in today's list
+- [ ] **Audio sprite:** All 13+ sounds play the CORRECT sound for their event -- trigger each event type and verify the right audio plays
+- [ ] **Calendar popover:** Works on mobile touch -- tested on actual phone or device emulator, not just desktop Chrome
+- [ ] **Archived restore:** sort_order recalculated to MAX+1 -- restored habit appears at bottom, not overlapping existing habits
+- [ ] **Achievement dedup:** Same milestone cannot fire twice -- check habit, uncheck, re-check: milestone fires only once
+- [ ] **Animation queue cap:** Perfect day scenario does not produce 5+ sequential overlays -- test "last habit + capsule + streak milestone + dragon ball"
+- [ ] **recharts override:** Charts render after any package.json changes -- test all chart components with real data AND empty data
+- [ ] **Day picker mapping:** Sunday selection produces `custom_days: [7]` not `custom_days: [0]` -- verify habit is due on actual Sunday
+- [ ] **History pagination:** Capsule history returns max 50 items per page -- API returns `limit`/`offset` params, frontend shows "load more"
+- [ ] **Nudge banner dismissal:** Banner disappears when user checks a habit, does not persist after reaching 100%
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| XP drift discovered after weeks of use | HIGH | Audit `daily_logs.xp_earned` vs expected formula output per day; recalculate; UPDATE database; clear Zustand persistence |
-| Wrong Tailwind config paradigm (JS instead of CSS) | MEDIUM | Run `npx @tailwindcss/upgrade`; migrate all custom values to `@theme`; takes 2-4 hours for full project |
-| Wrong Motion package installed | LOW | `npm uninstall framer-motion && npm install motion`; find/replace imports from `framer-motion` to `motion/react`; 30 minutes |
-| Audio architecture missing interrupt/priority | MEDIUM | Add `SoundManager` singleton with queue; replace all direct `play()` calls; 1-2 days |
-| Animation jank discovered in production | MEDIUM | Profile with DevTools; convert worst offenders from `motion.div` to CSS transitions; 1-2 days per component |
-| Zustand re-render storm | MEDIUM | Add selectors to all store consumers; wrap multi-value selections in `useShallow`; 1 day for full codebase |
-| Capsule popup UX is too intrusive | LOW | Change popup to badge notification; UI-only, no backend work |
-| React 19 library incompatibility discovered | MEDIUM-HIGH | Depends on the library; may need alternative, may need to pin older React version; varies |
-
----
+| Animation queue overload | MEDIUM | Add priority system and batching to AnimationPlayer + habitStore enqueue logic; 1-2 day refactor |
+| Retroactive milestone spam | LOW | Run migration to seed achievements table; add dedup check to achievement service; 2-4 hour fix |
+| Temporary habit % corruption | HIGH | Audit all daily_logs for days with active temp habits; if snapshots are wrong, must recalculate and UPDATE; 1+ day investigation |
+| Drag-tap conflict | LOW | Add dedicated drag handle; change from full-card drag to handle-only; 2-4 hour refactor |
+| Vegeta roast too punishing | LOW | Change from modal to inline quote bar; add Settings toggle; review quote tone; UI-only changes |
+| Audio sprite desync | LOW | Recompile sprite from source files; regenerate SPRITE_MAP from manifest; 1-2 hours with automation |
+| recharts breakage | LOW | Restore override in package.json; 30-second fix; document with inline comment |
+| sort_order collision | LOW | Run `UPDATE habits SET sort_order = (ROW_NUMBER()) WHERE is_active = true ORDER BY sort_order`; add MAX+1 logic to restore endpoint |
+| Day picker weekday mismatch | MEDIUM | Fix frontend mapping constant; audit all existing habits with custom_days; may need to convert stored values if wrong convention was used |
 
 ## Pitfall-to-Phase Mapping
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| Wrong Motion package | Project Setup | `package.json` shows `motion`, imports use `motion/react` |
-| Tailwind v4 config paradigm | Project Setup | No `tailwind.config.js` exists; custom colors defined in CSS `@theme` |
-| React 19 incompatibilities | Project Setup | All libraries installed; `npm ls` shows no peer dependency warnings |
-| CORS / Vite proxy | Project Setup | First API call succeeds through proxy; no CORS errors in console |
-| Zustand store structure | State Management | 4 stores defined; no component uses bare `useStore()` without selector |
-| XP calculation authority | State Management | `powerStore` sets values from API only; no local XP math in frontend |
-| Audio autoplay restriction | Audio Foundation | First-load test in new tab; first habit check plays audio |
-| Overlapping sounds | Audio Foundation | Rapid-check test: 6 habits in 5 seconds; audio is clean |
-| Animation avalanche (jank) | Animation & Feedback | Chrome DevTools frame budget during perfect-day sequence; all frames <16ms |
-| Reward saturation UX | Reward & Gamification | Capsule drop shows badge, not blocking popup; skippable open animation |
-| Recharts performance | Analytics | Charts wrapped in `React.memo`; memoized data/functions; dashboard uses CSS bars not Recharts |
-| Transformation fires twice | Animation & Feedback | Rapid habit check at XP boundary; animation fires exactly once |
-| UI blocks during animation | Animation & Feedback | Habit checkbox is interactive during all animations including perfect-day |
-| Streak timezone | State Management | Frontend sends `local_date` in habit check requests |
-
----
+| Animation queue overload | Phase 1: Animation queue refactor (MUST be first) | "Last habit of perfect day" test produces max 3 overlays |
+| recharts override | Phase 2: Tech debt (early, stabilizes charts) | All chart components render; override has inline comment |
+| Audio sprite desync | Phase 3: Audio sprite (after all new sounds defined) | Each sound ID plays correct sound; automated manifest |
+| Retroactive milestone spam | Phase 4: Achievement system | No retroactive notifications; migration seeds existing milestones |
+| Streak milestone in check_habit | Phase 4: Achievement system | Milestone fires only on the check that crosses the threshold |
+| Vegeta roast tone | Phase 5: Vegeta roast system | Settings toggle exists; welcome_back shows before roast |
+| Drag-tap conflict | Phase 6: Drag-and-drop reorder | Mobile test: tap checks, drag handle reorders, zero delay |
+| sort_order collision | Phase 7: Archived habits (after drag-and-drop) | Restore archived habit; verify it appears at list bottom |
+| Calendar popover mobile | Phase 8: Calendar popover | Works on iPhone Safari and Android Chrome |
+| Temporary habit % corruption | Phase 9: Temporary habits | End date boundary tests pass; % snapshot is correct |
+| Day picker weekday mismatch | Phase 10: Custom frequency picker | Mon/Wed/Fri habit is due on correct days; Sunday works |
+| History pagination | Phase 11: Analytics history views | API returns paginated results; frontend shows "load more" |
 
 ## Sources
 
-- [Motion.dev Upgrade Guide (Framer Motion -> Motion)](https://motion.dev/docs/react-upgrade-guide) — HIGH confidence
-- [Motion.dev Layout Animations](https://motion.dev/docs/react-layout-animations) — HIGH confidence
-- [MDN Autoplay Guide](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay) — HIGH confidence
-- [MDN getAutoplayPolicy()](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/getAutoplayPolicy) — HIGH confidence
-- [Chrome Autoplay Policy for Web Audio](https://developer.chrome.com/blog/web-audio-autoplay) — HIGH confidence
-- [use-sound GitHub](https://github.com/joshwcomeau/use-sound) — HIGH confidence (interrupt option, sprite limitations, null sound documented)
-- [Zustand GitHub Discussions: Selectors v5](https://github.com/pmndrs/zustand/discussions/2867) — MEDIUM confidence
-- [React 19 Upgrade Guide (official)](https://react.dev/blog/2024/04/25/react-19-upgrade-guide) — HIGH confidence
-- [React 19 Release Notes](https://react.dev/blog/2024/12/05/react-19) — HIGH confidence
-- [Tailwind CSS v4 Upgrade Guide (official)](https://tailwindcss.com/docs/upgrade-guide) — HIGH confidence
-- [Recharts Performance Guide (official)](https://recharts.github.io/en-US/guide/performance/) — HIGH confidence
-- [Vite Server Proxy Options (official)](https://vite.dev/config/server-options) — HIGH confidence
-- [Gamification UX Anti-Patterns — ALMAX Agency](https://almaxagency.com/gamification-in-ux-ui/gamification-in-ui-ux-a-comprehensive-guide-to-when-it-works-when-to-avoid-it-and-alternative-engagement-strategies/) — MEDIUM confidence
+- Direct codebase analysis: `uiStore.ts`, `AnimationPlayer.tsx`, `habitStore.ts`, `habit_service.py`, `streak_service.py`, `soundMap.ts`, `useSoundEffect.ts`, `HabitCard.tsx`, `constants.py`, `package.json`
+- [recharts react-is peer dependency discussion](https://github.com/recharts/recharts/discussions/5701) -- HIGH confidence
+- [recharts React 19 support issue #4558](https://github.com/recharts/recharts/issues/4558) -- HIGH confidence
+- [@hello-pangea/dnd GitHub](https://github.com/hello-pangea/dnd) -- recommended for vertical list reordering -- MEDIUM confidence
+- [Top drag-and-drop libraries for React 2026](https://puckeditor.com/blog/top-5-drag-and-drop-libraries-for-react) -- MEDIUM confidence
 
 ---
-*Pitfalls research for: Gamified habit tracker (Saiyan Tracker v3 — The Dopamine Edition)*
-*Researched: 2026-03-04*
+*Pitfalls research for: Saiyan Tracker v1.2 — 19 new features integration*
+*Researched: 2026-03-06*
