@@ -38,14 +38,14 @@
 
 - [x] **HMGT-01**: User can drag-and-drop to reorder habits (with dedicated drag handle, not conflicting with tap-to-check)
 - [ ] **HMGT-02**: PUT /habits/reorder API endpoint accepts batch sort_order updates
-- [ ] **HMGT-03**: User can view archived habits and restore them
-- [ ] **HMGT-04**: User can create temporary habits with start and end dates via the habit form
-- [ ] **HMGT-05**: User can select custom frequency days via tappable day-of-week buttons (not raw number input)
+- [x] **HMGT-03**: User can view archived habits and restore them
+- [x] **HMGT-04**: User can create temporary habits with start and end dates via the habit form
+- [x] **HMGT-05**: User can select custom frequency days via tappable day-of-week buttons (not raw number input)
 
 ### Tech Debt & Polish
 
 - [x] **TECH-01**: recharts react-is peer dependency resolved (explicit react-is@19 install, remove overrides hack)
-- [ ] **TECH-02**: Real audio sprite files replace placeholder sounds (all 13 existing + any new sound IDs)
+- [x] **TECH-02**: Real audio sprite files replace placeholder sounds (all 13 existing + any new sound IDs)
 
 ## Future Requirements (v1.3+)
 
@@ -91,11 +91,11 @@
 | ANLT-05 | Phase 12 | Pending |
 | HMGT-01 | Phase 15 | Complete |
 | HMGT-02 | Phase 12 | Pending |
-| HMGT-03 | Phase 16 | Pending |
-| HMGT-04 | Phase 16 | Pending |
-| HMGT-05 | Phase 16 | Pending |
+| HMGT-03 | Phase 16 | Complete |
+| HMGT-04 | Phase 16 | Complete |
+| HMGT-05 | Phase 16 | Complete |
 | TECH-01 | Phase 11 | Complete |
-| TECH-02 | Phase 16 | Pending |
+| TECH-02 | Phase 16 | Complete |
 
 **Coverage:**
 - v1.2 requirements: 24 total
@@ -104,4 +104,4 @@
 
 ---
 *Requirements defined: 2026-03-06*
-*Last updated: 2026-03-06 after Phase 14 completion*
+*Last updated: 2026-03-07 after Phase 16 completion*
