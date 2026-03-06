@@ -79,12 +79,16 @@ vi.mock('../store/rewardStore', () => ({
   ),
 }));
 
-// Mock offDaysApi
+// Mock API services
 vi.mock('../services/api', () => ({
   offDaysApi: {
     list: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockResolvedValue({}),
     delete: vi.fn().mockResolvedValue(undefined),
+  },
+  habitsApi: {
+    listArchived: vi.fn().mockResolvedValue([]),
+    restore: vi.fn().mockResolvedValue({}),
   },
 }));
 
@@ -166,6 +170,7 @@ describe('Settings CRUD Components', () => {
     expect(screen.getByText('Categories')).toBeInTheDocument();
     expect(screen.getByText('Capsule Rewards')).toBeInTheDocument();
     expect(screen.getByText('Shenron Wishes')).toBeInTheDocument();
+    expect(screen.getByText('Archived Habits')).toBeInTheDocument();
   });
 
   test('Preferences section expanded by default', () => {
