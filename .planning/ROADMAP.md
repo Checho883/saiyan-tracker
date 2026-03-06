@@ -89,12 +89,12 @@ Plans:
   4. When only 1-2 habits remain unchecked for the day, a nudge banner appears showing which habits are left
   5. After checking the last habit of the day (whether or not it reaches 100%), a summary toast shows daily %, tier, and XP earned
   6. When the user's power level crosses a round-number milestone (1K, 5K, 10K, 50K), a celebration animation plays
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 13-01: TBD
-- [ ] 13-02: TBD
-- [ ] 13-03: TBD
+- [ ] 13-01-PLAN.md — Analytics history lists (capsule drops + wish grants)
+- [ ] 13-02-PLAN.md — Habit detail sheet with contribution graph
+- [ ] 13-03-PLAN.md — Check-time feedback (nudge banner, daily summary toast, power milestone celebration)
 
 ### Phase 14: Animation Overlays + Roast UI
 **Goal**: Every meaningful game event discovered by backend detection has a visible, audible celebration or notification in the UI
