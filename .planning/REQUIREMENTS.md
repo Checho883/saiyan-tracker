@@ -66,42 +66,42 @@
 | Complex per-habit trend charts | Contribution grid + calendar is sufficient |
 | Social/sharing features | Solo tracker by design |
 | Mobile PWA | Deferred to v2 |
-| Roast intensity Settings toggle | Scope capped at 19 features, revisit if needed |
+| Roast intensity Settings toggle | Scope capped at 24 features, revisit if needed |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FEED-01 | — | Pending |
-| FEED-02 | — | Pending |
-| FEED-03 | — | Pending |
-| FEED-04 | — | Pending |
-| FEED-05 | — | Pending |
-| FEED-06 | — | Pending |
-| CHAR-01 | — | Pending |
-| CHAR-02 | — | Pending |
-| ACHV-01 | — | Pending |
-| ACHV-02 | — | Pending |
-| ACHV-03 | — | Pending |
-| ACHV-04 | — | Pending |
-| ANLT-01 | — | Pending |
-| ANLT-02 | — | Pending |
-| ANLT-03 | — | Pending |
-| ANLT-04 | — | Pending |
-| ANLT-05 | — | Pending |
-| HMGT-01 | — | Pending |
-| HMGT-02 | — | Pending |
-| HMGT-03 | — | Pending |
-| HMGT-04 | — | Pending |
-| HMGT-05 | — | Pending |
-| TECH-01 | — | Pending |
-| TECH-02 | — | Pending |
+| FEED-01 | Phase 14 | Pending |
+| FEED-02 | Phase 13 | Pending |
+| FEED-03 | Phase 14 | Pending |
+| FEED-04 | Phase 13 | Pending |
+| FEED-05 | Phase 13 | Pending |
+| FEED-06 | Phase 11 | Pending |
+| CHAR-01 | Phase 12 | Pending |
+| CHAR-02 | Phase 12 | Pending |
+| ACHV-01 | Phase 12 | Pending |
+| ACHV-02 | Phase 12 | Pending |
+| ACHV-03 | Phase 14 | Pending |
+| ACHV-04 | Phase 12 | Pending |
+| ANLT-01 | Phase 13 | Pending |
+| ANLT-02 | Phase 13 | Pending |
+| ANLT-03 | Phase 13 | Pending |
+| ANLT-04 | Phase 15 | Pending |
+| ANLT-05 | Phase 12 | Pending |
+| HMGT-01 | Phase 15 | Pending |
+| HMGT-02 | Phase 12 | Pending |
+| HMGT-03 | Phase 16 | Pending |
+| HMGT-04 | Phase 16 | Pending |
+| HMGT-05 | Phase 16 | Pending |
+| TECH-01 | Phase 11 | Pending |
+| TECH-02 | Phase 16 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 24 total
-- Mapped to phases: 0
-- Unmapped: 24
+- Mapped to phases: 24
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-06*
-*Last updated: 2026-03-06 after initial definition*
+*Last updated: 2026-03-06 after roadmap creation*
