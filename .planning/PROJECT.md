@@ -35,7 +35,32 @@ Every habit check must feel like something happened — a sound, a visual pulse,
 
 ### Active
 
-(None — next milestone will define new requirements via `/gsd:new-milestone`)
+#### Current Milestone: v1.2 PRD Complete
+
+**Goal:** Close every remaining gap between the PRD and the shipped product, plus dopamine and UX polish additions beyond the original spec.
+
+**Target features (PRD gaps):**
+- Vegeta escalation roast system (missed day detection + severity scaling)
+- Streak milestone detection, badges, and notifications (3/7/21/30/60/90/365 days)
+- Achievement system (transformation unlocks, streak milestones, recorded + displayed)
+- Per-habit contribution graphs (GitHub-style grid, 90 days)
+- Capsule drop history view in Analytics
+- Wish grant history view in Analytics
+- Zenkai recovery animation + visual feedback
+- Habit drag-and-drop reordering (frontend + PUT /habits/reorder)
+- Calendar day popover with per-habit breakdown
+- Per-habit calendar + stats API endpoints
+- Real audio sprite files (replace placeholders)
+- recharts react-is tech debt resolution
+
+**Target features (beyond PRD):**
+- Attribute level-up animation + title unlock notifications
+- Power level milestone celebrations (1K, 5K, 10K, 50K round numbers)
+- "You're close!" nudge banner (1-2 habits remaining for 100%)
+- Daily summary toast on last check (closure even on imperfect days)
+- Archived habits view + restore functionality
+- Temporary habit support (start/end date UI in habit form)
+- Custom frequency day picker (tappable day-of-week selector)
 
 ### Out of Scope
 
@@ -44,8 +69,10 @@ Every habit check must feel like something happened — a sound, a visual pulse,
 - Mobile app — web-first (PWA later in v2)
 - Real-time sync — local SQLite, no cloud
 - Social features — solo tracker, no leaderboards with others
-- Vegeta escalation roast system — deferred to v1.2 polish
-- Per-habit contribution graphs — deferred to v1.2 polish
+- Habit detail view / target time display — deferred post-v1.2
+- Off-day analytics rollup — deferred post-v1.2
+- Onboarding / first-run wizard — deferred post-v1.2
+- Shareable daily summary (copy-to-clipboard) — deferred post-v1.2
 
 ## Context
 
@@ -54,6 +81,11 @@ Tech stack: React 19 + Vite 7 + TypeScript + Zustand + Motion + Tailwind CSS v4 
 49/49 v1.1 requirements verified complete across 7 phases (16 plans, 88 commits).
 All game mechanics have full visual representation: aura gauge, scouter HUD, attribute bars, Dragon Ball tracker, 5 animation overlays, 13 sound effects.
 Known tech debt: recharts@3.7.x react-is override in package.json, placeholder audio sprite (needs real sound files).
+Achievement model exists in DB but has no service logic or API endpoints.
+STREAK_MILESTONES constant defined but not consumed by any service.
+Quote severity field (mild/medium/savage) exists but no Vegeta escalation logic.
+Habit sort_order field exists but no reorder API endpoint.
+Temporary habit fields (is_temporary, start_date, end_date) exist in schema but not exposed in frontend form.
 
 ## Constraints
 
@@ -86,4 +118,4 @@ Known tech debt: recharts@3.7.x react-is override in package.json, placeholder a
 | Recharts with react-is override | Best React charting lib despite peer dep conflict | ⚠️ Revisit |
 
 ---
-*Last updated: 2026-03-06 after v1.1 milestone*
+*Last updated: 2026-03-06 after v1.2 milestone start*
