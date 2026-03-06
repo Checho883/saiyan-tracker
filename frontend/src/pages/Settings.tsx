@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Sliders, Folder, Gift, Star } from 'lucide-react';
+import { Sliders, Folder, Gift, Star, Archive } from 'lucide-react';
 import { useRewardStore } from '../store/rewardStore';
 import { useShallow } from 'zustand/react/shallow';
 import { CollapsibleSection } from '../components/settings/CollapsibleSection';
@@ -7,6 +7,7 @@ import { PreferencesSection } from '../components/settings/PreferencesSection';
 import { CategorySection } from '../components/settings/CategorySection';
 import { RewardSection } from '../components/settings/RewardSection';
 import { WishSection } from '../components/settings/WishSection';
+import { ArchivedHabitsSection } from '../components/settings/ArchivedHabitsSection';
 
 export default function Settings() {
   const { categories, rewards, wishes, fetchSettings } = useRewardStore(
@@ -40,6 +41,10 @@ export default function Settings() {
 
       <CollapsibleSection title="Shenron Wishes" icon={Star} count={wishes.length}>
         <WishSection />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Archived Habits" icon={Archive}>
+        <ArchivedHabitsSection />
       </CollapsibleSection>
     </div>
   );

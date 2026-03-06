@@ -124,6 +124,20 @@ def list_habits(
     )
 
 
+@router.get("/archived", response_model=list[HabitResponse])
+def list_archived_habits(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Return all archived (is_active=False) habits for the user."""
+    return (
+        db.query(Habit)
+        .filter(Habit.user_id == user.id, Habit.is_active == False)  # noqa: E712
+        .order_by(Habit.created_at.desc())
+        .all()
+    )
+
+
 @router.get("/today/list", response_model=list[HabitTodayResponse])
 def today_list(
     local_date: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$"),
@@ -325,6 +339,26 @@ def reorder_habits(
     db.commit()
 
     return [habit_map[hid] for hid in body.habit_ids]
+
+
+@router.put("/{habit_id}/restore", response_model=HabitResponse)
+def restore_habit(
+    habit_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Restore an archived habit to active status."""
+    habit = (
+        db.query(Habit)
+        .filter(Habit.id == habit_id, Habit.user_id == user.id, Habit.is_active == False)  # noqa: E712
+        .first()
+    )
+    if habit is None:
+        raise HTTPException(status_code=404, detail="Archived habit not found")
+    habit.is_active = True
+    db.commit()
+    db.refresh(habit)
+    return habit
 
 
 @router.get("/{habit_id}", response_model=HabitResponse)

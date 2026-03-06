@@ -68,6 +68,8 @@ export const habitsApi = {
     api.put('habits/reorder', { json: { habit_ids: habitIds } }).json<HabitResponse[]>(),
   calendarDayDetail: (date: string) =>
     api.get('habits/calendar/day-detail', { searchParams: { date } }).json<CalendarDayDetail>(),
+  listArchived: () => api.get('habits/archived').json<HabitResponse[]>(),
+  restore: (id: string) => api.put(`habits/${id}/restore`).json<HabitResponse>(),
 };
 
 // Power
