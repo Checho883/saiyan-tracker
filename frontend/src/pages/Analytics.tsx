@@ -6,6 +6,8 @@ import { StatCards } from '../components/analytics/StatCards';
 import { CalendarHeatmap } from '../components/analytics/CalendarHeatmap';
 import { AttributeChart } from '../components/analytics/AttributeChart';
 import { PowerLevelChart } from '../components/analytics/PowerLevelChart';
+import { CapsuleHistoryList } from '../components/analytics/CapsuleHistoryList';
+import { WishHistoryList } from '../components/analytics/WishHistoryList';
 
 function getCurrentMonth(): string {
   const now = new Date();
@@ -52,6 +54,10 @@ export default function Analytics() {
       <AttributeChart calendarDays={calendarDays} />
 
       <PowerLevelChart calendarDays={calendarDays} />
+
+      <CapsuleHistoryList />
+
+      <WishHistoryList />
     </div>
   );
 }
