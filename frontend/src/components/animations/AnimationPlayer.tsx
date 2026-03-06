@@ -10,6 +10,9 @@ import { ShenronCeremony } from './ShenronCeremony';
 import { TierChangeBanner } from './TierChangeBanner';
 import { ComboSummaryOverlay } from './ComboSummaryOverlay';
 import { PowerMilestoneOverlay } from './PowerMilestoneOverlay';
+import { LevelUpOverlay } from './LevelUpOverlay';
+import { ZenkaiRecoveryOverlay } from './ZenkaiRecoveryOverlay';
+import { StreakMilestoneOverlay } from './StreakMilestoneOverlay';
 
 /** Combo batching threshold: 3+ banner events triggers combo mode */
 const COMBO_THRESHOLD = 3;
@@ -172,6 +175,28 @@ function renderOverlay(
       return (
         <PowerMilestoneOverlay
           milestone={event.milestone}
+          onComplete={onComplete}
+        />
+      );
+    case 'level_up':
+      return (
+        <LevelUpOverlay
+          attribute={event.attribute}
+          oldLevel={event.oldLevel}
+          newLevel={event.newLevel}
+          title={event.title}
+          onComplete={onComplete}
+        />
+      );
+    case 'zenkai_recovery':
+      return <ZenkaiRecoveryOverlay onComplete={onComplete} />;
+    case 'streak_milestone':
+      return (
+        <StreakMilestoneOverlay
+          tier={event.tier}
+          streak={event.streak}
+          scope={event.scope}
+          badgeName={event.badgeName}
           onComplete={onComplete}
         />
       );
