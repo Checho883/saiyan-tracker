@@ -9,6 +9,8 @@ import { HabitList } from '../components/dashboard/HabitList';
 import { HabitFormSheet } from '../components/habit/HabitFormSheet';
 import { DeleteConfirmDialog } from '../components/habit/DeleteConfirmDialog';
 import { EmptyState } from '../components/common/EmptyState';
+import { NudgeBanner } from '../components/dashboard/NudgeBanner';
+import { AnimatePresence } from 'motion/react';
 
 export default function Dashboard() {
   const todayHabits = useHabitStore((s) => s.todayHabits);
@@ -52,6 +54,16 @@ export default function Dashboard() {
     const id = activeModal.replace('habit-delete-', '');
     return todayHabits.find((h) => h.id === id);
   }, [activeModal, todayHabits]);
+
+  // Nudge banner: show when 1-2 habits remain and total > 2
+  const remainingHabits = useMemo(
+    () => todayHabits.filter((h) => !h.completed),
+    [todayHabits],
+  );
+  const showNudge =
+    remainingHabits.length >= 1 &&
+    remainingHabits.length <= 2 &&
+    todayHabits.length > 2;
 
   const handleDelete = () => {
     if (deletingHabit) {
@@ -118,6 +130,18 @@ export default function Dashboard() {
         onArchive={handleArchive}
         habitTitle={deletingHabit?.title ?? ''}
       />
+
+      {/* Nudge Banner */}
+      <AnimatePresence>
+        {showNudge && (
+          <NudgeBanner
+            remainingHabits={remainingHabits.map((h) => ({
+              title: h.title,
+              icon_emoji: h.icon_emoji,
+            }))}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

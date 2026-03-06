@@ -1,9 +1,51 @@
 import { create } from 'zustand';
 import toast from 'react-hot-toast';
-import type { HabitTodayResponse, CheckHabitResponse, HabitCreate, HabitUpdate } from '../types';
+import type { HabitTodayResponse, CheckHabitResponse, HabitCreate, HabitUpdate, DailyLogSummary } from '../types';
 import { habitsApi } from '../services/api';
 import { usePowerStore } from './powerStore';
 import { useUiStore } from './uiStore';
+import { createElement } from 'react';
+
+const POWER_MILESTONES = [1000, 5000, 10000, 50000];
+
+function showDailySummary(dailyLog: DailyLogSummary) {
+  toast.custom(
+    (t) =>
+      createElement(
+        'div',
+        {
+          className: `bg-space-800 border border-saiyan-500/50 rounded-xl p-4 shadow-xl max-w-sm mx-auto ${t.visible ? 'animate-enter' : 'animate-leave'}`,
+        },
+        createElement(
+          'p',
+          { className: 'text-saiyan-500 font-bold text-base' },
+          'Day Complete!',
+        ),
+        createElement(
+          'div',
+          { className: 'flex items-center gap-3 mt-2 text-sm' },
+          createElement(
+            'span',
+            { className: 'text-text-primary' },
+            `${Math.round(dailyLog.completion_rate * 100)}%`,
+          ),
+          createElement('span', { className: 'text-text-muted' }, '|'),
+          createElement(
+            'span',
+            { className: 'text-text-primary capitalize' },
+            dailyLog.completion_tier,
+          ),
+          createElement('span', { className: 'text-text-muted' }, '|'),
+          createElement(
+            'span',
+            { className: 'text-saiyan-500 font-semibold' },
+            `+${dailyLog.xp_earned} XP`,
+          ),
+        ),
+      ),
+    { duration: 4000, position: 'top-center' },
+  );
+}
 
 interface HabitState {
   todayHabits: HabitTodayResponse[];
@@ -59,6 +101,9 @@ export const useHabitStore = create<HabitState>((set, get) => ({
             : h
         ),
       });
+
+      // Capture previous power level BEFORE update for milestone detection
+      const prevPower = usePowerStore.getState().powerLevel;
 
       // Distribute to powerStore
       usePowerStore
@@ -116,6 +161,26 @@ export const useHabitStore = create<HabitState>((set, get) => ({
           type: 'tier_change',
           tier: result.daily_log.completion_tier,
         });
+      }
+
+      // Power milestone detection
+      const crossedMilestone = POWER_MILESTONES.find(
+        (m) => prevPower < m && result.power_level >= m,
+      );
+      if (crossedMilestone) {
+        ui.enqueueAnimation({
+          type: 'power_milestone',
+          milestone: crossedMilestone,
+        });
+      }
+
+      // Daily summary toast: fires after checking the last habit
+      if (result.is_checking) {
+        const updatedHabits = get().todayHabits;
+        const remaining = updatedHabits.filter((h) => !h.completed);
+        if (remaining.length === 0) {
+          showDailySummary(result.daily_log);
+        }
       }
 
       return result;

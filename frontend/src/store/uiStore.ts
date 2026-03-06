@@ -9,7 +9,8 @@ export type AnimationEvent =
   | { type: 'dragon_ball'; count: number }
   | { type: 'transformation'; form: string; name: string }
   | { type: 'xp_popup'; amount: number; attribute: string }
-  | { type: 'shenron' };
+  | { type: 'shenron' }
+  | { type: 'power_milestone'; milestone: number };
 
 /**
  * Priority tiers for animation events.
@@ -26,6 +27,7 @@ export const PRIORITY_TIERS: Record<AnimationEvent['type'], number> = {
   capsule_drop: 2,    // Banner — subject to combo batching
   xp_popup: 3,        // Inline — fires independently, bypasses queue
   dragon_ball: 3,     // Inline — fires independently, bypasses queue
+  power_milestone: 1, // Exclusive — full overlay, plays individually
 };
 
 interface UiState {

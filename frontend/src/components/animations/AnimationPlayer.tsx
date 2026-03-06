@@ -9,6 +9,7 @@ import { TransformationOverlay } from './TransformationOverlay';
 import { ShenronCeremony } from './ShenronCeremony';
 import { TierChangeBanner } from './TierChangeBanner';
 import { ComboSummaryOverlay } from './ComboSummaryOverlay';
+import { PowerMilestoneOverlay } from './PowerMilestoneOverlay';
 
 /** Combo batching threshold: 3+ banner events triggers combo mode */
 const COMBO_THRESHOLD = 3;
@@ -167,6 +168,13 @@ function renderOverlay(
       return <ShenronCeremony onComplete={onComplete} />;
     case 'tier_change':
       return <TierChangeBanner tier={event.tier} onDismiss={onComplete} />;
+    case 'power_milestone':
+      return (
+        <PowerMilestoneOverlay
+          milestone={event.milestone}
+          onComplete={onComplete}
+        />
+      );
     default:
       return null;
   }
