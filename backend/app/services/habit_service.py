@@ -22,6 +22,12 @@ from app.services.streak_service import (
     update_habit_streak,
     update_overall_streak,
 )
+from app.services.achievement_service import (
+    detect_attribute_level_change,
+    detect_streak_milestones,
+    get_milestone_badge_name,
+    record_achievement,
+)
 from app.services.xp_service import (
     calc_daily_xp,
     calc_streak_bonus,
@@ -115,15 +121,17 @@ def check_habit(
             is_checking = True
 
         # ── Step 2: Handle attribute XP ───────────────────────────────
+        # Capture old XP before mutation for level-up detection
+        attr_field = f"{habit.attribute}_xp"
+        old_attr_xp = getattr(user, attr_field)
+
         if is_checking:
             xp = get_attribute_xp(habit.importance)
             habit_log.attribute_xp_awarded = xp
-            attr_field = f"{habit.attribute}_xp"
-            setattr(user, attr_field, getattr(user, attr_field) + xp)
+            setattr(user, attr_field, old_attr_xp + xp)
         else:
             # Claw back
             xp = habit_log.attribute_xp_awarded
-            attr_field = f"{habit.attribute}_xp"
             setattr(user, attr_field, max(0, getattr(user, attr_field) - xp))
             habit_log.attribute_xp_awarded = 0
 
@@ -186,6 +194,65 @@ def check_habit(
             db, user_id, habit_id, local_date, is_checking
         )
 
+        # ── Step 5b: Detect events (milestones, level-ups) ─────────────
+        events: list[dict] = []
+        if is_checking:
+            # Overall streak milestones
+            old_overall = streak_result["current_streak"] - 1 if streak_result["current_streak"] > 0 else 0
+            overall_milestones = detect_streak_milestones(
+                old_overall, streak_result["current_streak"]
+            )
+            for m in overall_milestones:
+                record_achievement(
+                    db, user_id, "streak_milestone", f"overall_streak_{m}",
+                    milestone_type="streak",
+                    metadata={"streak": m, "scope": "overall"},
+                )
+                events.append({
+                    "type": "streak_milestone",
+                    "tier": m,
+                    "streak": streak_result["current_streak"],
+                    "badge_name": get_milestone_badge_name(m),
+                    "scope": "overall",
+                })
+
+            # Per-habit streak milestones
+            old_habit = habit_streak_result["current_streak"] - 1 if habit_streak_result["current_streak"] > 0 else 0
+            habit_milestones = detect_streak_milestones(
+                old_habit, habit_streak_result["current_streak"]
+            )
+            for m in habit_milestones:
+                record_achievement(
+                    db, user_id, "streak_milestone",
+                    f"habit_{habit_id}_streak_{m}",
+                    milestone_type="streak",
+                    metadata={"streak": m, "scope": "habit", "habit_id": str(habit_id)},
+                )
+                events.append({
+                    "type": "streak_milestone",
+                    "tier": m,
+                    "streak": habit_streak_result["current_streak"],
+                    "badge_name": get_milestone_badge_name(m),
+                    "scope": "habit",
+                })
+
+            # Attribute level-up detection
+            new_attr_xp = getattr(user, attr_field)
+            level_change = detect_attribute_level_change(
+                old_attr_xp, new_attr_xp, habit.attribute
+            )
+            if level_change is not None:
+                record_achievement(
+                    db, user_id, "attribute_level_up",
+                    f"{habit.attribute}_{level_change['new_level']}",
+                    metadata=level_change,
+                )
+                events.append({
+                    "type": "level_up",
+                    "attribute": habit.attribute,
+                    **level_change,
+                })
+
         # ── Step 6: Recalculate daily XP ──────────────────────────────
         # Re-fetch streak after update
         streak = get_or_create_streak(db, user_id)
@@ -206,6 +273,15 @@ def check_habit(
         )
         if transform_change is not None:
             user.current_transformation = transform_change["key"]
+            if is_checking:
+                record_achievement(
+                    db, user_id, "transformation", transform_change["key"],
+                    metadata=transform_change,
+                )
+                events.append({
+                    "type": "transformation",
+                    **transform_change,
+                })
 
         # ── Step 8: Handle Dragon Ball ────────────────────────────────
         dragon_ball_info = None
@@ -257,6 +333,7 @@ def check_habit(
             "transform_change": transform_change,
             "dragon_ball": dragon_ball_info,
             "capsule": capsule_result,
+            "events": events,
         }
 
     except Exception:

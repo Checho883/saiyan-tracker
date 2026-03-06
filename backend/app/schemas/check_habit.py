@@ -66,3 +66,4 @@ class CheckHabitResponse(BaseModel):
     dragon_ball: DragonBallInfo | None = None
     capsule: CapsuleDropDetail | None = None
     quote: QuoteDetail | None = None
+    events: list[dict] = []

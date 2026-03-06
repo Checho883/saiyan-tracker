@@ -296,6 +296,23 @@ def check_habit_endpoint(
     # Select quote
     quote_detail = select_quote_for_context(db, result)
 
+    # Enrich streak milestone events with quotes
+    for event in result.get("events", []):
+        if event["type"] == "streak_milestone":
+            milestone_quote = (
+                db.query(Quote)
+                .filter(Quote.trigger_event == "streak_milestone")
+                .order_by(func.random())
+                .first()
+            )
+            if milestone_quote:
+                event["quote"] = {
+                    "character": milestone_quote.character,
+                    "quote_text": milestone_quote.quote_text,
+                    "source_saga": milestone_quote.source_saga,
+                    "avatar_path": f"/avatars/{milestone_quote.character}.png",
+                }
+
     # Shape streak
     streak_info = StreakInfo(
         current_streak=result["streak"]["current_streak"],
@@ -335,6 +352,7 @@ def check_habit_endpoint(
         dragon_ball=dragon_ball,
         capsule=capsule_detail,
         quote=quote_detail,
+        events=result.get("events", []),
     )
 
 

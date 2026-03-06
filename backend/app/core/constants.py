@@ -63,6 +63,17 @@ DRAGON_BALLS_REQUIRED = 7
 # --- Streak Milestones ---
 STREAK_MILESTONES = [3, 7, 21, 30, 60, 90, 365]
 
+# --- Milestone Badge Names (DBZ-themed) ---
+MILESTONE_BADGE_NAMES = {
+    3: "First Step",
+    7: "Warrior Spirit",
+    21: "Saiyan Pride",
+    30: "Elite Fighter",
+    60: "Super Saiyan",
+    90: "Ascended Warrior",
+    365: "Legend",
+}
+
 # --- Valid Enums ---
 VALID_IMPORTANCES = ["normal", "important", "critical"]
 VALID_ATTRIBUTES = ["str", "vit", "int", "ki"]
