@@ -35,8 +35,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 6: Audio System** - SoundProvider with Howler.js sprite sheet, sound effects on every interaction, global mute toggle
 - [ ] **Phase 7: Animation Layer** - Animation queue, tier-change flash, Perfect Day explosion, capsule reveal, Dragon Ball trajectory, transformation, Shenron ceremony
 - [x] **Phase 8: Analytics & Settings** - Calendar heatmap, progression charts, summary stats, rewards/wishes/categories CRUD, off-day management, preferences (completed 2026-03-05)
-- [ ] **Phase 9: Cross-Phase Integration Fixes** - Fix SoundProvider settings sync, powerStore transformationName staleness, capsule reveal chime wiring
-- [ ] **Phase 10: Milestone Verification & Housekeeping** - Create Phase 7/8 VERIFICATION.md, fix SUMMARY frontmatter, update REQUIREMENTS.md checkboxes
+- [x] **Phase 9: Cross-Phase Integration Fixes** - Fix SoundProvider settings sync, powerStore transformationName staleness, capsule reveal chime wiring (completed 2026-03-05)
+- [x] **Phase 10: Milestone Verification & Housekeeping** - Create Phase 7/8 VERIFICATION.md, fix SUMMARY frontmatter, update REQUIREMENTS.md checkboxes (completed 2026-03-06)
 
 ## Phase Details
 
@@ -144,7 +144,7 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 10-01: TBD
+- [x] 10-01-PLAN.md — Verification documents, SUMMARY frontmatter fixes, REQUIREMENTS.md updates (completed 2026-03-06)
 
 ## Progress
 
@@ -162,5 +162,5 @@ Note: Phase 8 depends on Phase 5 (not Phase 7), so Phases 6/7 and 8 could theore
 | 6. Audio System | v1.1 | 1/1 | Complete | 2026-03-05 |
 | 7. Animation Layer | v1.1 | 2/2 | Complete | 2026-03-05 |
 | 8. Analytics & Settings | v1.1 | 2/2 | Complete | 2026-03-05 |
-| 9. Cross-Phase Integration Fixes | v1.1 | 0/1 | Pending | — |
-| 10. Milestone Verification & Housekeeping | v1.1 | 0/1 | Pending | — |
+| 9. Cross-Phase Integration Fixes | v1.1 | 1/1 | Complete | 2026-03-05 |
+| 10. Milestone Verification & Housekeeping | v1.1 | 1/1 | Complete | 2026-03-06 |
