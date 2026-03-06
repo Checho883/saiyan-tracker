@@ -1,11 +1,13 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Check, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { Check, MoreVertical, Pencil, Trash2, BarChart3 } from 'lucide-react';
+import { AnimatePresence } from 'motion/react';
 import type { HabitTodayResponse, Attribute } from '../../types';
 import { useHabitStore } from '../../store/habitStore';
 import { useUiStore } from '../../store/uiStore';
 import { useAudio } from '../../audio/useAudio';
 import { XpPopup } from './XpPopup';
 import { showCharacterQuote } from './CharacterQuote';
+import { HabitDetailSheet } from './HabitDetailSheet';
 
 const borderColorMap: Record<Attribute, string> = {
   str: 'border-l-attr-str',
@@ -38,6 +40,7 @@ export function HabitCard({ habit }: HabitCardProps) {
   const [showXp, setShowXp] = useState(false);
   const [xpAmount, setXpAmount] = useState(0);
   const [showMenu, setShowMenu] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close menu on outside click
@@ -100,6 +103,18 @@ export function HabitCard({ habit }: HabitCardProps) {
         {habit.completed && (
           <Check className="w-4 h-4 text-success flex-shrink-0" />
         )}
+
+        {/* Detail sheet button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowDetail(true);
+          }}
+          className="p-1 rounded hover:bg-space-600 transition-colors"
+          aria-label="View habit details"
+        >
+          <BarChart3 className="w-4 h-4 text-text-muted" />
+        </button>
 
         {/* More options menu */}
         <div className="relative" ref={menuRef}>
@@ -175,6 +190,20 @@ export function HabitCard({ habit }: HabitCardProps) {
           onDone={() => setShowXp(false)}
         />
       )}
+
+      {/* Habit detail sheet */}
+      <AnimatePresence>
+        {showDetail && (
+          <HabitDetailSheet
+            habitId={habit.id}
+            habitTitle={habit.title}
+            habitEmoji={habit.icon_emoji}
+            streakCurrent={habit.streak_current}
+            streakBest={habit.streak_best}
+            onClose={() => setShowDetail(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
