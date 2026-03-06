@@ -12,7 +12,7 @@
 - [ ] **FEED-03**: User sees Zenkai recovery animation with visual feedback on first Perfect Day after a streak break
 - [ ] **FEED-04**: User sees "You're close!" nudge banner when 1-2 habits remain for 100% completion
 - [ ] **FEED-05**: User sees daily summary toast after checking last habit (closure signal showing %, tier, XP even on imperfect days)
-- [ ] **FEED-06**: Animation queue supports priority tiers and batching to prevent overload from simultaneous events
+- [x] **FEED-06**: Animation queue supports priority tiers and batching to prevent overload from simultaneous events
 
 ### Character & Roasts
 
@@ -44,7 +44,7 @@
 
 ### Tech Debt & Polish
 
-- [ ] **TECH-01**: recharts react-is peer dependency resolved (explicit react-is@19 install, remove overrides hack)
+- [x] **TECH-01**: recharts react-is peer dependency resolved (explicit react-is@19 install, remove overrides hack)
 - [ ] **TECH-02**: Real audio sprite files replace placeholder sounds (all 13 existing + any new sound IDs)
 
 ## Future Requirements (v1.3+)
@@ -77,7 +77,7 @@
 | FEED-03 | Phase 14 | Pending |
 | FEED-04 | Phase 13 | Pending |
 | FEED-05 | Phase 13 | Pending |
-| FEED-06 | Phase 11 | Pending |
+| FEED-06 | Phase 11 | Complete |
 | CHAR-01 | Phase 12 | Pending |
 | CHAR-02 | Phase 12 | Pending |
 | ACHV-01 | Phase 12 | Pending |
@@ -94,7 +94,7 @@
 | HMGT-03 | Phase 16 | Pending |
 | HMGT-04 | Phase 16 | Pending |
 | HMGT-05 | Phase 16 | Pending |
-| TECH-01 | Phase 11 | Pending |
+| TECH-01 | Phase 11 | Complete |
 | TECH-02 | Phase 16 | Pending |
 
 **Coverage:**
