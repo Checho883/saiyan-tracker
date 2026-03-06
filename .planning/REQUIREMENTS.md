@@ -18,61 +18,61 @@ Requirements for the frontend experience. Each maps to roadmap phases.
 
 ### Dashboard
 
-- [ ] **DASH-01**: User can see all active habits grouped by category with completion status
-- [ ] **DASH-02**: User can check/uncheck a habit and see optimistic UI toggle with rollback on error
-- [ ] **DASH-03**: Daily aura progress bar animates from 0% to current completion with spring physics
+- [x] **DASH-01**: User can see all active habits grouped by category with completion status
+- [x] **DASH-02**: User can check/uncheck a habit and see optimistic UI toggle with rollback on error
+- [x] **DASH-03**: Daily aura progress bar animates from 0% to current completion with spring physics
 - [x] **DASH-04**: Aura bar shows tier label (Kaio-ken x3/x10/x20) updating at 50%/80%/100% thresholds
-- [ ] **DASH-05**: Four RPG attribute bars (STR/VIT/INT/KI) display current level and XP fill toward next level
-- [ ] **DASH-06**: Dragon Ball tracker shows 7 slots with glowing filled balls and dim empty slots
-- [ ] **DASH-07**: Saiyan avatar displays current transformation form with form-appropriate aura effect
-- [ ] **DASH-08**: Avatar shows power level in scouter-style display and progress bar to next form
-- [ ] **DASH-09**: Streak display shows current and best streak with visual scaling
-- [ ] **DASH-10**: Character quote appears after habit check with character avatar, text, and attribution
-- [ ] **DASH-11**: User can create a new habit via modal (title, description, importance, attribute, frequency, category)
-- [ ] **DASH-12**: User can edit and delete existing habits
-- [ ] **DASH-13**: XP popup floats up from habit card showing "+N [ATTR] XP" in attribute color
+- [x] **DASH-05**: Four RPG attribute bars (STR/VIT/INT/KI) display current level and XP fill toward next level
+- [x] **DASH-06**: Dragon Ball tracker shows 7 slots with glowing filled balls and dim empty slots
+- [x] **DASH-07**: Saiyan avatar displays current transformation form with form-appropriate aura effect
+- [x] **DASH-08**: Avatar shows power level in scouter-style display and progress bar to next form
+- [x] **DASH-09**: Streak display shows current and best streak with visual scaling
+- [x] **DASH-10**: Character quote appears after habit check with character avatar, text, and attribution
+- [x] **DASH-11**: User can create a new habit via modal (title, description, importance, attribute, frequency, category)
+- [x] **DASH-12**: User can edit and delete existing habits
+- [x] **DASH-13**: XP popup floats up from habit card showing "+N [ATTR] XP" in attribute color
 
 ### Audio
 
 - [x] **AUDIO-01**: SoundProvider context wraps app with global sound toggle and playSound method
-- [ ] **AUDIO-02**: Habit check triggers scouter beep sound
-- [ ] **AUDIO-03**: Tier change triggers power-up burst sound
+- [x] **AUDIO-02**: Habit check triggers scouter beep sound
+- [x] **AUDIO-03**: Tier change triggers power-up burst sound
 - [x] **AUDIO-04**: Capsule drop triggers capsule pop sound; capsule open triggers reveal chime
-- [ ] **AUDIO-05**: Perfect Day (100%) triggers explosion/SSJ scream sound
-- [ ] **AUDIO-06**: Dragon Ball earned triggers radar ping sound
-- [ ] **AUDIO-07**: Shenron ceremony triggers thunder + roar sound
-- [ ] **AUDIO-08**: Transformation triggers power-up sequence sound
-- [ ] **AUDIO-09**: Sound effects use playbackRate variation (0.9-1.1) to prevent monotony on repeated sounds
+- [x] **AUDIO-05**: Perfect Day (100%) triggers explosion/SSJ scream sound
+- [x] **AUDIO-06**: Dragon Ball earned triggers radar ping sound
+- [x] **AUDIO-07**: Shenron ceremony triggers thunder + roar sound
+- [x] **AUDIO-08**: Transformation triggers power-up sequence sound
+- [x] **AUDIO-09**: Sound effects use playbackRate variation (0.9-1.1) to prevent monotony on repeated sounds
 
 ### Animations
 
-- [ ] **ANIM-01**: Animation queue in uiStore enforces sequential playback when multiple events trigger simultaneously
-- [ ] **ANIM-02**: Tier change flash shows brief banner ("Kaio-ken x3!") with scale-in animation at 50%/80% thresholds
-- [ ] **ANIM-03**: Perfect Day explosion plays choreographed 2-3s full-screen sequence (overlay → shake → particles → text → XP counter → quote → fadeout)
-- [ ] **ANIM-04**: Capsule drop bounces in with scale spring, pulses to invite tap
-- [ ] **ANIM-05**: Capsule reveal plays 3D card flip (rotateY) showing reward with rarity-appropriate glow (white/blue/purple)
-- [ ] **ANIM-06**: New Dragon Ball earned flies into tracker slot with trajectory animation
-- [ ] **ANIM-07**: Transformation unlock plays form-specific visual (golden flash SSJ, lightning SSJ2, red SSG, blue SSB, silver UI) with avatar swap
-- [ ] **ANIM-08**: Shenron ceremony plays full-screen sequence (sky darkens → lightning → Shenron scales up → wish prompt → balls scatter → reset)
-- [ ] **ANIM-09**: Shenron ceremony enforces minimum 1 active wish before allowing completion
+- [x] **ANIM-01**: Animation queue in uiStore enforces sequential playback when multiple events trigger simultaneously
+- [x] **ANIM-02**: Tier change flash shows brief banner ("Kaio-ken x3!") with scale-in animation at 50%/80% thresholds
+- [x] **ANIM-03**: Perfect Day explosion plays choreographed 2-3s full-screen sequence (overlay → shake → particles → text → XP counter → quote → fadeout)
+- [x] **ANIM-04**: Capsule drop bounces in with scale spring, pulses to invite tap
+- [x] **ANIM-05**: Capsule reveal plays 3D card flip (rotateY) showing reward with rarity-appropriate glow (white/blue/purple)
+- [x] **ANIM-06**: New Dragon Ball earned flies into tracker slot with trajectory animation
+- [x] **ANIM-07**: Transformation unlock plays form-specific visual (golden flash SSJ, lightning SSJ2, red SSG, blue SSB, silver UI) with avatar swap
+- [x] **ANIM-08**: Shenron ceremony plays full-screen sequence (sky darkens → lightning → Shenron scales up → wish prompt → balls scatter → reset)
+- [x] **ANIM-09**: Shenron ceremony enforces minimum 1 active wish before allowing completion
 
 ### Analytics
 
-- [ ] **ANLYT-01**: Calendar heatmap displays days with 4-color coding (gold 100%, blue 75-99%, red 50-74%, gray <50%) and blue outline for off-days
-- [ ] **ANLYT-02**: User can navigate calendar by month with prev/next controls
-- [ ] **ANLYT-03**: Attribute progression area chart shows STR/VIT/INT/KI growth over time with period selector (week/month/all)
-- [ ] **ANLYT-04**: Summary stat cards display perfect days count, average %, total XP, and longest streak
-- [ ] **ANLYT-05**: Power level line chart shows cumulative XP progression over days
+- [x] **ANLYT-01**: Calendar heatmap displays days with 4-color coding (gold 100%, blue 75-99%, red 50-74%, gray <50%) and blue outline for off-days
+- [x] **ANLYT-02**: User can navigate calendar by month with prev/next controls
+- [x] **ANLYT-03**: Attribute progression area chart shows STR/VIT/INT/KI growth over time with period selector (week/month/all)
+- [x] **ANLYT-04**: Summary stat cards display perfect days count, average %, total XP, and longest streak
+- [x] **ANLYT-05**: Power level line chart shows cumulative XP progression over days
 
 ### Settings
 
 - [x] **SET-01**: User can toggle sound effects on/off (persisted via backend)
-- [ ] **SET-02**: User can switch between dark and light theme (persisted via backend)
-- [ ] **SET-03**: User can CRUD capsule rewards with rarity assignment (common/rare/epic) and see distribution stats
-- [ ] **SET-04**: User can CRUD Shenron wishes with active toggle and times-wished count
-- [ ] **SET-05**: User can manage categories (name, color, emoji)
-- [ ] **SET-06**: User can mark an off-day with reason selection (sick/vacation/rest/injury/other)
-- [ ] **SET-07**: User can set display name
+- [x] **SET-02**: User can switch between dark and light theme (persisted via backend)
+- [x] **SET-03**: User can CRUD capsule rewards with rarity assignment (common/rare/epic) and see distribution stats
+- [x] **SET-04**: User can CRUD Shenron wishes with active toggle and times-wished count
+- [x] **SET-05**: User can manage categories (name, color, emoji)
+- [x] **SET-06**: User can mark an off-day with reason selection (sick/vacation/rest/injury/other)
+- [x] **SET-07**: User can set display name
 
 ## v1.2 Requirements
 
@@ -119,49 +119,49 @@ Which phases cover which requirements. Updated during roadmap creation.
 | STATE-04 | Phase 4 | Complete |
 | STATE-05 | Phase 4 | Complete |
 | STATE-06 | Phase 4 | Complete |
-| DASH-01 | Phase 5 | Pending |
-| DASH-02 | Phase 5 | Pending |
-| DASH-03 | Phase 5 | Pending |
+| DASH-01 | Phase 5 | Complete |
+| DASH-02 | Phase 5 | Complete |
+| DASH-03 | Phase 5 | Complete |
 | DASH-04 | Phase 9 | Complete |
-| DASH-05 | Phase 5 | Pending |
-| DASH-06 | Phase 5 | Pending |
-| DASH-07 | Phase 5 | Pending |
-| DASH-08 | Phase 5 | Pending |
-| DASH-09 | Phase 5 | Pending |
-| DASH-10 | Phase 5 | Pending |
-| DASH-11 | Phase 5 | Pending |
-| DASH-12 | Phase 5 | Pending |
-| DASH-13 | Phase 5 | Pending |
+| DASH-05 | Phase 5 | Complete |
+| DASH-06 | Phase 5 | Complete |
+| DASH-07 | Phase 5 | Complete |
+| DASH-08 | Phase 5 | Complete |
+| DASH-09 | Phase 5 | Complete |
+| DASH-10 | Phase 5 | Complete |
+| DASH-11 | Phase 5 | Complete |
+| DASH-12 | Phase 5 | Complete |
+| DASH-13 | Phase 5 | Complete |
 | AUDIO-01 | Phase 9 | Complete |
-| AUDIO-02 | Phase 6 | Pending |
-| AUDIO-03 | Phase 6 | Pending |
+| AUDIO-02 | Phase 6 | Complete |
+| AUDIO-03 | Phase 6 | Complete |
 | AUDIO-04 | Phase 9 | Complete |
-| AUDIO-05 | Phase 6 | Pending |
-| AUDIO-06 | Phase 6 | Pending |
-| AUDIO-07 | Phase 6 | Pending |
-| AUDIO-08 | Phase 6 | Pending |
-| AUDIO-09 | Phase 6 | Pending |
-| ANIM-01 | Phase 10 | Pending |
-| ANIM-02 | Phase 10 | Pending |
-| ANIM-03 | Phase 10 | Pending |
-| ANIM-04 | Phase 10 | Pending |
-| ANIM-05 | Phase 10 | Pending |
-| ANIM-06 | Phase 10 | Pending |
-| ANIM-07 | Phase 10 | Pending |
-| ANIM-08 | Phase 10 | Pending |
-| ANIM-09 | Phase 10 | Pending |
-| ANLYT-01 | Phase 10 | Pending |
-| ANLYT-02 | Phase 10 | Pending |
-| ANLYT-03 | Phase 10 | Pending |
-| ANLYT-04 | Phase 10 | Pending |
-| ANLYT-05 | Phase 10 | Pending |
-| SET-01 | Phase 10 | Complete |
-| SET-02 | Phase 10 | Pending |
-| SET-03 | Phase 10 | Pending |
-| SET-04 | Phase 10 | Pending |
-| SET-05 | Phase 10 | Pending |
-| SET-06 | Phase 10 | Pending |
-| SET-07 | Phase 10 | Pending |
+| AUDIO-05 | Phase 6 | Complete |
+| AUDIO-06 | Phase 6 | Complete |
+| AUDIO-07 | Phase 6 | Complete |
+| AUDIO-08 | Phase 6 | Complete |
+| AUDIO-09 | Phase 6 | Complete |
+| ANIM-01 | Phase 7 | Complete |
+| ANIM-02 | Phase 7 | Complete |
+| ANIM-03 | Phase 7 | Complete |
+| ANIM-04 | Phase 7 | Complete |
+| ANIM-05 | Phase 7 | Complete |
+| ANIM-06 | Phase 7 | Complete |
+| ANIM-07 | Phase 7 | Complete |
+| ANIM-08 | Phase 7 | Complete |
+| ANIM-09 | Phase 7 | Complete |
+| ANLYT-01 | Phase 8 | Complete |
+| ANLYT-02 | Phase 8 | Complete |
+| ANLYT-03 | Phase 8 | Complete |
+| ANLYT-04 | Phase 8 | Complete |
+| ANLYT-05 | Phase 8 | Complete |
+| SET-01 | Phase 9 | Complete |
+| SET-02 | Phase 8 | Complete |
+| SET-03 | Phase 8 | Complete |
+| SET-04 | Phase 8 | Complete |
+| SET-05 | Phase 8 | Complete |
+| SET-06 | Phase 8 | Complete |
+| SET-07 | Phase 8 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 49 total
@@ -170,4 +170,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-04*
-*Last updated: 2026-03-05 after gap closure phases 9-10 created*
+*Last updated: 2026-03-06 after Phase 10 milestone verification*
