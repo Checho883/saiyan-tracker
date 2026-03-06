@@ -7,7 +7,7 @@ This roadmap delivers a Dragon Ball Z-themed habit tracker optimized for ADHD do
 ## Milestones
 
 - ✅ **v1.0 Backend Foundation** — Phases 1-3 (shipped 2026-03-04)
-- 🚧 **v1.1 The Dopamine Layer** — Phases 4-8 (in progress)
+- ✅ **v1.1 The Dopamine Layer** — Phases 4-10 (shipped 2026-03-06)
 
 ## Phases
 
@@ -26,7 +26,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 </details>
 
-### 🚧 v1.1 The Dopamine Layer (Phases 4-8)
+### ✅ v1.1 The Dopamine Layer (Phases 4-10)
 
 **Milestone Goal:** Build the complete frontend experience -- every habit check triggers sound, visual feedback, and dopamine-rewarding animations on top of the v1.0 backend.
 
