@@ -61,6 +61,24 @@ class HabitResponse(BaseModel):
     created_at: datetime
 
 
+class HabitCalendarDay(BaseModel):
+    date: str
+    completed: bool
+    attribute_xp_awarded: int
+
+
+class HabitStatsResponse(BaseModel):
+    total_completions: int
+    current_streak: int
+    best_streak: int
+    completion_rate_30d: float
+    total_xp_earned: int
+
+
+class ReorderRequest(BaseModel):
+    habit_ids: list[uuid.UUID]
+
+
 class HabitTodayResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

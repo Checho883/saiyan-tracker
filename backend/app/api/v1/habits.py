@@ -27,7 +27,15 @@ from app.schemas.check_habit import (
     StreakInfo,
     TransformChange,
 )
-from app.schemas.habit import HabitCreate, HabitResponse, HabitTodayResponse, HabitUpdate
+from app.schemas.habit import (
+    HabitCalendarDay,
+    HabitCreate,
+    HabitResponse,
+    HabitStatsResponse,
+    HabitTodayResponse,
+    HabitUpdate,
+    ReorderRequest,
+)
 from app.services.habit_service import check_habit as svc_check_habit
 from app.services.habit_service import get_habits_due_on_date
 from app.services.off_day_service import is_off_day
@@ -217,6 +225,42 @@ def calendar_all(
     return sorted(result_map.values(), key=lambda d: d.date)
 
 
+# ── Reorder ────────────────────────────────────────────────────────────
+
+
+@router.put("/reorder", response_model=list[HabitResponse])
+def reorder_habits(
+    body: ReorderRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Batch update sort_order for habits. Position in array = sort_order value."""
+    habits = (
+        db.query(Habit)
+        .filter(
+            Habit.id.in_(body.habit_ids),
+            Habit.user_id == user.id,
+            Habit.is_active == True,  # noqa: E712
+        )
+        .all()
+    )
+    habit_map = {h.id: h for h in habits}
+
+    for hid in body.habit_ids:
+        if hid not in habit_map:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Habit {hid} not found or does not belong to user",
+            )
+
+    for idx, hid in enumerate(body.habit_ids):
+        habit_map[hid].sort_order = idx
+
+    db.commit()
+
+    return [habit_map[hid] for hid in body.habit_ids]
+
+
 @router.get("/{habit_id}", response_model=HabitResponse)
 def get_habit(
     habit_id: uuid.UUID,
@@ -391,3 +435,106 @@ def contribution_graph(
         result.append(ContributionDay(date=d_str, completed=d_str in completed_dates))
 
     return result
+
+
+# ── Per-Habit Calendar & Stats ─────────────────────────────────────────
+
+
+@router.get("/{habit_id}/calendar", response_model=list[HabitCalendarDay])
+def habit_calendar(
+    habit_id: uuid.UUID,
+    start_date: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    end_date: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Return per-habit completion history with XP data."""
+    _get_active_habit(db, habit_id, user.id)
+
+    today = date.today()
+    if end_date is not None:
+        end_d = date.fromisoformat(end_date)
+    else:
+        end_d = today
+    if start_date is not None:
+        start_d = date.fromisoformat(start_date)
+    else:
+        start_d = end_d - timedelta(days=89)  # 90 days including end
+
+    start_str = start_d.isoformat()
+    end_str = end_d.isoformat()
+
+    logs = (
+        db.query(HabitLog)
+        .filter(
+            HabitLog.habit_id == habit_id,
+            HabitLog.log_date >= start_str,
+            HabitLog.log_date <= end_str,
+        )
+        .all()
+    )
+    log_map = {log.log_date: log for log in logs}
+
+    result = []
+    current = start_d
+    while current <= end_d:
+        d_str = current.isoformat()
+        log = log_map.get(d_str)
+        result.append(HabitCalendarDay(
+            date=d_str,
+            completed=log.completed if log else False,
+            attribute_xp_awarded=log.attribute_xp_awarded if log and log.completed else 0,
+        ))
+        current += timedelta(days=1)
+
+    return result
+
+
+@router.get("/{habit_id}/stats", response_model=HabitStatsResponse)
+def habit_stats(
+    habit_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Return per-habit statistics."""
+    _get_active_habit(db, habit_id, user.id)
+
+    # Total completions
+    total_completions = (
+        db.query(HabitLog)
+        .filter(HabitLog.habit_id == habit_id, HabitLog.completed == True)  # noqa: E712
+        .count()
+    )
+
+    # Streak info
+    h_streak = db.query(HabitStreak).filter(HabitStreak.habit_id == habit_id).first()
+    current_streak = h_streak.current_streak if h_streak else 0
+    best_streak = h_streak.best_streak if h_streak else 0
+
+    # 30-day completion rate
+    thirty_days_ago = (date.today() - timedelta(days=30)).isoformat()
+    recent_completions = (
+        db.query(HabitLog)
+        .filter(
+            HabitLog.habit_id == habit_id,
+            HabitLog.log_date >= thirty_days_ago,
+            HabitLog.completed == True,  # noqa: E712
+        )
+        .count()
+    )
+    completion_rate_30d = recent_completions / 30.0
+
+    # Total XP earned
+    total_xp = (
+        db.query(func.coalesce(func.sum(HabitLog.attribute_xp_awarded), 0))
+        .filter(HabitLog.habit_id == habit_id, HabitLog.completed == True)  # noqa: E712
+        .scalar()
+    )
+
+    return HabitStatsResponse(
+        total_completions=total_completions,
+        current_streak=current_streak,
+        best_streak=best_streak,
+        completion_rate_30d=round(completion_rate_30d, 4),
+        total_xp_earned=total_xp,
+    )

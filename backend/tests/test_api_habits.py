@@ -256,3 +256,162 @@ class TestContributionGraph:
         fake_id = str(uuid.uuid4())
         resp = client.get(f"/api/v1/habits/{fake_id}/contribution-graph?days=30")
         assert resp.status_code == 404
+
+
+class TestPerHabitCalendar:
+    def test_calendar_default_90_days(self, client, db, sample_user):
+        today = date.today()
+        today_str = today.isoformat()
+
+        create_resp = client.post("/api/v1/habits/", json={
+            "title": "Calendar Test",
+            "attribute": "str",
+            "start_date": "2026-01-01",
+        })
+        habit_id = create_resp.json()["id"]
+
+        # Check habit
+        client.post(f"/api/v1/habits/{habit_id}/check", json={"local_date": today_str})
+
+        resp = client.get(f"/api/v1/habits/{habit_id}/calendar")
+        assert resp.status_code == 200
+        days = resp.json()
+        assert len(days) == 90
+
+        # Today should be completed
+        today_entry = [d for d in days if d["date"] == today_str]
+        assert len(today_entry) == 1
+        assert today_entry[0]["completed"] is True
+        assert today_entry[0]["attribute_xp_awarded"] > 0
+
+    def test_calendar_custom_range(self, client, db, sample_user):
+        create_resp = client.post("/api/v1/habits/", json={
+            "title": "Range Test",
+            "attribute": "vit",
+            "start_date": "2026-01-01",
+        })
+        habit_id = create_resp.json()["id"]
+
+        resp = client.get(
+            f"/api/v1/habits/{habit_id}/calendar"
+            "?start_date=2026-01-01&end_date=2026-01-31"
+        )
+        assert resp.status_code == 200
+        days = resp.json()
+        assert len(days) == 31
+        assert days[0]["date"] == "2026-01-01"
+        assert days[-1]["date"] == "2026-01-31"
+
+    def test_calendar_missing_days_show_false(self, client, db, sample_user):
+        create_resp = client.post("/api/v1/habits/", json={
+            "title": "Missing Days Test",
+            "attribute": "ki",
+            "start_date": "2026-01-01",
+        })
+        habit_id = create_resp.json()["id"]
+
+        resp = client.get(
+            f"/api/v1/habits/{habit_id}/calendar"
+            "?start_date=2026-01-01&end_date=2026-01-05"
+        )
+        assert resp.status_code == 200
+        days = resp.json()
+        assert len(days) == 5
+        # No logs -> all uncompleted
+        for day in days:
+            assert day["completed"] is False
+            assert day["attribute_xp_awarded"] == 0
+
+    def test_calendar_not_found(self, client):
+        fake_id = str(uuid.uuid4())
+        resp = client.get(f"/api/v1/habits/{fake_id}/calendar")
+        assert resp.status_code == 404
+
+
+class TestPerHabitStats:
+    def test_stats_basic(self, client, db, sample_user):
+        today = date.today().isoformat()
+
+        create_resp = client.post("/api/v1/habits/", json={
+            "title": "Stats Test",
+            "attribute": "str",
+            "start_date": "2026-01-01",
+        })
+        habit_id = create_resp.json()["id"]
+
+        # Check habit
+        client.post(f"/api/v1/habits/{habit_id}/check", json={"local_date": today})
+
+        resp = client.get(f"/api/v1/habits/{habit_id}/stats")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total_completions"] == 1
+        assert data["current_streak"] == 1
+        assert data["best_streak"] == 1
+        assert data["total_xp_earned"] > 0
+        assert "completion_rate_30d" in data
+
+    def test_stats_not_found(self, client):
+        fake_id = str(uuid.uuid4())
+        resp = client.get(f"/api/v1/habits/{fake_id}/stats")
+        assert resp.status_code == 404
+
+
+class TestReorder:
+    def test_reorder_assigns_sort_order(self, client, db, sample_user):
+        # Create 3 habits
+        ids = []
+        for title in ["A", "B", "C"]:
+            resp = client.post("/api/v1/habits/", json={
+                "title": title,
+                "attribute": "str",
+                "start_date": "2026-01-01",
+            })
+            ids.append(resp.json()["id"])
+
+        # Reorder: C, A, B
+        resp = client.put("/api/v1/habits/reorder", json={
+            "habit_ids": [ids[2], ids[0], ids[1]],
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 3
+        assert data[0]["sort_order"] == 0
+        assert data[0]["id"] == ids[2]
+        assert data[1]["sort_order"] == 1
+        assert data[1]["id"] == ids[0]
+        assert data[2]["sort_order"] == 2
+        assert data[2]["id"] == ids[1]
+
+    def test_reorder_invalid_id_returns_400(self, client, db, sample_user):
+        fake_id = str(uuid.uuid4())
+        resp = client.put("/api/v1/habits/reorder", json={
+            "habit_ids": [fake_id],
+        })
+        assert resp.status_code == 400
+
+    def test_reorder_persists(self, client, db, sample_user):
+        # Create 2 habits
+        r1 = client.post("/api/v1/habits/", json={
+            "title": "First",
+            "attribute": "str",
+            "start_date": "2026-01-01",
+        })
+        r2 = client.post("/api/v1/habits/", json={
+            "title": "Second",
+            "attribute": "vit",
+            "start_date": "2026-01-01",
+        })
+        id1 = r1.json()["id"]
+        id2 = r2.json()["id"]
+
+        # Reorder: Second first
+        client.put("/api/v1/habits/reorder", json={
+            "habit_ids": [id2, id1],
+        })
+
+        # Verify via GET
+        h1 = client.get(f"/api/v1/habits/{id1}").json()
+        h2 = client.get(f"/api/v1/habits/{id2}").json()
+        assert h2["sort_order"] == 0
+        assert h1["sort_order"] == 1
