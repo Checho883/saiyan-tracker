@@ -10,6 +10,7 @@ import { HabitFormSheet } from '../components/habit/HabitFormSheet';
 import { DeleteConfirmDialog } from '../components/habit/DeleteConfirmDialog';
 import { EmptyState } from '../components/common/EmptyState';
 import { NudgeBanner } from '../components/dashboard/NudgeBanner';
+import { RoastWelcomeCard } from '../components/dashboard/RoastWelcomeCard';
 import { AnimatePresence } from 'motion/react';
 
 export default function Dashboard() {
@@ -88,6 +89,9 @@ export default function Dashboard() {
 
       {/* Sentinel for IntersectionObserver */}
       <div ref={sentinelRef} className="h-px" />
+
+      {/* Roast/Welcome Card */}
+      <RoastWelcomeCard />
 
       {/* Hero Section */}
       <HeroSection />

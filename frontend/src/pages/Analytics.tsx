@@ -8,6 +8,7 @@ import { AttributeChart } from '../components/analytics/AttributeChart';
 import { PowerLevelChart } from '../components/analytics/PowerLevelChart';
 import { CapsuleHistoryList } from '../components/analytics/CapsuleHistoryList';
 import { WishHistoryList } from '../components/analytics/WishHistoryList';
+import { AchievementsGrid } from '../components/analytics/AchievementsGrid';
 
 function getCurrentMonth(): string {
   const now = new Date();
@@ -58,6 +59,8 @@ export default function Analytics() {
       <CapsuleHistoryList />
 
       <WishHistoryList />
+
+      <AchievementsGrid />
     </div>
   );
 }
