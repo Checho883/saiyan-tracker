@@ -30,6 +30,8 @@ import type {
   WishHistoryItem,
   CalendarDay,
   ContributionDay,
+  AchievementResponse,
+  StatusResponse,
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000/api/v1';
@@ -119,4 +121,14 @@ export const analyticsApi = {
 export const settingsApi = {
   get: () => api.get('settings/').json<SettingsResponse>(),
   update: (data: SettingsUpdate) => api.put('settings/', { json: data }).json<SettingsResponse>(),
+};
+
+// Achievements
+export const achievementsApi = {
+  list: () => api.get('achievements/').json<AchievementResponse[]>(),
+};
+
+// Status (welcome-back + roast)
+export const statusApi = {
+  get: (date: string) => api.get('status/', { searchParams: { local_date: date } }).json<StatusResponse>(),
 };

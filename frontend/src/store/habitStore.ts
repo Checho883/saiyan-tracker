@@ -163,6 +163,35 @@ export const useHabitStore = create<HabitState>((set, get) => ({
         });
       }
 
+      // Parse backend events[] for new animation types
+      if (result.events && result.events.length > 0) {
+        for (const event of result.events) {
+          if (event.type === 'level_up') {
+            ui.enqueueAnimation({
+              type: 'level_up',
+              attribute: event.attribute as string,
+              oldLevel: event.old_level as number,
+              newLevel: event.new_level as number,
+              title: (event.title as string) ?? null,
+            });
+          }
+          if (event.type === 'streak_milestone') {
+            ui.enqueueAnimation({
+              type: 'streak_milestone',
+              tier: event.tier as number,
+              streak: event.streak as number,
+              scope: (event.scope as string) ?? 'overall',
+              badgeName: (event.badge_name as string) ?? `Milestone ${event.tier}`,
+            });
+          }
+        }
+      }
+
+      // Zenkai recovery: fires when zenkai_activated AND is_perfect_day
+      if (result.zenkai_activated && result.is_perfect_day && result.is_checking) {
+        ui.enqueueAnimation({ type: 'zenkai_recovery' });
+      }
+
       // Power milestone detection
       const crossedMilestone = POWER_MILESTONES.find(
         (m) => prevPower < m && result.power_level >= m,

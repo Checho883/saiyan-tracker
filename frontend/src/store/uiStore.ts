@@ -10,7 +10,10 @@ export type AnimationEvent =
   | { type: 'transformation'; form: string; name: string }
   | { type: 'xp_popup'; amount: number; attribute: string }
   | { type: 'shenron' }
-  | { type: 'power_milestone'; milestone: number };
+  | { type: 'power_milestone'; milestone: number }
+  | { type: 'level_up'; attribute: string; oldLevel: number; newLevel: number; title: string | null }
+  | { type: 'zenkai_recovery' }
+  | { type: 'streak_milestone'; tier: number; streak: number; scope: string; badgeName: string };
 
 /**
  * Priority tiers for animation events.
@@ -28,6 +31,9 @@ export const PRIORITY_TIERS: Record<AnimationEvent['type'], number> = {
   xp_popup: 3,        // Inline — fires independently, bypasses queue
   dragon_ball: 3,     // Inline — fires independently, bypasses queue
   power_milestone: 1, // Exclusive — full overlay, plays individually
+  level_up: 2,        // Banner — subject to combo batching
+  zenkai_recovery: 1, // Exclusive — dramatic full-screen
+  streak_milestone: 2, // Banner — subject to combo batching
 };
 
 interface UiState {

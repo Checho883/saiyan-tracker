@@ -130,6 +130,7 @@ export interface CheckHabitResponse {
   dragon_ball: DragonBallInfo | null;
   capsule: CapsuleDropDetail | null;
   quote: QuoteDetail | null;
+  events: Array<Record<string, unknown>>;
 }
 
 // -- Power --
@@ -302,4 +303,33 @@ export interface CalendarDay {
 export interface ContributionDay {
   date: string;
   completed: boolean;
+}
+
+// -- Achievements --
+export interface AchievementResponse {
+  id: string;
+  achievement_type: string;
+  achievement_key: string;
+  milestone_type: string | null;
+  unlocked_at: string;
+  metadata_json: Record<string, unknown> | null;
+}
+
+// -- Status / Roast --
+export interface StatusQuote {
+  character: string;
+  quote_text: string;
+  source_saga: string;
+  avatar_path: string;
+}
+
+export interface RoastInfo {
+  quote: StatusQuote | null;
+  severity: string;
+  gap_days: number;
+}
+
+export interface StatusResponse {
+  welcome_back: StatusQuote | null;
+  roast: RoastInfo | null;
 }

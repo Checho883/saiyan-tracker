@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useHabitStore } from '../store/habitStore';
 import { usePowerStore } from '../store/powerStore';
 import { useRewardStore } from '../store/rewardStore';
+import { useStatusStore } from '../store/statusStore';
 
 export function useInitApp() {
   const [isReady, setIsReady] = useState(false);
@@ -17,6 +18,7 @@ export function useInitApp() {
       useRewardStore.getState().fetchWishes(),
       useRewardStore.getState().fetchCategories(),
       useRewardStore.getState().fetchSettings(),
+      useStatusStore.getState().fetchStatus(today),
     ])
       .then(() => setIsReady(true))
       .catch((err) => setError((err as Error).message));
