@@ -29,7 +29,7 @@ export function HabitList() {
 
     const entries = Object.entries(grouped).map(([catId, habits]) => ({
       category: catId === '__uncategorized__' ? null : (categoryMap.get(catId) ?? null),
-      habits,
+      habits: [...habits].sort((a, b) => a.sort_order - b.sort_order),
       sortOrder: catId === '__uncategorized__' ? Infinity : (categoryMap.get(catId)?.sort_order ?? 999),
     }));
 

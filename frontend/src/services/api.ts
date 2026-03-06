@@ -63,6 +63,8 @@ export const habitsApi = {
   calendarAll: (month: string) => api.get('habits/calendar/all', { searchParams: { month } }).json<CalendarDay[]>(),
   contributionGraph: (id: string, days?: number) =>
     api.get(`habits/${id}/contribution-graph`, { searchParams: days ? { days } : {} }).json<ContributionDay[]>(),
+  reorder: (habitIds: string[]) =>
+    api.put('habits/reorder', { json: { habit_ids: habitIds } }).json<HabitResponse[]>(),
 };
 
 // Power

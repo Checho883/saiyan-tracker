@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Check, MoreVertical, Pencil, Trash2, BarChart3 } from 'lucide-react';
+import { Check, MoreVertical, Pencil, Trash2, BarChart3, GripVertical } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { HabitTodayResponse, Attribute } from '../../types';
 import { useHabitStore } from '../../store/habitStore';
 import { useUiStore } from '../../store/uiStore';
@@ -43,6 +45,22 @@ export function HabitCard({ habit }: HabitCardProps) {
   const [showDetail, setShowDetail] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const {
+    attributes: sortableAttributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: habit.id });
+
+  const sortableStyle = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : undefined,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
   // Close menu on outside click
   useEffect(() => {
     if (!showMenu) return;
@@ -81,6 +99,9 @@ export function HabitCard({ habit }: HabitCardProps) {
 
   return (
     <div
+      ref={setNodeRef}
+      style={sortableStyle}
+      {...sortableAttributes}
       role="button"
       tabIndex={0}
       onClick={handleTap}
@@ -92,10 +113,21 @@ export function HabitCard({ habit }: HabitCardProps) {
       }}
       className={`relative bg-space-700 rounded-lg p-3 border-l-4 ${borderColorMap[habit.attribute]} cursor-pointer transition-opacity ${
         habit.completed ? 'opacity-50' : ''
-      }`}
+      } ${isDragging ? 'shadow-xl scale-105' : ''}`}
     >
-      {/* Top row: emoji + title + check indicator + menu */}
+      {/* Top row: drag handle + emoji + title + check indicator + menu */}
       <div className="flex items-center gap-2">
+        {/* Drag handle — listeners only here, prevents check trigger */}
+        <button
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          className="touch-none p-0.5 -ml-1 text-text-muted hover:text-text-secondary cursor-grab active:cursor-grabbing flex-shrink-0"
+          aria-label="Drag to reorder"
+          tabIndex={-1}
+        >
+          <GripVertical className="w-4 h-4" />
+        </button>
         <span className="text-base">{habit.icon_emoji}</span>
         <span className="text-text-primary text-sm font-medium flex-1 truncate">
           {habit.title}

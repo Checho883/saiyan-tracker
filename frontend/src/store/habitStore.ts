@@ -57,6 +57,7 @@ interface HabitState {
   createHabit: (data: HabitCreate) => Promise<void>;
   updateHabit: (id: string, data: HabitUpdate) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
+  reorderHabits: (categoryId: string | null, orderedIds: string[]) => Promise<void>;
 }
 
 export const useHabitStore = create<HabitState>((set, get) => ({
@@ -249,6 +250,27 @@ export const useHabitStore = create<HabitState>((set, get) => ({
     } catch (err) {
       const message = (err as Error).message;
       toast.error(message, { duration: 4000 });
+    }
+  },
+
+  reorderHabits: async (categoryId, orderedIds) => {
+    // Optimistic update: reorder todayHabits by setting sort_order
+    const prev = get().todayHabits;
+    const reordered = prev.map((h) => {
+      const idx = orderedIds.indexOf(h.id);
+      if (idx !== -1) {
+        return { ...h, sort_order: idx };
+      }
+      return h;
+    });
+    set({ todayHabits: reordered });
+
+    try {
+      await habitsApi.reorder(orderedIds);
+    } catch (err) {
+      // Rollback on error
+      set({ todayHabits: prev });
+      toast.error((err as Error).message, { duration: 4000 });
     }
   },
 }));
