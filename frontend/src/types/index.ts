@@ -305,6 +305,25 @@ export interface ContributionDay {
   completed: boolean;
 }
 
+// -- Calendar Day Detail --
+export interface DayDetailHabit {
+  id: string;
+  title: string;
+  icon_emoji: string;
+  completed: boolean;
+  attribute_xp_awarded: number;
+  is_excused: boolean;
+}
+
+export interface CalendarDayDetail {
+  date: string;
+  total_xp: number;
+  completion_tier: string;
+  is_off_day: boolean;
+  is_perfect_day: boolean;
+  habits: DayDetailHabit[];
+}
+
 // -- Achievements --
 export interface AchievementResponse {
   id: string;

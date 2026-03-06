@@ -29,6 +29,7 @@ import type {
   CapsuleHistoryItem,
   WishHistoryItem,
   CalendarDay,
+  CalendarDayDetail,
   ContributionDay,
   AchievementResponse,
   StatusResponse,
@@ -65,6 +66,8 @@ export const habitsApi = {
     api.get(`habits/${id}/contribution-graph`, { searchParams: days ? { days } : {} }).json<ContributionDay[]>(),
   reorder: (habitIds: string[]) =>
     api.put('habits/reorder', { json: { habit_ids: habitIds } }).json<HabitResponse[]>(),
+  calendarDayDetail: (date: string) =>
+    api.get('habits/calendar/day-detail', { searchParams: { date } }).json<CalendarDayDetail>(),
 };
 
 // Power

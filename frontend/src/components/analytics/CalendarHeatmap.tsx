@@ -1,6 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import type { CalendarDay } from '../../types';
+import { useFloating, offset, flip, shift, arrow, autoUpdate } from '@floating-ui/react';
+import { AnimatePresence } from 'motion/react';
+import type { CalendarDay, CalendarDayDetail } from '../../types';
+import { habitsApi } from '../../services/api';
+import { DayDetailPopover } from './DayDetailPopover';
 
 interface CalendarHeatmapProps {
   days: CalendarDay[];
@@ -31,7 +35,76 @@ function formatMonthLabel(month: string): string {
 }
 
 export function CalendarHeatmap({ days, month, onPrev, onNext }: CalendarHeatmapProps) {
-  const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [dayDetail, setDayDetail] = useState<CalendarDayDetail | null>(null);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+  const arrowRef = useRef<HTMLDivElement>(null);
+  const dayButtonRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
+
+  const { refs, floatingStyles, middlewareData } = useFloating({
+    placement: 'top',
+    open: selectedDate !== null && dayDetail !== null,
+    middleware: [
+      offset(8),
+      flip({ fallbackPlacements: ['bottom', 'left', 'right'] }),
+      shift({ padding: 8 }),
+      arrow({ element: arrowRef }),
+    ],
+    whileElementsMounted: autoUpdate,
+  });
+
+  // Reset popover when month changes
+  useEffect(() => {
+    setSelectedDate(null);
+    setDayDetail(null);
+  }, [month]);
+
+  // Click-outside dismissal
+  useEffect(() => {
+    if (!selectedDate) return;
+    const handler = (e: MouseEvent) => {
+      const floating = refs.floating.current;
+      if (floating && !floating.contains(e.target as Node)) {
+        // Check if clicked on a day button (let handleDayClick handle it)
+        const target = e.target as HTMLElement;
+        if (target.closest('[data-calendar-day]')) return;
+        setSelectedDate(null);
+        setDayDetail(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [selectedDate, refs]);
+
+  const handleDayClick = useCallback(async (day: CalendarDay | undefined, dayNum: number) => {
+    const dateStr = day?.date;
+    if (!dateStr) return;
+
+    if (selectedDate === dateStr) {
+      // Toggle off
+      setSelectedDate(null);
+      setDayDetail(null);
+      return;
+    }
+
+    // Set reference element to the clicked day button
+    const btn = dayButtonRefs.current.get(dayNum);
+    if (btn) {
+      refs.setReference(btn);
+    }
+
+    setSelectedDate(dateStr);
+    setIsLoadingDetail(true);
+
+    try {
+      const detail = await habitsApi.calendarDayDetail(dateStr);
+      setDayDetail(detail);
+    } catch {
+      setDayDetail(null);
+    } finally {
+      setIsLoadingDetail(false);
+    }
+  }, [selectedDate, refs]);
 
   const [yearStr, monthStr] = month.split('-');
   const year = Number(yearStr);
@@ -54,11 +127,14 @@ export function CalendarHeatmap({ days, month, onPrev, onNext }: CalendarHeatmap
     return (
       <button
         key={dayNum}
-        onClick={() => setSelectedDay(selectedDay?.date === day?.date ? null : day ?? null)}
+        ref={(el) => { if (el) dayButtonRefs.current.set(dayNum, el); }}
+        data-calendar-day={dayNum}
+        onClick={() => handleDayClick(day, dayNum)}
         className={`w-9 h-9 rounded-md flex items-center justify-center text-xs font-medium transition-colors
           ${day ? colorForTier(tier) : 'bg-space-700'}
           ${isOffDay ? 'ring-2 ring-blue-500' : ''}
           ${day ? 'text-white' : 'text-text-muted'}
+          ${selectedDate === day?.date ? 'ring-2 ring-white' : ''}
           hover:opacity-80`}
         aria-label={`Day ${dayNum}${day ? `, ${tier} tier` : ''}${isOffDay ? ', off day' : ''}`}
       >
@@ -67,8 +143,12 @@ export function CalendarHeatmap({ days, month, onPrev, onNext }: CalendarHeatmap
     );
   });
 
+  // Arrow positioning
+  const arrowX = middlewareData.arrow?.x;
+  const arrowY = middlewareData.arrow?.y;
+
   return (
-    <div className="bg-space-800 rounded-xl p-4">
+    <div className="bg-space-800 rounded-xl p-4 relative">
       {/* Month navigation header */}
       <div className="flex items-center justify-between mb-4">
         <button
@@ -103,21 +183,31 @@ export function CalendarHeatmap({ days, month, onPrev, onNext }: CalendarHeatmap
         {dayCells}
       </div>
 
-      {/* Tooltip popover */}
-      {selectedDay && (
-        <div className="mt-3 bg-space-700 rounded-lg p-3 text-sm">
-          <p className="text-text-primary font-medium">{selectedDay.date}</p>
-          <p className="text-text-secondary mt-1">
-            Tier: <span className="capitalize">{selectedDay.completion_tier}</span>
-          </p>
-          <p className="text-text-secondary">XP earned: {selectedDay.xp_earned}</p>
-          {selectedDay.is_off_day && (
-            <p className="text-blue-400 mt-1">Off day</p>
-          )}
-          {selectedDay.is_perfect_day && (
-            <p className="text-yellow-400 mt-1">Perfect day!</p>
-          )}
-        </div>
+      {/* Floating popover */}
+      <AnimatePresence>
+        {selectedDate && dayDetail && !isLoadingDetail && (
+          <div
+            ref={refs.setFloating}
+            style={floatingStyles}
+            className="z-50"
+          >
+            <DayDetailPopover detail={dayDetail} />
+            {/* Arrow */}
+            <div
+              ref={arrowRef}
+              className="absolute w-2 h-2 bg-space-800 border-space-600 rotate-45"
+              style={{
+                left: arrowX != null ? `${arrowX}px` : '',
+                top: arrowY != null ? `${arrowY}px` : '',
+              }}
+            />
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Loading indicator */}
+      {isLoadingDetail && selectedDate && (
+        <div className="mt-3 text-center text-text-muted text-xs">Loading...</div>
       )}
 
       {/* Legend */}

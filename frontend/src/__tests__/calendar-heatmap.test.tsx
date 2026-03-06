@@ -1,8 +1,16 @@
-import { describe, test, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CalendarHeatmap } from '../components/analytics/CalendarHeatmap';
 import type { CalendarDay } from '../types';
+import { habitsApi } from '../services/api';
+
+// Mock the API module
+vi.mock('../services/api', () => ({
+  habitsApi: {
+    calendarDayDetail: vi.fn(),
+  },
+}));
 
 const mockDays: CalendarDay[] = [
   { date: '2026-03-01', is_perfect_day: true, completion_tier: 'gold', xp_earned: 100, is_off_day: false },
@@ -19,6 +27,10 @@ describe('CalendarHeatmap', () => {
     onPrev: vi.fn(),
     onNext: vi.fn(),
   };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   test('renders correct number of day cells for month', () => {
     render(<CalendarHeatmap {...defaultProps} />);
@@ -52,13 +64,59 @@ describe('CalendarHeatmap', () => {
     expect(defaultProps.onNext).toHaveBeenCalledOnce();
   });
 
-  test('shows tooltip on day click with completion info', async () => {
+  test('shows popover on day click with per-habit detail', async () => {
     const user = userEvent.setup();
+    const mockDetail = {
+      date: '2026-03-01',
+      total_xp: 100,
+      completion_tier: 'gold',
+      is_off_day: false,
+      is_perfect_day: true,
+      habits: [
+        { id: '1', title: 'Meditate', icon_emoji: '\u2728', completed: true, attribute_xp_awarded: 50, is_excused: false },
+        { id: '2', title: 'Exercise', icon_emoji: '\ud83d\udcaa', completed: true, attribute_xp_awarded: 50, is_excused: false },
+      ],
+    };
+    vi.mocked(habitsApi.calendarDayDetail).mockResolvedValue(mockDetail);
+
     render(<CalendarHeatmap {...defaultProps} />);
 
     await user.click(screen.getByRole('button', { name: /Day 1, gold tier/i }));
-    expect(screen.getByText('XP earned: 100')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('+100 XP')).toBeInTheDocument();
+    });
     expect(screen.getByText('Perfect day!')).toBeInTheDocument();
+    expect(screen.getByText(/Meditate/)).toBeInTheDocument();
+    expect(screen.getByText(/Exercise/)).toBeInTheDocument();
+    expect(habitsApi.calendarDayDetail).toHaveBeenCalledWith('2026-03-01');
+  });
+
+  test('clicking same day toggles popover off', async () => {
+    const user = userEvent.setup();
+    vi.mocked(habitsApi.calendarDayDetail).mockResolvedValue({
+      date: '2026-03-01',
+      total_xp: 100,
+      completion_tier: 'gold',
+      is_off_day: false,
+      is_perfect_day: true,
+      habits: [],
+    });
+
+    render(<CalendarHeatmap {...defaultProps} />);
+
+    const day1 = screen.getByRole('button', { name: /Day 1, gold tier/i });
+    await user.click(day1);
+
+    await waitFor(() => {
+      expect(screen.getByText('+100 XP')).toBeInTheDocument();
+    });
+
+    // Click again to toggle off
+    await user.click(day1);
+    await waitFor(() => {
+      expect(screen.queryByText('+100 XP')).not.toBeInTheDocument();
+    });
   });
 
   test('displays month and year in header', () => {
