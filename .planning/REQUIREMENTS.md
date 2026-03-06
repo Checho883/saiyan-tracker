@@ -7,9 +7,9 @@
 
 ### Feedback & Animations
 
-- [ ] **FEED-01**: User sees attribute level-up animation and title unlock notification when an attribute reaches a new level
+- [x] **FEED-01**: User sees attribute level-up animation and title unlock notification when an attribute reaches a new level
 - [x] **FEED-02**: User sees power level milestone celebration when hitting round numbers (1K, 5K, 10K, 50K)
-- [ ] **FEED-03**: User sees Zenkai recovery animation with visual feedback on first Perfect Day after a streak break
+- [x] **FEED-03**: User sees Zenkai recovery animation with visual feedback on first Perfect Day after a streak break
 - [x] **FEED-04**: User sees "You're close!" nudge banner when 1-2 habits remain for 100% completion
 - [x] **FEED-05**: User sees daily summary toast after checking last habit (closure signal showing %, tier, XP even on imperfect days)
 - [x] **FEED-06**: Animation queue supports priority tiers and batching to prevent overload from simultaneous events
@@ -23,7 +23,7 @@
 
 - [ ] **ACHV-01**: Achievement service records transformation unlocks and streak milestones in the achievements table
 - [ ] **ACHV-02**: Streak milestone detection fires at 3/7/21/30/60/90/365 day thresholds with badge and character quote
-- [ ] **ACHV-03**: User can view earned achievements and badges in the UI
+- [x] **ACHV-03**: User can view earned achievements and badges in the UI
 - [ ] **ACHV-04**: Achievements only fire inside check_habit() flow, never retroactively on app load
 
 ### Analytics & History
@@ -72,9 +72,9 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FEED-01 | Phase 14 | Pending |
+| FEED-01 | Phase 14 | Complete |
 | FEED-02 | Phase 13 | Complete |
-| FEED-03 | Phase 14 | Pending |
+| FEED-03 | Phase 14 | Complete |
 | FEED-04 | Phase 13 | Complete |
 | FEED-05 | Phase 13 | Complete |
 | FEED-06 | Phase 11 | Complete |
@@ -82,7 +82,7 @@
 | CHAR-02 | Phase 12 | Pending |
 | ACHV-01 | Phase 12 | Pending |
 | ACHV-02 | Phase 12 | Pending |
-| ACHV-03 | Phase 14 | Pending |
+| ACHV-03 | Phase 14 | Complete |
 | ACHV-04 | Phase 12 | Pending |
 | ANLT-01 | Phase 13 | Complete |
 | ANLT-02 | Phase 13 | Complete |
@@ -104,4 +104,4 @@
 
 ---
 *Requirements defined: 2026-03-06*
-*Last updated: 2026-03-06 after Phase 13 completion*
+*Last updated: 2026-03-06 after Phase 14 completion*
