@@ -42,7 +42,7 @@ This roadmap delivers a Dragon Ball Z-themed habit tracker optimized for ADHD do
 - [x] **Phase 12: Backend Detection Services** - Extend check_habit() with achievement, streak, roast, and milestone detection; add new API endpoints (completed 2026-03-06)
 - [x] **Phase 13: Pure Frontend Features** - History views, contribution graphs, nudge banner, daily summary, and power milestone celebrations using existing APIs (completed 2026-03-06, 171 tests passing)
 - [x] **Phase 14: Animation Overlays + Roast UI** - Zenkai recovery, attribute level-up, and achievement overlays plus Vegeta escalation roast display (completed 2026-03-06)
-- [ ] **Phase 15: Drag-and-Drop + Calendar Popover** - Habit reordering with dnd-kit and calendar day detail popover with floating-ui
+- [x] **Phase 15: Drag-and-Drop + Calendar Popover** - Habit reordering with dnd-kit and calendar day detail popover with floating-ui (completed 2026-03-06, 172 tests passing)
 - [ ] **Phase 16: Settings, Forms & Audio Polish** - Archived habits, temporary habit support, day picker UX, and real audio sprite files
 
 ## Phase Details
@@ -119,11 +119,11 @@ Plans:
   1. User can drag habits via a dedicated handle to reorder them, and the new order persists across page reloads
   2. Dragging a habit does not accidentally trigger a habit check (drag handle is visually distinct from the check target)
   3. Clicking any day on the calendar heatmap shows a popover with per-habit completion status and XP earned for that day
-**Plans**: TBD
+**Plans**: 2 plans (completed 2026-03-06)
 
 Plans:
-- [ ] 15-01: TBD
-- [ ] 15-02: TBD
+- [x] 15-01-PLAN.md -- Drag-and-drop habit reordering with dnd-kit
+- [x] 15-02-PLAN.md -- Calendar day detail popover with floating-ui
 
 ### Phase 16: Settings, Forms & Audio Polish
 **Goal**: Habit management forms expose all model capabilities and the audio system uses real sound files

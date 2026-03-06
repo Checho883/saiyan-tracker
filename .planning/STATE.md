@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: PRD Complete
 status: unknown
-last_updated: "2026-03-06T21:08:28.431Z"
+last_updated: "2026-03-06T23:40:00.000Z"
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 11
-  completed_plans: 11
+  total_phases: 6
+  completed_phases: 5
+  total_plans: 13
+  completed_plans: 13
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-06)
 
 **Core value:** Every habit check must feel like something happened -- a sound, a visual pulse, a number going up. If the app is silent and still, it has failed.
-**Current focus:** Phase 14 - Animation Overlays + Roast UI
+**Current focus:** Phase 16 - Settings, Forms & Audio Polish
 
 ## Current Position
 
-Phase: 14 of 16 (Animation Overlays + Roast UI)
-Plan: 0 of 2 in current phase
-Status: Ready to plan
-Last activity: 2026-03-06 — Phase 13 complete (pure frontend features: analytics history, contribution grid, nudge banner, daily summary, power milestones)
+Phase: 15 of 16 (Drag-and-Drop + Calendar Popover) -- COMPLETE
+Plan: 2 of 2 in current phase
+Status: Phase 15 complete
+Last activity: 2026-03-06 -- Phase 15 complete (drag-and-drop habit reordering with dnd-kit, calendar day detail popover with floating-ui)
 
-Progress: [████████████████████████░░] 81% (21/30 total plans across all milestones)
+Progress: [██████████████████████████░░] 88% (23/30 total plans across all milestones)
 
 ## Performance Metrics
 
@@ -40,6 +40,10 @@ Progress: [███████████████████████
 - Total plans completed: 16
 - Timeline: 2 days
 - Git commits: 88
+
+**Velocity (from v1.2 so far):**
+- Total plans completed: 13
+- Git commits: ~15
 
 ## Accumulated Context
 
@@ -57,6 +61,14 @@ v1.2 phase ordering decisions:
 - Pure frontend features early (low-risk, high-visibility, independently testable)
 - Audio last (sprite must include all sound IDs from completed features)
 
+Phase 15 decisions:
+- @dnd-kit for drag-and-drop (core + sortable + utilities + modifiers)
+- @floating-ui/react for calendar popover positioning
+- Drag within category only (separate DndContext per CategoryGroup)
+- GripVertical handle on left edge with stopPropagation to prevent check trigger
+- New GET /habits/calendar/day-detail endpoint for per-habit day breakdown
+- DayDetailPopover shows excused status for off-day habits
+
 ### Pending Todos
 
 None.
@@ -69,5 +81,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Phase 13 complete, ready to plan Phase 14
+Stopped at: Phase 15 complete, ready to plan Phase 16
 Resume file: None

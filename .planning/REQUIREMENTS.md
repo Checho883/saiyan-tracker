@@ -31,12 +31,12 @@
 - [x] **ANLT-01**: User can view capsule drop history in Analytics page
 - [x] **ANLT-02**: User can view wish grant history in Analytics page
 - [x] **ANLT-03**: User can view per-habit contribution graph (GitHub-style 90-day grid)
-- [ ] **ANLT-04**: User can click any calendar day to see popover with per-habit breakdown and XP earned
+- [x] **ANLT-04**: User can click any calendar day to see popover with per-habit breakdown and XP earned
 - [ ] **ANLT-05**: Per-habit calendar and stats API endpoints exist (GET /habits/{id}/calendar, GET /habits/{id}/stats)
 
 ### Habit Management
 
-- [ ] **HMGT-01**: User can drag-and-drop to reorder habits (with dedicated drag handle, not conflicting with tap-to-check)
+- [x] **HMGT-01**: User can drag-and-drop to reorder habits (with dedicated drag handle, not conflicting with tap-to-check)
 - [ ] **HMGT-02**: PUT /habits/reorder API endpoint accepts batch sort_order updates
 - [ ] **HMGT-03**: User can view archived habits and restore them
 - [ ] **HMGT-04**: User can create temporary habits with start and end dates via the habit form
@@ -87,9 +87,9 @@
 | ANLT-01 | Phase 13 | Complete |
 | ANLT-02 | Phase 13 | Complete |
 | ANLT-03 | Phase 13 | Complete |
-| ANLT-04 | Phase 15 | Pending |
+| ANLT-04 | Phase 15 | Complete |
 | ANLT-05 | Phase 12 | Pending |
-| HMGT-01 | Phase 15 | Pending |
+| HMGT-01 | Phase 15 | Complete |
 | HMGT-02 | Phase 12 | Pending |
 | HMGT-03 | Phase 16 | Pending |
 | HMGT-04 | Phase 16 | Pending |
