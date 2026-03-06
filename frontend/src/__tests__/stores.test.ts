@@ -75,6 +75,7 @@ describe('Zustand Stores (STATE-04)', () => {
     });
     useUiStore.setState({
       animationQueue: [],
+      inlineEvents: [],
       activeModal: null,
     });
   });
@@ -135,9 +136,9 @@ describe('Zustand Stores (STATE-04)', () => {
 
     const event1: AnimationEvent = { type: 'perfect_day' };
     const event2: AnimationEvent = {
-      type: 'xp_popup',
-      amount: 10,
-      attribute: 'str',
+      type: 'capsule_drop',
+      rewardTitle: 'Senzu',
+      rarity: 'rare',
     };
 
     enqueueAnimation(event1);

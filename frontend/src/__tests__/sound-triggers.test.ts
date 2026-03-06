@@ -5,7 +5,7 @@ import { useUiStore } from '../store/uiStore';
 describe('Sound Triggers - Event to Sound Mapping', () => {
   beforeEach(() => {
     // Reset uiStore between tests
-    useUiStore.setState({ animationQueue: [] });
+    useUiStore.setState({ animationQueue: [], inlineEvents: [] });
   });
 
   // Define expected mappings
@@ -90,17 +90,19 @@ describe('Sound Triggers - Event to Sound Mapping', () => {
         rewardTitle: 'Power Boost',
         rarity: 'rare',
       });
-      enqueueAnimation({ type: 'dragon_ball', count: 3 });
+      enqueueAnimation({ type: 'dragon_ball', count: 3 }); // inline (tier 3)
     });
 
-    expect(useUiStore.getState().animationQueue).toHaveLength(3);
+    // tier_change and capsule_drop go to animationQueue; dragon_ball goes to inlineEvents
+    expect(useUiStore.getState().animationQueue).toHaveLength(2);
+    expect(useUiStore.getState().inlineEvents).toHaveLength(1);
   });
 
   it('all 7 animation event types can be enqueued without errors', () => {
     const { enqueueAnimation } = useUiStore.getState();
 
     act(() => {
-      enqueueAnimation({ type: 'xp_popup', amount: 10, attribute: 'str' });
+      enqueueAnimation({ type: 'xp_popup', amount: 10, attribute: 'str' }); // inline
       enqueueAnimation({ type: 'tier_change', tier: 'ssj1' });
       enqueueAnimation({
         type: 'capsule_drop',
@@ -108,7 +110,7 @@ describe('Sound Triggers - Event to Sound Mapping', () => {
         rarity: 'common',
       });
       enqueueAnimation({ type: 'perfect_day' });
-      enqueueAnimation({ type: 'dragon_ball', count: 1 });
+      enqueueAnimation({ type: 'dragon_ball', count: 1 }); // inline
       enqueueAnimation({ type: 'shenron' });
       enqueueAnimation({
         type: 'transformation',
@@ -117,6 +119,8 @@ describe('Sound Triggers - Event to Sound Mapping', () => {
       });
     });
 
-    expect(useUiStore.getState().animationQueue).toHaveLength(7);
+    // 5 overlay events (tiers 1-2) in animationQueue, 2 inline events (tier 3) in inlineEvents
+    expect(useUiStore.getState().animationQueue).toHaveLength(5);
+    expect(useUiStore.getState().inlineEvents).toHaveLength(2);
   });
 });

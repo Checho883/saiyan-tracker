@@ -33,11 +33,12 @@ vi.mock('motion/react', () => {
 
 import { AnimationPlayer } from '../components/animations/AnimationPlayer';
 import { useUiStore } from '../store/uiStore';
+import { PRIORITY_TIERS } from '../store/uiStore';
 import { useRewardStore } from '../store/rewardStore';
 
 beforeEach(() => {
   vi.useFakeTimers();
-  useUiStore.setState({ animationQueue: [] });
+  useUiStore.setState({ animationQueue: [], inlineEvents: [] });
   // Default: active wish so Shenron doesn't show warning
   useRewardStore.setState({
     wishes: [{ id: '1', title: 'Wish', is_active: true, times_wished: 0 } as any],
@@ -46,6 +47,111 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+describe('Priority Queue (uiStore)', () => {
+  it('inserts events sorted by priority tier (tier 1 before tier 2)', () => {
+    const store = useUiStore.getState();
+    store.enqueueAnimation({ type: 'perfect_day' }); // tier 2
+    store.enqueueAnimation({ type: 'transformation', form: 'ssj', name: 'Super Saiyan' }); // tier 1
+
+    const queue = useUiStore.getState().animationQueue;
+    expect(queue[0].type).toBe('transformation');
+    expect(queue[1].type).toBe('perfect_day');
+  });
+
+  it('preserves FIFO within same tier', () => {
+    const store = useUiStore.getState();
+    store.enqueueAnimation({ type: 'perfect_day' }); // tier 2
+    store.enqueueAnimation({ type: 'capsule_drop', rewardTitle: 'Senzu', rarity: 'rare' }); // tier 2
+    store.enqueueAnimation({ type: 'tier_change', tier: 'kaioken_x3' }); // tier 2
+
+    const queue = useUiStore.getState().animationQueue;
+    expect(queue[0].type).toBe('perfect_day');
+    expect(queue[1].type).toBe('capsule_drop');
+    expect(queue[2].type).toBe('tier_change');
+  });
+
+  it('routes xp_popup to inlineEvents (not animationQueue)', () => {
+    const store = useUiStore.getState();
+    store.enqueueAnimation({ type: 'xp_popup', amount: 10, attribute: 'str' });
+
+    expect(useUiStore.getState().animationQueue).toHaveLength(0);
+    expect(useUiStore.getState().inlineEvents).toHaveLength(1);
+    expect(useUiStore.getState().inlineEvents[0].type).toBe('xp_popup');
+  });
+
+  it('routes dragon_ball to inlineEvents (not animationQueue)', () => {
+    const store = useUiStore.getState();
+    store.enqueueAnimation({ type: 'dragon_ball', count: 3 });
+
+    expect(useUiStore.getState().animationQueue).toHaveLength(0);
+    expect(useUiStore.getState().inlineEvents).toHaveLength(1);
+    expect(useUiStore.getState().inlineEvents[0].type).toBe('dragon_ball');
+  });
+
+  it('deduplicates xp_popup events with same attribute by summing amounts', () => {
+    const store = useUiStore.getState();
+    store.enqueueAnimation({ type: 'xp_popup', amount: 10, attribute: 'str' });
+    store.enqueueAnimation({ type: 'xp_popup', amount: 5, attribute: 'str' });
+
+    const inlines = useUiStore.getState().inlineEvents;
+    expect(inlines).toHaveLength(1);
+    expect(inlines[0].type).toBe('xp_popup');
+    if (inlines[0].type === 'xp_popup') {
+      expect(inlines[0].amount).toBe(15);
+    }
+  });
+
+  it('does not deduplicate xp_popup events with different attributes', () => {
+    const store = useUiStore.getState();
+    store.enqueueAnimation({ type: 'xp_popup', amount: 10, attribute: 'str' });
+    store.enqueueAnimation({ type: 'xp_popup', amount: 5, attribute: 'int' });
+
+    expect(useUiStore.getState().inlineEvents).toHaveLength(2);
+  });
+
+  it('dequeueAnimation returns highest-priority event first', () => {
+    const store = useUiStore.getState();
+    store.enqueueAnimation({ type: 'perfect_day' }); // tier 2
+    store.enqueueAnimation({ type: 'shenron' }); // tier 1
+
+    const first = useUiStore.getState().dequeueAnimation();
+    expect(first?.type).toBe('shenron');
+  });
+
+  it('dequeueMultiple removes N events from front', () => {
+    const store = useUiStore.getState();
+    store.enqueueAnimation({ type: 'transformation', form: 'ssj', name: 'SSJ' });
+    store.enqueueAnimation({ type: 'perfect_day' });
+    store.enqueueAnimation({ type: 'capsule_drop', rewardTitle: 'Bean', rarity: 'rare' });
+
+    const removed = useUiStore.getState().dequeueMultiple(2);
+    expect(removed).toHaveLength(2);
+    expect(removed[0].type).toBe('transformation');
+    expect(removed[1].type).toBe('perfect_day');
+    expect(useUiStore.getState().animationQueue).toHaveLength(1);
+  });
+
+  it('clearAnimations clears both queues', () => {
+    const store = useUiStore.getState();
+    store.enqueueAnimation({ type: 'perfect_day' });
+    store.enqueueAnimation({ type: 'xp_popup', amount: 10, attribute: 'str' });
+
+    useUiStore.getState().clearAnimations();
+    expect(useUiStore.getState().animationQueue).toHaveLength(0);
+    expect(useUiStore.getState().inlineEvents).toHaveLength(0);
+  });
+
+  it('has correct tier assignments per CONTEXT.md', () => {
+    expect(PRIORITY_TIERS.transformation).toBe(1);
+    expect(PRIORITY_TIERS.shenron).toBe(1);
+    expect(PRIORITY_TIERS.tier_change).toBe(2);
+    expect(PRIORITY_TIERS.perfect_day).toBe(2);
+    expect(PRIORITY_TIERS.capsule_drop).toBe(2);
+    expect(PRIORITY_TIERS.xp_popup).toBe(3);
+    expect(PRIORITY_TIERS.dragon_ball).toBe(3);
+  });
 });
 
 describe('AnimationPlayer (ANIM-01)', () => {
@@ -94,13 +200,7 @@ describe('AnimationPlayer (ANIM-01)', () => {
     expect(screen.getByTestId('shenron-ceremony')).toBeInTheDocument();
   });
 
-  it('renders dragon_ball trajectory component', () => {
-    useUiStore.getState().enqueueAnimation({ type: 'dragon_ball', count: 3 });
-    render(<AnimationPlayer />);
-    expect(screen.getByTestId('dragon-ball-trajectory')).toBeInTheDocument();
-  });
-
-  it('filters out xp_popup events (inline, not queued)', () => {
+  it('xp_popup events do not appear in overlay queue', () => {
     useUiStore.getState().enqueueAnimation({
       type: 'xp_popup',
       amount: 10,
@@ -110,22 +210,49 @@ describe('AnimationPlayer (ANIM-01)', () => {
     expect(container.querySelector('[data-testid="animation-overlay"]')).toBeNull();
   });
 
-  it('filters out tier_change events (inline, not queued)', () => {
-    useUiStore.getState().enqueueAnimation({
-      type: 'tier_change',
-      tier: 'kaioken_x3',
-    });
+  it('dragon_ball events do not appear in overlay queue', () => {
+    useUiStore.getState().enqueueAnimation({ type: 'dragon_ball', count: 3 });
     const { container } = render(<AnimationPlayer />);
     expect(container.querySelector('[data-testid="animation-overlay"]')).toBeNull();
   });
 
-  it('shows queued event even when inline events exist in queue', () => {
+  it('renders Tier 1 event first when both Tier 1 and Tier 2 are queued', () => {
+    useUiStore.getState().enqueueAnimation({ type: 'perfect_day' }); // tier 2
+    useUiStore.getState().enqueueAnimation({
+      type: 'transformation',
+      form: 'ssj',
+      name: 'Super Saiyan',
+    }); // tier 1
+    render(<AnimationPlayer />);
+    // transformation should render first (tier 1)
+    expect(screen.getByTestId('transformation-overlay')).toBeInTheDocument();
+  });
+
+  it('renders tier_change as overlay (tier 2 banner, not inline)', () => {
     useUiStore.getState().enqueueAnimation({
       type: 'tier_change',
       tier: 'kaioken_x3',
     });
-    useUiStore.getState().enqueueAnimation({ type: 'perfect_day' });
     render(<AnimationPlayer />);
-    expect(screen.getByTestId('perfect-day-overlay')).toBeInTheDocument();
+    const overlay = screen.getByTestId('animation-overlay');
+    expect(overlay).toBeInTheDocument();
+    expect(overlay).toHaveAttribute('data-event-type', 'tier_change');
+  });
+
+  it('renders combo summary when 3+ banner events are queued', () => {
+    useUiStore.getState().enqueueAnimation({ type: 'perfect_day' });
+    useUiStore.getState().enqueueAnimation({
+      type: 'capsule_drop',
+      rewardTitle: 'Senzu',
+      rarity: 'rare',
+    });
+    useUiStore.getState().enqueueAnimation({
+      type: 'tier_change',
+      tier: 'kaioken_x3',
+    });
+    render(<AnimationPlayer />);
+    // First banner event plays individually
+    expect(screen.getByTestId('animation-overlay')).toBeInTheDocument();
+    expect(screen.getByTestId('animation-overlay')).toHaveAttribute('data-event-type', 'perfect_day');
   });
 });
