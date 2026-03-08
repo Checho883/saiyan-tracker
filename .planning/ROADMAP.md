@@ -151,10 +151,11 @@ Plans:
   2. VERIFICATION.md exists for Phases 13, 14, 15, and 16 confirming integration-checked features pass
   3. REQUIREMENTS.md traceability table shows all 24 requirements as Complete with checkboxes checked
   4. All 9 E2E flows complete (overlay audio flow no longer broken)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 17-01: TBD
+- [ ] 17-01-PLAN.md -- Wire 4 missing EVENT_SOUND_MAP entries + update sound trigger tests
+- [ ] 17-02-PLAN.md -- Create VERIFICATION.md for Phases 13-16 + confirm REQUIREMENTS.md traceability
 
 ## Progress
 
