@@ -9,6 +9,10 @@ import { PowerLevelChart } from '../components/analytics/PowerLevelChart';
 import { CapsuleHistoryList } from '../components/analytics/CapsuleHistoryList';
 import { WishHistoryList } from '../components/analytics/WishHistoryList';
 import { AchievementsGrid } from '../components/analytics/AchievementsGrid';
+import { CompletionTrendCards } from '../components/analytics/CompletionTrendCards';
+import { OffDayAnalyticsCard } from '../components/analytics/OffDayAnalyticsCard';
+import { BestWorstDays } from '../components/analytics/BestWorstDays';
+import { StreakRankings } from '../components/analytics/StreakRankings';
 
 function getCurrentMonth(): string {
   const now = new Date();
@@ -35,7 +39,7 @@ export default function Analytics() {
   const [period, setPeriod] = useState<AnalyticsPeriod>('all');
   const [month, setMonth] = useState(getCurrentMonth);
 
-  const { summary, calendarDays } = useAnalyticsData(period, month);
+  const { summary, calendarDays, offDaySummary, completionTrend } = useAnalyticsData(period, month);
 
   return (
     <div className="p-4 space-y-6 pb-24">
@@ -45,6 +49,10 @@ export default function Analytics() {
 
       <StatCards summary={summary} />
 
+      <CompletionTrendCards data={completionTrend} />
+
+      <OffDayAnalyticsCard data={offDaySummary} />
+
       <CalendarHeatmap
         days={calendarDays}
         month={month}
@@ -52,9 +60,13 @@ export default function Analytics() {
         onNext={() => setMonth((m) => shiftMonth(m, 1))}
       />
 
+      <BestWorstDays calendarDays={calendarDays} />
+
       <AttributeChart calendarDays={calendarDays} />
 
       <PowerLevelChart calendarDays={calendarDays} />
+
+      <StreakRankings />
 
       <CapsuleHistoryList />
 
