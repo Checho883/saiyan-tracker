@@ -52,7 +52,7 @@ This roadmap delivers a Dragon Ball Z-themed habit tracker optimized for ADHD do
 
 **Milestone Goal:** Make the existing app feel great on every device, fill feedback gaps, and add the most-wanted views (habit detail, off-day analytics, shareable summary).
 
-- [ ] **Phase 18: Dashboard Polish + Responsive Design** - Fix desktop spacing, add mobile breakpoints, audit overlays for mobile safety
+- [x] **Phase 18: Dashboard Polish + Responsive Design** - Fix desktop spacing, add mobile breakpoints, audit overlays for mobile safety (completed 2026-03-08)
 - [ ] **Phase 19: Backend Analytics Endpoints** - New analytics endpoints and data layer to unblock all frontend data views
 - [ ] **Phase 20: Habit Detail View** - Expandable habit detail with completion rates, attribute XP, and metadata
 - [ ] **Phase 21: Enhanced Analytics Views** - Off-day analytics, completion trends, streak leaderboard, best/worst day highlights
@@ -163,7 +163,7 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22
 | 15. Drag-and-Drop + Calendar Popover | v1.2 | 2/2 | Complete | 2026-03-06 |
 | 16. Settings, Forms & Audio Polish | v1.2 | 3/3 | Complete | 2026-03-06 |
 | 17. Audio Sound Mapping + Verification Sweep | v1.2 | 2/2 | Complete | 2026-03-08 |
-| 18. Dashboard Polish + Responsive Design | v1.3 | 0/? | Not started | - |
+| 18. Dashboard Polish + Responsive Design | 3/3 | Complete    | 2026-03-08 | - |
 | 19. Backend Analytics Endpoints | v1.3 | 0/? | Not started | - |
 | 20. Habit Detail View | v1.3 | 0/? | Not started | - |
 | 21. Enhanced Analytics Views | v1.3 | 0/? | Not started | - |

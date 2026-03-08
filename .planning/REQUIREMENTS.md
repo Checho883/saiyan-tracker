@@ -9,12 +9,12 @@ Requirements for The Polish Pass. Each maps to roadmap phases.
 
 ### Responsive & Layout
 
-- [ ] **RESP-01**: User can use the full app on a mobile phone with proper touch targets (44px minimum) and readable layouts
-- [ ] **RESP-02**: User sees a bottom tab bar for navigation on mobile viewports (< 768px)
-- [ ] **RESP-03**: User sees consistent spacing and alignment across all dashboard sections on desktop
-- [ ] **RESP-04**: User sees the hero section collapse to a compact form on mobile viewports
-- [ ] **RESP-05**: User can interact with all charts and analytics on mobile with touch-friendly tooltips
-- [ ] **RESP-06**: User can complete all settings forms on mobile with thumb-friendly input spacing
+- [x] **RESP-01**: User can use the full app on a mobile phone with proper touch targets (44px minimum) and readable layouts
+- [x] **RESP-02**: User sees a bottom tab bar for navigation on mobile viewports (< 768px)
+- [x] **RESP-03**: User sees consistent spacing and alignment across all dashboard sections on desktop
+- [x] **RESP-04**: User sees the hero section collapse to a compact form on mobile viewports
+- [x] **RESP-05**: User can interact with all charts and analytics on mobile with touch-friendly tooltips
+- [x] **RESP-06**: User can complete all settings forms on mobile with thumb-friendly input spacing
 
 ### Feedback
 
@@ -73,12 +73,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RESP-01 | Phase 18 | Pending |
-| RESP-02 | Phase 18 | Pending |
-| RESP-03 | Phase 18 | Pending |
-| RESP-04 | Phase 18 | Pending |
-| RESP-05 | Phase 18 | Pending |
-| RESP-06 | Phase 18 | Pending |
+| RESP-01 | Phase 18 | Complete |
+| RESP-02 | Phase 18 | Complete |
+| RESP-03 | Phase 18 | Complete |
+| RESP-04 | Phase 18 | Complete |
+| RESP-05 | Phase 18 | Complete |
+| RESP-06 | Phase 18 | Complete |
 | FDBK-01 | Phase 22 | Pending |
 | FDBK-02 | Phase 22 | Pending |
 | FDBK-03 | Phase 22 | Pending |
