@@ -1,181 +1,165 @@
 # Project Research Summary
 
-**Project:** Saiyan Tracker v1.2 -- PRD Complete
-**Domain:** Gamified habit tracker feature expansion (18 features on existing DBZ-themed, ADHD-optimized app)
-**Researched:** 2026-03-06
+**Project:** Saiyan Tracker v1.3 -- The Polish Pass
+**Domain:** QoL features for existing gamified DBZ habit tracker (responsive design, habit detail, analytics, sharing, feedback)
+**Researched:** 2026-03-08
 **Confidence:** HIGH
 
 ## Executive Summary
 
-Saiyan Tracker v1.2 adds 18 features to an already-functional gamified habit tracker built on React 19, FastAPI, and SQLite. The existing codebase has substantial infrastructure already in place -- DB models, constants, API endpoints, and frontend stores -- that many v1.2 features simply need to wire up and surface to the user. The recommended approach is to treat this as a "complete the wiring" milestone rather than a greenfield build: most backend models exist, most API data flows exist, and most frontend patterns are established. The stack additions are minimal (3 dnd-kit packages, @floating-ui/react, and a react-is peer dep fix -- totaling ~30kb gzipped), with several features explicitly building custom components rather than adding dependencies.
+Saiyan Tracker v1.3 is a polish milestone for an already-complete habit tracker (v1.2 shipped 24/24 requirements, 456 tests). The goal is making the existing app feel great on every device, closing feedback gaps in the interaction model, and adding the most-wanted data views. This is NOT a new-feature milestone -- it is a refinement pass. The existing stack (React 19 + Vite + Zustand + Motion 12 + Tailwind v4 + Recharts + FastAPI + SQLite) handles everything v1.3 needs with zero new npm dependencies and zero additional bundle size.
 
-The central architectural challenge is extending the `check_habit()` pipeline -- the 10-step atomic transaction that every habit tap flows through. Five new detection steps (streak milestones, attribute level-ups, power milestones, achievements, roast context) must be inserted into this pipeline, and five new animation event types must flow through the existing AnimationPlayer queue. The single highest-risk pitfall is animation queue overload: a single habit check can already trigger 6 animations, and v1.2 adds 5 more event types. Without a priority/batching system, the worst case produces 10+ sequential overlays taking 20+ seconds -- completely unacceptable for an ADHD-optimized app where instant feedback is the core value proposition.
+The recommended approach is to treat responsive mobile design as the foundation -- it is the primary goal per PROJECT.md ("daily phone use") and every other feature must work on mobile. Backend analytics endpoints should be built second to unblock all frontend data views. The remaining features (habit detail expansion, analytics charts, shareable summary, feedback gaps) are independent of each other and can be built in any order once responsive and backend work are complete. The architecture is surgical: 6 new components, ~10 modified components, 4 new backend endpoints, and 1 small database migration. No new stores, no new routing patterns, no structural changes.
 
-Key risks beyond animation overload include: retroactive milestone spam on first deploy (seeding existing achievements is mandatory), temporary habit date boundary bugs corrupting completion percentages, drag-and-drop conflicting with tap-to-check on mobile, and Vegeta roasts creating negative emotional associations that drive app avoidance. All of these have clear prevention strategies documented in the research. The overall confidence is HIGH because every recommendation is grounded in direct codebase analysis of the existing architecture.
+The key risks are: (1) responsive retrofit breaking the 11 animation overlays that assume desktop viewports, (2) "decluttering" the mobile dashboard by hiding dopamine feedback elements that are core to the product, (3) computing analytics aggregates client-side with wrong denominators instead of using backend snapshots, and (4) clipboard copy silently failing on mobile browsers outside secure contexts. All four risks have clear prevention strategies documented in the pitfalls research.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The existing stack (React 19, Vite 7, TypeScript, Zustand 5, Motion 12, Tailwind v4, Recharts, Howler.js, ky, react-hot-toast, vaul, lucide-react, react-router 7) remains unchanged. Only 5 new packages are needed.
+No new dependencies required. The existing stack at current versions handles every v1.3 feature through browser-native APIs and existing library capabilities. Tailwind v4 provides built-in container queries and responsive breakpoints. The Clipboard API (browser-native) handles sharing. Recharts 3.7 handles all new chart types. Motion 12 handles all new animation events. This is the correct outcome for a polish milestone.
 
-**New dependencies:**
-- **@dnd-kit/core + sortable + utilities (6.3.x):** Habit card reordering -- modular, accessible, touch-friendly, stable. Chosen over hello-pangea/dnd (heavier) and pragmatic-drag-and-drop (immature docs). The experimental @dnd-kit/react 0.3.x was explicitly rejected as pre-1.0.
-- **@floating-ui/react (0.27.x):** Calendar day popover positioning -- lightweight (~8kb), handles viewport collision correctly. Chosen over Radix Popover (91kb, overkill for one component) and CSS-only (positioning is hard).
-- **react-is (19.0.0):** Explicit install to satisfy recharts 3.7.x peer dependency, replacing the fragile `overrides` workaround in package.json.
-
-**Explicitly rejected:** No library for contribution graphs (custom SVG, ~80 LOC), day-of-week picker (7 toggle buttons), date pickers (native `<input type="date">`), or additional toast/animation libraries (existing Motion + react-hot-toast cover all needs).
+**Core technologies (all existing):**
+- **Tailwind CSS v4.2**: Responsive design -- built-in mobile-first breakpoints, native container queries, no plugins needed
+- **Recharts 3.7**: Enhanced analytics views -- ResponsiveContainer for mobile charts, BarChart/LineChart for new views
+- **Motion 12**: New animation events (uncheck, streak-break) -- extends existing priority-tiered queue
+- **Browser Clipboard API**: Shareable summary -- `navigator.clipboard.writeText()`, no npm wrapper needed
+- **React Router 7.13**: Habit detail routing (if needed) -- dynamic segments already supported
+- **vaul 1.1**: Bottom sheets already mobile-friendly -- correct pattern for habit detail view
 
 ### Expected Features
 
-**Must have (table stakes) -- fill gaps in shipped v1.1:**
-- Achievement system + streak milestone badges (DB model exists, zero service/API/UI)
-- Capsule drop and wish grant history views (API endpoints exist, zero UI)
-- Calendar day popover with per-habit breakdown (PRD-specified interaction)
-- Habit drag-and-drop reordering (sort_order field exists, no endpoint or UI)
-- Archived habits view + restore (soft-delete exists, no way to see/restore)
-- Per-habit calendar + stats API (contribution graph exists, monthly calendar does not)
-- recharts react-is tech debt resolution
+**Must have (table stakes):**
+- **Responsive mobile layout** -- PRIMARY goal; the app is used daily on phone; touches every page/component
+- **Dashboard spacing/alignment polish** -- prerequisite for responsive; fix desktop first, then adapt breakpoints
+- **Uncheck feedback** (sound + negative XP popup) -- closes obvious interaction symmetry gap; checking has feedback, unchecking is silent
+- **Streak-break acknowledgment** -- surfaces the Zenkai recovery mechanic; currently invisible when streaks break
+- **Habit detail view expansion** -- completion rate, target time, attribute XP; wires up orphaned backend endpoints
 
-**Should have (differentiators) -- deepen the "Dopamine Edition" identity:**
-- Vegeta escalation roast system (severity field exists, no detection logic)
-- Per-habit contribution graphs (API exists, no frontend component)
-- Zenkai recovery animation (response flag exists, zero visual feedback)
-- Attribute level-up animation + title unlock (backend calculates levels, no celebration)
-- Power level milestone celebrations (primary progression number gets no fanfare between transformations)
-- "You're close!" nudge banner (ADHD dopamine cliff prevention)
-- Daily summary toast on last check (closure signal)
-- Temporary habit support (model fields exist, form does not expose them)
-- Custom frequency day picker polish (basic UI exists, needs UX upgrade)
-- Real audio sprite files (replace placeholders)
+**Should have (competitive advantage):**
+- **Weekly/monthly completion rate cards** -- period-filtered comparison; low effort, existing API
+- **Streak leaderboard** (personal power rankings) -- pure frontend sort, thematic, fun
+- **Shareable daily summary** (copy-to-clipboard) -- unique differentiator; text-only, one tap
+- **Off-day analytics panel** -- no competitor shows off-day impact; strategic rest framing
+- **Best/worst day highlights** -- derived from existing calendar data; zero backend changes
 
-**Defer (v2+):**
-- Push/browser notifications (hostile UX, ADHD users experience as nagging)
-- Undo streak break / manual streak editing (undermines Zenkai recovery mechanic)
-- Batch "complete all" button (destroys the per-check dopamine loop)
-- Complex per-habit trend charts (contribution grid + calendar is sufficient)
-- Social/sharing features (solo tracker by design)
+**Defer (v1.4+):**
+- Day-of-week pattern analysis -- medium effort, needs new backend query
+- Image-based shareable summary -- html2canvas complexity not justified
+- CSV/PDF export -- scope creep for a polish pass
+- Push/browser notifications -- explicitly hostile to ADHD users per PROJECT.md
 
 ### Architecture Approach
 
-All 18 features integrate into an existing three-layer architecture (React frontend with Zustand stores and AnimationPlayer queue, FastAPI service layer with the central `check_habit()` pipeline, SQLite via SQLAlchemy). The key integration pattern is: backend detection services produce new optional fields in `CheckHabitResponse`, the frontend `habitStore.checkHabit()` reads those fields and enqueues animation events, and the `AnimationPlayer` renders overlays sequentially. Six features need zero backend work (existing APIs or pure frontend state derivation). Seven features need new backend endpoints or service logic. Five features are purely animation/UI overlays consuming data that the enhanced `check_habit()` response provides.
+The architecture is additive: 6 new frontend components, 4 new backend endpoints, and modifications to ~10 existing components. No new Zustand stores (read-only view data stays in local component state). No new routing patterns (habit detail stays as bottom sheet, not a new route). The animation queue remains exclusively for positive/celebratory events; negative feedback (uncheck, streak-break) uses inline rendering paths. All analytics aggregates are computed server-side via SQL against snapshotted daily_log data.
 
 **Major components:**
-1. **check_habit() pipeline extension** -- Insert 4 new detection steps (streak milestone, attribute level-up, power milestone, achievement check) into the existing 10-step transaction
-2. **AnimationPlayer queue system** -- Add 5 new event types with a priority/batching system to prevent queue overload
-3. **New backend endpoints** -- PUT /habits/reorder, GET /habits/archived, PUT /habits/{id}/restore, GET /habits/{id}/calendar, GET /habits/{id}/stats, GET /habits/calendar/day-detail, GET /achievements
-4. **New frontend components** -- ContributionGraph (custom SVG), CapsuleHistoryList, WishHistoryList, CalendarDayPopover, NudgeBanner, ArchivedHabitsSection, AchievementGrid, 5 animation overlays
+1. **Responsive layout layer** -- CSS-only changes across ~10 components + safe area utilities; no functional changes
+2. **Backend analytics endpoints** (4 new) -- completion-trend, streak-leaderboard, day-patterns, off-day-summary; all query existing models
+3. **Habit detail expansion** -- extends existing HabitDetailSheet with stats, target time, streak timeline; wires orphaned endpoints
+4. **Analytics page additions** (4 new components) -- OffDayAnalyticsCard, CompletionTrendChart, StreakLeaderboard, DayPatternChart
+5. **Shareable summary** -- ShareButton + formatDailySummary utility; reads from existing stores, copies to clipboard
+6. **Feedback gap closures** -- inline uncheck feedback + streak-break toast; does NOT use animation queue
 
 ### Critical Pitfalls
 
-1. **Animation queue overload** -- A single habit check can trigger 10+ sequential overlays (20+ seconds of waiting). Implement priority tiers: exclusive overlays (perfect_day, transformation), banner/badge overlays (streak milestone, power milestone), inline non-blocking (xp_popup, daily summary). Cap queued overlays at 3; batch extras into a combo summary. This refactor must happen BEFORE any new event types are added.
-
-2. **Retroactive milestone spam on deploy** -- If milestone detection checks "streak >= N" without dedup, existing streaks trigger past milestones on first app load. Run a one-time migration to seed the achievements table with already-passed milestones. Detection must happen ONLY inside check_habit(), never on app load.
-
-3. **Temporary habit date boundaries corrupt completion %** -- Ambiguous end_date semantics (inclusive vs exclusive) cause denominator shifts in completion rate. Document and test that end_date is the last active day (inclusive). Never recalculate historical daily_log snapshots.
-
-4. **Drag-and-drop vs tap-to-check conflict on mobile** -- The entire HabitCard is currently a tap target. Adding drag makes taps ambiguous. Use a dedicated drag handle (visible only in reorder mode) and never use delay-based activation constraints.
-
-5. **Vegeta roasts create app avoidance** -- "Savage" roasts as the first thing a returning user sees creates shame-based punishment. Always show a welcome_back Goku quote first. Vegeta appears as secondary, never modal. Add a Settings toggle for roast intensity.
+1. **Responsive retrofit breaks animation overlays** -- All 11 overlay components assume desktop viewport. Must audit overlays during responsive pass, not after. Ensure dismiss buttons sit above BottomTabBar, no horizontal scroll on 375px.
+2. **Dashboard decluttering removes dopamine touchpoints** -- Mobile design instinct says "reduce noise," but the aura gauge, avatar, and dragon ball tracker ARE the core feedback loop. Scale down, never hide. If it changes when a habit is checked, it must stay visible.
+3. **Analytics computed client-side with wrong denominators** -- Historical completion rates must use snapshotted `daily_log.habits_due`, not current habit count. All aggregates must be backend-computed SQL queries.
+4. **Clipboard copy silently fails on mobile** -- Pre-compute summary from Zustand stores (no async fetch at copy time). Add textarea fallback for non-secure contexts. Show explicit success/failure toast.
+5. **Negative events corrupt animation queue** -- Uncheck and streak-break feedback must NOT enter the positive-only animation queue. Keep negative feedback inline: sound + visual pulse + toast. No full-screen overlays for negative events.
 
 ## Implications for Roadmap
 
 Based on research, suggested phase structure:
 
-### Phase 1: Animation Queue Refactor + Tech Debt
-**Rationale:** The animation queue is the single highest-risk integration point. Every subsequent feature that adds animations depends on a healthy queue system. The recharts override should also be resolved early to stabilize charts before new analytics features.
-**Delivers:** Priority-tiered animation system with batching/caps, recharts stability
-**Addresses:** Animation overload pitfall (Critical Pitfall 1), recharts tech debt (feat 18)
-**Avoids:** 15-25 second animation slideshows on combo events
+### Phase 1: Dashboard Polish + Responsive Design
+**Rationale:** Responsive mobile layout is the PRIMARY v1.3 goal and foundation for all other features. Dashboard spacing must be fixed before breakpoints are applied. These are coupled -- do them together.
+**Delivers:** App works well on mobile (375px-1024px); all pages responsive; overlays mobile-safe; safe area support
+**Addresses:** Responsive mobile layout, dashboard spacing/alignment polish (P1 features)
+**Avoids:** Pitfalls 1 (overlay breakage), 2 (hidden dopamine elements), 7 (responsive scope creep)
 
-### Phase 2: Backend Detection Services + check_habit() Extension
-**Rationale:** Seven frontend features are blocked by backend detection logic. Building all detections together allows a single, coordinated extension of CheckHabitResponse rather than multiple partial integrations.
-**Delivers:** Achievement service + API, streak milestone detection, attribute level-up detection, power milestone detection, Vegeta roast service, PUT /habits/reorder, per-habit calendar/stats endpoints, archived habits endpoints, calendar day-detail endpoint
-**Addresses:** Features 1-3, 7-10, 14 (backend portions)
-**Avoids:** Retroactive milestone spam (seed migration), multiple partial response extensions
+### Phase 2: Backend Analytics Endpoints
+**Rationale:** All frontend data views in Phases 3-4 depend on backend endpoints. Building backend first eliminates blocking. Only 1 small migration (2 columns on OffDay model).
+**Delivers:** 4 new analytics endpoints + verified orphaned habit endpoints + OffDay model migration
+**Addresses:** Backend prerequisites for off-day analytics, completion trends, streak leaderboard, day patterns
+**Avoids:** Pitfalls 6 (off-day partial data), 8 (wrong analytics denominators)
 
-### Phase 3: Pure Frontend Features (No Backend Needed)
-**Rationale:** Six features use existing API data or derive from local state. They can ship immediately after Phase 1's animation refactor, in parallel with or after Phase 2.
-**Delivers:** Capsule history view, wish history view, contribution graphs, nudge banner, daily summary toast, power level milestone celebrations
-**Addresses:** Features 4, 5a, 5b, 11, 12, 13
-**Uses:** Custom SVG component, react-hot-toast, derived Zustand state
+### Phase 3: Habit Detail View Expansion
+**Rationale:** Self-contained change touching only HabitDetailSheet and HabitCard. Depends on Phase 2 (stats endpoint). Provides immediate visible value as a drill-down from the now-responsive dashboard.
+**Delivers:** Expanded bottom sheet with completion rate, target time, attribute XP, streak timeline
+**Addresses:** Habit detail view (P1 feature)
+**Avoids:** Pitfall 3 (over-fetching); keep bottom sheet pattern, do not create new route
 
-### Phase 4: Animation Overlays + Vegeta Roasts
-**Rationale:** Animation overlays consume the detection data from Phase 2 and rely on the refactored queue from Phase 1. Vegeta roast frontend needs the backend roast service from Phase 2.
-**Delivers:** Zenkai recovery animation, streak milestone overlay, attribute level-up overlay, achievement overlay, Vegeta escalation UI with Settings toggle
-**Addresses:** Features 1-3, 6, 10 (frontend portions)
-**Avoids:** Vegeta roast app-avoidance pitfall (welcome_back first, Settings toggle)
+### Phase 4: Enhanced Analytics Views
+**Rationale:** 4 independent chart/list components on Analytics page. All depend on Phase 2 endpoints. Can be built as parallel sub-tasks. All follow the same pattern: fetch + render.
+**Delivers:** CompletionTrendChart, StreakLeaderboard, DayPatternChart, OffDayAnalyticsCard
+**Addresses:** Weekly/monthly rates, streak leaderboard, off-day analytics, best/worst day highlights (P2 features)
+**Avoids:** Pitfall 8 (client-side computation); all data pre-aggregated by backend
 
-### Phase 5: Drag-and-Drop + Calendar Popover + Analytics Polish
-**Rationale:** These are the highest-complexity frontend features requiring new library integration (@dnd-kit, @floating-ui/react). They depend on Phase 2 backend endpoints (reorder, day-detail). History views need pagination added.
-**Delivers:** Habit reordering with dnd-kit, calendar day popover, achievement display grid, history pagination
-**Addresses:** Features 7, 8 (frontend portions), analytics polish
-**Uses:** @dnd-kit/core + sortable, @floating-ui/react
-**Avoids:** Drag-tap conflict (dedicated handle), calendar popover mobile failure (vaul drawer on mobile), unbounded history data (pagination from start)
-
-### Phase 6: Settings Enhancements + Form Features + Audio
-**Rationale:** Lower-priority features that enhance existing forms and settings. Audio sprites must come last because all new sound IDs need to be defined first, then compiled once.
-**Delivers:** Archived habits view + restore, temporary habit form support, custom frequency day picker polish, real audio sprite files
-**Addresses:** Features 14-17 (frontend portions)
-**Avoids:** sort_order collision on restore (MAX+1 strategy), temporary habit date bugs (boundary tests), day picker weekday mismatch (ISO weekday constants), audio sprite desync (automated manifest generation)
+### Phase 5: Shareable Summary + Feedback Gaps + Final Polish
+**Rationale:** Smallest scope, lowest risk, no blocking dependencies. Polish layer on top of everything else. Groups three small independent features.
+**Delivers:** Copy-to-clipboard summary, uncheck feedback, streak-break acknowledgment, final spacing
+**Addresses:** Shareable summary, uncheck feedback, streak-break acknowledgment (P1/P2 features)
+**Avoids:** Pitfalls 4 (clipboard failure), 5 (missing sound mappings), 9 (negative events in queue), 10 (bad share text)
 
 ### Phase Ordering Rationale
 
-- **Animation refactor first** because every subsequent phase adds animation events. Building on a broken queue compounds the problem.
-- **Backend detections grouped** because they all modify `check_habit()` and `CheckHabitResponse`. Doing them in one phase avoids repeated schema migrations and partial integration states.
-- **Pure frontend features early** because they are low-risk, high-visibility wins that can ship while backend work is in progress. They demonstrate progress and are independently testable.
-- **DnD and popover together** because they are the two features requiring new library integration and have the highest frontend complexity.
-- **Audio last** because the sprite must include all sound IDs (existing + new). Adding sounds for features that do not exist yet wastes effort if features change.
+- **Responsive first** because it is the milestone's primary goal and every subsequent feature must work on mobile. Doing responsive later means reworking features twice.
+- **Backend second** because it has zero frontend dependencies and unblocks all data-dependent frontend phases. Building it early prevents blocking.
+- **Habit detail before analytics** because it is a P1 feature with higher user value and touches fewer components (lower risk to validate the responsive work).
+- **Analytics fourth** because it is the largest batch of new components but all are independent read-only displays -- low integration risk.
+- **Polish last** because feedback gaps and sharing are small, self-contained additions that benefit from all prior work being stable.
 
 ### Research Flags
 
 Phases likely needing deeper research during planning:
-- **Phase 1 (Animation Queue Refactor):** The priority/batching system is a novel pattern for this codebase. Needs careful design of tier definitions and batching logic. Research the interaction between AnimatePresence mode="wait" and dynamically-typed overlays.
-- **Phase 5 (DnD + Calendar Popover):** dnd-kit integration with existing Motion layoutId animations needs testing. Calendar popover mobile/desktop switching (popover vs vaul drawer) needs UX research.
+- **Phase 1 (Responsive):** Needs investigation of each animation overlay's current layout to determine specific responsive fixes. The 11 overlays are the highest-risk area.
+- **Phase 2 (Backend):** Needs verification of orphaned `/habits/{id}/stats` and `/habits/{id}/calendar` endpoints -- they exist but may not return the exact data needed.
 
 Phases with standard patterns (skip research-phase):
-- **Phase 2 (Backend Services):** All backend additions follow the existing service-layer pattern. check_habit() extension is well-documented in ARCHITECTURE.md.
-- **Phase 3 (Pure Frontend):** Data display components using existing APIs. Straightforward React patterns.
-- **Phase 6 (Settings + Forms):** Standard form enhancements. The only risk (day picker weekday mismatch) is well-documented with a clear fix.
+- **Phase 3 (Habit Detail):** Extends an existing component with existing data. Well-understood pattern.
+- **Phase 4 (Analytics Views):** Standard Recharts chart components. Existing codebase has 3 chart components to reference.
+- **Phase 5 (Polish):** Clipboard API is well-documented. Animation event pattern is established with 11 existing types.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Only 5 new packages, all verified for React 19 compatibility. Explicit rejection rationale for every considered-but-rejected library. |
-| Features | HIGH | All 18 features analyzed with existing infrastructure mapped. Clear dependency graph. Competitor analysis validates feature choices. |
-| Architecture | HIGH | Based on direct codebase analysis of every integration touchpoint. check_habit() pipeline, AnimationPlayer queue, and store patterns are thoroughly documented. |
-| Pitfalls | HIGH | 11 pitfalls identified with specific code references (file names, line numbers). Each has prevention strategy, warning signs, and phase mapping. |
+| Stack | HIGH | Zero new dependencies; all existing packages verified at current versions; official docs consulted |
+| Features | HIGH | Feature landscape based on competitor analysis (Habitify, Streaks, Loop) + direct PRD requirements; clear P1/P2/P3 prioritization |
+| Architecture | HIGH | Based on direct codebase analysis of all touchpoints; component boundaries, data flows, and file lists are specific and verified |
+| Pitfalls | HIGH | Based on direct codebase analysis of AnimationPlayer, uiStore, HabitDetailSheet, and existing responsive patterns; specific line numbers referenced |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Animation priority tier definitions:** Research identified the need for priority tiers but the exact tier assignments need validation during Phase 1 planning. Which events are truly "exclusive overlay" vs "banner" vs "inline" requires UX testing.
-- **Audio sourcing quality:** Royalty-free sound-alikes recommended, but actual sound quality and DBZ-feel cannot be evaluated until files are sourced. May need iteration.
-- **Custom day picker existing state:** The ARCHITECTURE.md notes a potential bug where frontend 0-indexed days may not match backend ISO weekdays (1-7). This must be verified against actual stored data before building the day picker enhancement.
-- **Capsule/wish history data volume:** Pagination recommended, but actual data volumes after months of use are unknown. The 50-item default page size is a reasonable guess but may need adjustment.
-- **Calendar popover information density:** Research recommends minimal content (date, %, habit names, XP) but optimal layout needs UX validation on actual mobile viewports.
+- **Off-day `is_off_day` snapshot on daily_log:** Need to verify whether this field exists or needs migration. If it does not exist, historical backfill is approximate only.
+- **Orphaned endpoint data shape:** The `/habits/{id}/stats` and `/habits/{id}/calendar` endpoints exist but their exact response schemas need verification before frontend types are finalized.
+- **Animation overlay audit specifics:** Each of the 11 overlays needs individual inspection during Phase 1 planning to determine which ones actually break on mobile vs. which already use responsive patterns.
+- **Off-day analytics XP impact accuracy:** If the OffDay model migration (adding `habits_reversed`, `xp_clawed_back` columns) is applied, existing rows get default 0. Historical XP impact data is lost. This is acceptable but should be documented.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- Direct codebase analysis of all integration touchpoints (habit_service.py, habitStore.ts, uiStore.ts, AnimationPlayer.tsx, constants.py, package.json)
-- [dnd-kit official docs](https://docs.dndkit.com/) -- sortable preset, useSortable hook
-- [Floating UI React docs](https://floating-ui.com/docs/react) -- useFloating + useClick pattern
-- [recharts react-is discussion #5701](https://github.com/recharts/recharts/discussions/5701) -- peer dependency migration
-- [recharts React 19 issue #4558](https://github.com/recharts/recharts/issues/4558) -- compatibility status
+- [Tailwind CSS v4 responsive design docs](https://tailwindcss.com/docs/responsive-design) -- breakpoints, mobile-first, container queries
+- [Clipboard API: writeText (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/writeText) -- browser support, secure context
+- [Clipboard API (Can I Use)](https://caniuse.com/mdn-api_clipboard_writetext) -- Baseline Newly Available March 2025
+- [Recharts ResponsiveContainer docs](https://recharts.github.io/en-US/api/ResponsiveContainer/) -- chart responsiveness
+- [Motion for React docs](https://motion.dev/docs/react) -- animation capabilities
+- Direct codebase analysis of all source files (AppShell, Dashboard, HabitCard, HabitDetailSheet, AnimationPlayer, uiStore, habitStore, index.css, BottomTabBar, Analytics, MiniHero)
 
 ### Secondary (MEDIUM confidence)
-- [Puck: Top 5 DnD Libraries for React 2026](https://puckeditor.com/blog/top-5-drag-and-drop-libraries-for-react) -- dnd-kit vs alternatives comparison
-- [Reclaim: 10 Best Habit Tracker Apps 2026](https://reclaim.ai/blog/habit-tracker-apps) -- feature expectations
-- [Trophy: 20 Productivity App Gamification Examples 2025](https://trophy.so/blog/productivity-gamification-examples) -- gamification patterns
-- [Pixabay Sound Effects](https://pixabay.com/sound-effects/) -- royalty-free audio sourcing
+- [Tailwind CSS v4 container queries (SitePoint)](https://www.sitepoint.com/tailwind-css-v4-container-queries-modern-layouts/) -- native container query support
+- [Recharts v3 ResponsiveContainer issue #6716](https://github.com/recharts/recharts/issues/6716) -- console warning, non-blocking
+- [Habitify analytics features](https://habitify.me/blog/let-data-tell-your-story) -- competitor analysis
+- [Trophy streaks gamification case study](https://trophy.so/blog/streaks-gamification-case-study) -- streak psychology
+- [RapidNative habit tracker calendar UX](https://www.rapidnative.com/blogs/habit-tracker-calendar) -- calendar grid patterns
 
 ### Tertiary (LOW confidence)
-- [@uiw/react-heat-map](https://github.com/uiwjs/react-heat-map) -- React 19 compatibility unverified (rejected for custom build)
-- [The Sounds Resource](https://sounds.spriters-resource.com/) -- game audio rips (copyrighted, personal use only)
+- Day-of-week pattern analysis complexity estimate -- based on similar SQLAlchemy GROUP BY patterns, not verified against this schema
 
 ---
-*Research completed: 2026-03-06*
+*Research completed: 2026-03-08*
 *Ready for roadmap: yes*

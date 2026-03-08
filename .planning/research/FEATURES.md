@@ -1,233 +1,259 @@
 # Feature Research
 
-**Domain:** Gamified habit tracker v1.2 features (DBZ-themed, ADHD-optimized, 18 new features on existing app)
-**Researched:** 2026-03-06
+**Domain:** Habit tracker QoL polish (v1.3) -- detail views, analytics, responsive, shareable
+**Researched:** 2026-03-08
 **Confidence:** HIGH
 
 ## Feature Landscape
 
-This analysis covers the 18 target v1.2 features. The app already has a full working stack (15 DB models, 9 API routers, React 19 frontend with dashboard, audio, animations, analytics, settings). Many v1.2 features have partial infrastructure already built -- DB models, constants, or API endpoints that exist but lack service logic, frontend UI, or both.
+This analysis covers v1.3 "The Polish Pass" features for an already-complete app (v1.2 shipped with 24/24 requirements, 456 tests). The goal is not new game mechanics but making what exists feel great on every device, filling feedback gaps, and adding the most-wanted views. The existing codebase has a full animation queue, 13 audio sounds, Recharts analytics, Zustand stores, and Tailwind CSS v4 theming.
 
 ### Table Stakes (Users Expect These)
 
-Features that fill obvious gaps in the shipped v1.1 product. The infrastructure exists but the feature is incomplete or invisible to the user.
+Features that Sergio will expect to work correctly in v1.3. Missing any of these makes the app feel broken on mobile or leaves obvious interaction gaps.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| **Streak milestone badges + notifications** (feat 2) | `STREAK_MILESTONES=[3,7,21,30,60,90,365]` defined in constants.py but unconsumed. Achievement model exists with no service. Users see streak numbers but get zero celebration at milestones. | MEDIUM | Backend: achievement_service.py to detect milestones during check_habit flow. Frontend: badge display + milestone notification overlay. Need GET /achievements endpoint. Standard pattern: detect milestone crossing in streak update, record achievement, return in check response. |
-| **Achievement system** (feat 3) | Achievement model in DB since v1.0 with no service, no API, no frontend. Dead infrastructure. | MEDIUM | Backend: achievement service (create, list, check-for-existing) + GET /achievements endpoint. Frontend: achievements display panel. Wire into check_habit for auto-recording transformation unlocks and streak milestones. Standard gamification pattern -- Habitica has 200+ achievements, but even 15-20 covering transformations + streak milestones is sufficient. |
-| **Capsule drop history view** (feat 5a) | `GET /analytics/capsule-history` endpoint exists and returns data. Frontend has zero UI for it. | LOW | Pure frontend: scrollable list/cards in Analytics page. Show reward title, rarity badge (color-coded), triggering habit, timestamp. Data already served with reward_title, reward_rarity, habit_title, dropped_at fields. |
-| **Wish grant history view** (feat 5b) | `GET /analytics/wish-history` endpoint exists and returns data. Same gap as capsule history. | LOW | Pure frontend: scrollable list in Analytics page. Show wish title + granted_at timestamp. Simpler than capsule history -- just wish_title and granted_at. |
-| **Calendar day popover** (feat 8) | PRD explicitly says "Click any day -> popover with per-habit breakdown." CalendarHeatmap exists but days are not interactive. | MEDIUM | Need to fetch per-habit data for a clicked date. Options: (a) extend calendar/all to include habit breakdown, (b) new endpoint GET /habits/calendar/{date} returning per-habit completion list, or (c) reuse today/list endpoint with arbitrary date. Frontend: popover/tooltip component anchored to clicked cell showing habit name + check/miss + XP earned. |
-| **Per-habit calendar + stats API** (feat 9) | PRD defines `GET /habits/{id}/calendar` and `GET /habits/{id}/stats`. Neither endpoint exists. Contribution graph exists but monthly calendar and stats do not. | MEDIUM | Backend: two new endpoints. Calendar returns monthly per-habit completion (similar to calendar/all but filtered to one habit). Stats returns completion rate, current/best streak, total completions. Straightforward queries against HabitLog and HabitStreak tables. |
-| **Habit drag-and-drop reordering** (feat 7) | `sort_order` field exists on Habit model. PRD defines `PUT /habits/reorder`. Users currently cannot change habit display order at all. | MEDIUM | Backend: `PUT /habits/reorder` endpoint accepting array of `{id, sort_order}` pairs. Frontend: **dnd-kit** with `@dnd-kit/sortable` for vertical list reorder. dnd-kit is the standard React DnD library for 2025-2026 (lightweight, accessible, performant, maintained). New dependency: `@dnd-kit/core` + `@dnd-kit/sortable` + `@dnd-kit/utilities`. Touch-friendly with built-in keyboard support. |
-| **Archived habits view + restore** (feat 14) | `DELETE /habits/{id}` already soft-deletes (sets `is_active=false`). Archived habits vanish with no way to see or restore them. Standard pattern across Habitica, HabitKit, Habitify, and others. | LOW | Backend: `GET /habits/archived` (filter `is_active=false`), `PUT /habits/{id}/restore` (set `is_active=true`). Frontend: archived habits section in Settings with restore button per habit. Industry standard: archive = "take a break without losing data." |
-| **recharts react-is tech debt** (feat 18) | `package.json` has explicit `"react-is": "^19.0.0"` override in `overrides`. Known fragile workaround documented in PROJECT.md. | LOW | Check if recharts v3.8+ has fixed the react-is peer dep for React 19. If fixed, remove override and upgrade. If not, document as accepted debt or evaluate alternatives (lightweight chart components). Low risk either way -- the override works. |
-| **Real audio sprite files** (feat 17) | App ships with placeholder audio. The core value is "every interaction must feel like something happened" but the sounds are placeholders. | MEDIUM | Source royalty-free DBZ-style sounds (ki blasts, scouter beeps, power-ups, explosions). Create audio sprite using `audiosprite` CLI tool (ffmpeg wrapper). Output: single WebM file (primary, best quality/size) + MP3 fallback + JSON sprite map with timing offsets. Update Howler.js sprite configuration. ~13 sound slots needed matching existing sprite keys. Freesound.org and similar CC0 sources. |
+| **Responsive mobile layout** | Sergio uses this daily on his phone. Desktop-only layout is unusable on mobile. Every modern web app is mobile-first. This is the PRIMARY goal of v1.3 per PROJECT.md ("daily phone use"). | HIGH | Touches every page and component. Must adapt HeroSection, HabitList, StatsPanel, Analytics charts, Settings forms. Tailwind breakpoints (sm/md/lg) plus container queries for card grids. Bottom tab bar for mobile nav. Touch targets minimum 44px. Recharts needs explicit ResponsiveContainer widths. |
+| **Habit detail view (expanded)** | Existing `HabitDetailSheet` shows streak + 90-day contribution grid but no completion rate, no target time, no attribute XP total, no history list. Users expect to drill into any habit and see everything about it. | MEDIUM | Bottom sheet pattern already exists and works. Extend with: weekly/monthly completion rates, total attribute XP earned, target time display, creation date, category badge, importance/attribute tags. Backend has orphaned `/habits/{id}/stats` and `/habits/{id}/calendar` endpoints -- wire these up instead of building new ones. |
+| **Uncheck feedback** | Checking a habit gives sound + XP popup + aura change. Unchecking is completely silent -- feels broken. Symmetrical feedback is a baseline interaction expectation. | LOW | Play a "power down" sound (reuse existing deflate-style sound or add one), show negative XP popup ("-15 STR XP"), animate aura shrinking. Wire into existing AnimationQueue. The check_habit API already handles unchecking and returns the delta. |
+| **Streak-break acknowledgment** | When a streak breaks, nothing happens. The user discovers it silently next time they check. Habit trackers like Streaks and Habitify show explicit "streak broken" notices. The Zenkai recovery mechanic exists but is invisible if the user does not notice the halved number. | LOW | Show a toast or card on first dashboard load after a break: "Streak broke at X days. Zenkai halved to Y. Come back stronger." Ties into existing Vegeta roast system and StatusResponse (roast/welcome_back). May already partially work via RoastWelcomeCard but needs explicit streak-break callout. |
+| **Dashboard spacing/alignment polish** | Current layout has inconsistent spacing between sections, cards don't visually align, and the hero section dominates too much screen real estate on smaller viewports. Standard QoL expectation for a "polish pass." | MEDIUM | Audit all gap/padding/margin values across dashboard components. Standardize card widths and border radii. Ensure MiniHero collapse via IntersectionObserver works smoothly on mobile. This work is prerequisite to responsive -- fix desktop first, then adapt breakpoints. |
 
 ### Differentiators (Competitive Advantage)
 
-Features unique to Saiyan Tracker that no standard habit tracker offers. These deepen the "Dopamine Edition" identity.
+Features that go beyond what typical habit trackers offer. These leverage the existing DBZ theme and game systems to create unique value.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **Vegeta escalation roast system** (feat 1) | No habit tracker has a character that roasts you harder the longer you're gone. Quote `severity` field (mild/medium/savage) exists in DB. Missed day detection logic is missing. | MEDIUM | Backend: count consecutive missed days (gap between `streak.last_active_date` and today, minus off days). Filter Vegeta quotes by severity matching consecutive missed days. Return escalating roast on dashboard load/today-list when gap detected. Frontend: prominent Vegeta quote display with severity-scaled visual treatment (mild = subtle, medium = warning tone, savage = red-tinted aggressive). Beerus at 3+ missed days per PRD. |
-| **Per-habit contribution graphs** (feat 4) | GitHub-style 90-day grids per habit. `GET /habits/{id}/contribution-graph` endpoint already exists and returns daily completion booleans. No habit tracker competitor offers this granularity. | MEDIUM | Build custom SVG grid (no library needed). 90 days = 13 weeks x 7 days. Each cell: green for completed, dark gray for missed. Tooltip on hover with date. Place in Analytics page with habit selector. The API returns `{date, completed}` pairs -- trivially mapped to grid cells. Custom build is better than a library here because the data is binary (not intensity-scaled like GitHub). |
-| **Zenkai recovery animation** (feat 6) | Zenkai detection exists in `streak_service.py`. `check_habit` response includes `zenkai_activated=true/false`. Currently triggers zero visual feedback. The comeback mechanic is invisible. | LOW | Frontend only: new animation overlay triggered when `checkHabit` response has `zenkai_activated=true`. Purple/blue energy burst effect (reuse ParticleBurst component pattern). "ZENKAI BOOST!" text with "+50% XP" callout. Brief (1.5s) celebration that says "you came back stronger." Queue in AnimationPlayer after other animations. |
-| **Attribute level-up animation + title unlock** (feat 10) | Attribute leveling works in backend (`attribute_service.py` calculates levels from XP using `100 * level^1.5` formula). `ATTRIBUTE_TITLES` defined with 5 tiers per attribute. Zero celebration when user levels up or earns a title. | MEDIUM | Backend: enhance check_habit response to include `attribute_level_changed: {attribute, old_level, new_level, new_title?}` when a level boundary is crossed during XP award. `attribute_service.py` already has `get_level_for_xp()` and `get_title()` -- compare before/after. Frontend: level-up overlay animation ("STR Level 10: Warrior!") with fanfare sound. |
-| **Power level milestone celebrations** (feat 11) | Power level is the primary progression number. Crossing round numbers (1K, 5K, 10K, etc.) between transformation thresholds gets zero fanfare. Transformation unlocks celebrate at specific XP amounts, but the journey between them is silent. | LOW | Frontend only: detect round number crossings from check_habit response. Compare `power_level` before and after check (store previous in habitStore or derive from powerStore). Milestone list: 1000, 2500, 5000, 7500, 10000, 25000, 50000, 75000, 100000, 150000. Show brief fanfare banner (1s) with sound. Avoid overlap with transformation animations (skip milestone if transformation also triggered). |
-| **"You're close!" nudge banner** (feat 12) | ADHD users need the final push. The PRD highlights the "dopamine cliff" -- jumping from 83% (125 XP) to 100% (200 XP) is a 60% increase. When 1-2 habits remain, the user is closest to the biggest reward and most likely to stop. Nudge UX is an emerging pattern in habit apps -- predictive/anticipatory nudges are trending. | LOW | Pure frontend: derived from `todayHabits` state. When `(total - completed) <= 2 && completed > 0`, show persistent banner below aura gauge: "2 more for Kaio-ken x20!" or "Just 1 left -- go for 100%!" Pulse animation on the banner. Clear when habits are checked or day ends. No backend changes. |
-| **Daily summary toast on last check** (feat 13) | Closure even on imperfect days. When the user finishes their last check (whether at 67% or 100%), a summary provides a "you're done" signal. Prevents the "did I do enough?" anxiety loop common with ADHD. | LOW | Frontend: detect when the last unchecked habit gets checked (or all habits are done). Show react-hot-toast summary: "Today: 5/6 habits | 83% | +125 XP | Kaio-ken x10". Already using react-hot-toast in the project. For non-perfect days, this replaces the Perfect Day explosion with a quieter but still positive closure moment. |
-| **Temporary habit support** (feat 15) | `is_temporary`, `start_date`, `end_date` fields exist in Habit model and are part of the Pydantic schema. Frontend form does not expose them. Useful for 30-day challenges or seasonal habits. | LOW | Frontend: add `is_temporary` toggle to HabitForm. When toggled on, show start_date and end_date date pickers. Backend already handles these fields in create/update. VERIFY: `get_habits_due_on_date()` in `habit_service.py` must filter by `start_date <= today <= end_date` for temporary habits. If not, add that filter. |
-| **Custom frequency day picker** (feat 16) | Frequency "custom" option and `custom_days` field exist. HabitForm.tsx already has `DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']` and `customDays` state. UI may need polish for tappable pill-style day buttons. | LOW | Frontend: verify the existing custom day selector works end-to-end. If it uses checkboxes, upgrade to tappable pill-style buttons (rounded, colored when selected, gray when not). Minimal work -- mostly CSS/styling. |
+| **Off-day analytics panel** | No habit tracker shows the *impact* of off-days on streaks, XP, and power level. Most just mark them as skipped. Showing "You took 3 off-days this month, preserving a 14-day streak and costing ~600 XP" turns rest into a conscious strategic decision rather than a guilt-laden gap. Research shows users who frame breaks as strategic maintain continuity 3.7x longer. | MEDIUM | New analytics section. Query OffDay table + correlate with DailyLog gaps. Metrics: total off-days per period, off-days by reason (pie/donut chart), estimated XP missed (avg daily XP * off-day count), streak-saves (off-days that fell mid-streak), off-day frequency trend. Needs new backend endpoint `/analytics/off-day-impact` or extend `/analytics/summary`. |
+| **Shareable daily summary (copy-to-clipboard)** | No mainstream habit tracker offers a one-tap "share my day" as a styled text block. For ADHD users, external accountability (posting to Discord, texting a friend) is a proven retention lever. The DBZ theme makes the summary fun to share -- not clinical. | LOW | Generate text template with date, completion %, habits done, XP earned, streak, transformation form, Dragon Balls collected. Copy via `navigator.clipboard.writeText()`. Button on dashboard visible when >= 1 habit checked. Text-only (no image generation). See format template below. |
+| **Weekly/monthly completion rate cards** | Existing StatCards show all-time aggregate stats only. Period-filtered rates ("This week: 85% vs Last week: 72%") let Sergio spot trends and feel week-over-week progress. Habitify's line graph and Streaks' percentage display both offer this -- it is becoming a standard analytics view. | LOW | Backend `/analytics/summary` already accepts `period=week|month|all`. Frontend needs to call it with multiple periods and display comparison cards: "This Week: 85% | Last Week: 72% | +13%". Could also show a simple sparkline. Minimal new code -- mostly layout work in StatCards component. |
+| **Streak leaderboard (personal power rankings)** | Rank habits by current streak length. Gamifies which habits are "strongest" vs "weakest." No external competition (solo user), just internal ranking. The DBZ framing ("Power Rankings" or "Warrior Ranking") makes it thematic. The Streaks app deliberately avoids social leaderboards but personal ranking of one's own habits is a different, positive pattern. | LOW | Sort `todayHabits` by `streak_current` descending. Display as a ranked list with position numbers, flame icons scaled by streak length, and habit emoji/title. Pure frontend -- data already available in `HabitTodayResponse.streak_current`. Could be a new section in Analytics or a tab in the dashboard. |
+| **Day-of-week pattern analysis** | Show which days Sergio is most/least consistent. "You complete 95% on Mondays but only 60% on Saturdays." Actionable insight that Habitify puts behind premium tiers. Helps ADHD users identify their natural rhythm rather than fighting it. | MEDIUM | Query DailyLog grouped by day-of-week (extract weekday from log_date), compute avg completion_rate per day. New backend endpoint or compute frontend-side from calendar data (calendar/all returns daily rates for the visible month -- could aggregate multiple months client-side). Visualize as a bar chart or radar chart using Recharts. |
+| **Best/worst day highlights** | Call out the single best and worst days in a period. "Best: March 2 (100%, 340 XP). Worst: March 5 (33%, 34 XP)." Creates narrative around the data. | LOW | Derive from existing calendar data on frontend. Find max/min completion_rate from CalendarDay array. Display as highlight cards above or below the heatmap in Analytics. Zero backend changes. |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
-Features to explicitly avoid during v1.2 implementation.
-
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| **Push/browser notifications** | "Remind me to do habits" | Single-user local app, no service worker. Browser notification permission UX is hostile. Sergio opens the app intentionally. ADHD users experience external notifications as nagging, not motivation. | Vegeta roast on return handles "you forgot" with charm. "You're close!" nudge works in-app when already engaged. |
-| **Undo streak break / manual streak edit** | "I forgot to mark yesterday" | Undermines Zenkai recovery (the forgiveness mechanic). Manual editing breaks trust in the progression system. If streaks can be edited, they lose meaning. | Zenkai halving IS the forgiveness. Off-days handle planned absences. Two mechanisms is enough. |
-| **Batch "complete all" button** | "Let me check everything at once" | Destroys the entire dopamine loop. Each check = sound + visual + XP popup + capsule chance. Batching kills the drip feed that makes the app work. | The sequential check experience IS the product. Each check must be its own moment. |
-| **Complex per-habit trend charts** | "Show me a line graph for each habit" | Scope creep into analytics platform. Contribution grid + calendar covers the use case. Full trend charts per habit is over-engineering for one user. | Contribution graph (90-day grid) + per-habit calendar + stats endpoint provide sufficient per-habit insight. |
-| **Streak freeze / streak protection items** | Common in Duolingo/gamified apps | Competes with off-day system AND Zenkai recovery. Three streak-protection mechanisms creates confusion and undermines the Saiyan "come back stronger" narrative. | Off-days for planned breaks, Zenkai for unplanned breaks. The duality is intentional. |
-| **Global reminder/scheduling system** | Standard in habit tracker apps | Over-engineered for single-user. Adds notification permission complexity with no value for someone who opens the app by choice. | Make app so rewarding that dopamine IS the reminder. |
-| **Achievement sharing / social export** | "Share my progress" | Solo tracker by design. Social features add complexity for zero users. Sharing screenshots works fine organically. | Defer to v2+ if ever needed. |
+| **Image/screenshot shareable summary** | "Share a pretty image of my day" | Canvas/image generation (html2canvas or server-side rendering) adds significant complexity. Maintenance burden for a solo-user app. Images get stale, text is more versatile across platforms (Discord, iMessage, WhatsApp). | Text-only clipboard copy. Clean formatting with emoji and Unicode box-drawing characters makes it visually appealing in any chat app. |
+| **Social leaderboard / friend comparison** | "Compare my habits with friends" | PROJECT.md explicitly scopes this out. Solo tracker. Adding social creates auth requirements, privacy concerns, and competitive pressure that harms ADHD motivation. Research shows the Streaks app deliberately avoids social features to maintain focus on personal progress. | Personal streak leaderboard (rank your own habits against each other). |
+| **Push/browser notifications** | "Remind me to do habits" | PROJECT.md explicitly lists this as hostile UX for ADHD users. Nagging notifications create anxiety and are ignored after a week. ACSM research shows 31% of users skip healthy rest days to avoid "breaking their streak" -- notifications amplify this pathology. | The existing nudge banner (1-2 habits remaining) is the right level of prompting -- visible when you open the app, not interrupting your day. |
+| **Detailed time-of-day tracking** | "Track when I complete each habit throughout the day" | Over-instrumentation. `completed_at` timestamp exists in HabitLog but surfacing hourly patterns adds complexity without clear value for a binary check tracker. Leads to self-surveillance anxiety. | Show `target_time` on habit detail view (already in schema). Let the user set intent, don't analyze actual times. |
+| **Exportable CSV/PDF reports** | "Export my data for analysis" | Scope creep for a v1.3 polish pass. Useful but not aligned with "feel great on every device" goal. Requires file generation, download UX, format decisions. | Defer to v2. The shareable summary covers the "show someone my progress" use case. The existing analytics page covers the "analyze my data" use case. |
+| **Undo streak break / manual streak editing** | "Let me fix my streak when I forgot to check" | PROJECT.md explicitly forbids this. Undermines the Zenkai recovery mechanic which is core to the game design. Two forgiveness mechanisms exist (off-days for planned, Zenkai for unplanned). | Zenkai recovery (halve, don't reset) + streak-break acknowledgment toast provide the psychological cushion. |
+| **Complex per-habit trend line charts** | "Show me a line graph for each habit over time" | Scope creep into an analytics platform. The contribution grid (90-day binary grid) and per-habit calendar already cover the "how consistent am I" question. Line charts for binary data are misleading -- you need a rolling average, which adds math complexity and is hard to interpret. | Contribution grid + completion rate numbers in the expanded habit detail sheet. Clear, honest, no interpretation needed. |
 
 ## Feature Dependencies
 
 ```
-[Achievement System (3)]
-    Foundation for recording milestones and unlocks.
-    Must be built first among the gamification features.
+[Dashboard spacing/alignment polish]
     |
-    +--<-- [Streak Milestones (2)] depends on Achievement System
-    |       Milestone detection during check_habit needs
-    |       achievement service to persist badges.
+    +-- required-by --> [Responsive mobile layout]
+    |                   (fix desktop first, then adapt breakpoints)
     |
-    +--<-- [Transformation unlock recording]
-            Already happens in power_service but not
-            persisted as achievements.
+    +-- required-by --> [All other v1.3 features]
+        (everything must look right on the polished layout)
 
-[Per-habit Calendar + Stats API (9)]
+[Responsive mobile layout]
     |
-    +--<-- [Calendar Day Popover (8)] depends on per-habit data
-            Popover needs to show which habits were
-            completed/missed on a clicked date.
-
-[PUT /habits/reorder API (7 backend)]
+    +-- required-by --> [Shareable daily summary]
+    |                   (share button must be accessible on mobile)
     |
-    +--<-- [Habit Drag-and-Drop UI (7 frontend)]
-            dnd-kit work is wasted without persistence.
-
-[Backend check_habit response enhancement (10 backend)]
+    +-- required-by --> [Habit detail view]
+    |                   (bottom sheet must work on mobile viewports)
     |
-    +--<-- [Attribute Level-Up Animation (10 frontend)]
-            Frontend can't celebrate what it doesn't know about.
+    +-- required-by --> [Off-day analytics panel]
+    |                   (charts must be readable on mobile)
+    |
+    +-- required-by --> [Day-of-week patterns]
+        (bar/radar chart must work on narrow screens)
 
-[Vegeta Escalation (1)]
-    Independent -- needs missed day detection logic.
-    Uses existing streak.last_active_date + off_day data.
-    Uses existing quote severity field.
+[Habit detail view (expanded)]
+    +-- depends-on --> [Existing HabitDetailSheet + ContributionGrid]
+    +-- depends-on --> [Backend /habits/{id}/stats endpoint] (orphaned, needs frontend wiring)
+    +-- enhanced-by --> [Day-of-week patterns] (could show per-habit day patterns later)
 
-[Capsule History View (5a)] -- uses existing API, no backend work
-[Wish History View (5b)] -- uses existing API, no backend work
-[Contribution Graphs (4)] -- uses existing API, no backend work
-[Zenkai Animation (6)] -- uses existing response flag, no backend work
-["You're Close" Nudge (12)] -- pure frontend derived state
-[Daily Summary Toast (13)] -- pure frontend, uses react-hot-toast
-[Power Level Milestones (11)] -- pure frontend comparison
-[Archived Habits (14)] -- leverages existing soft-delete, needs 2 endpoints
-[Temporary Habits (15)] -- model fields exist, frontend form update + verify backend filter
-[Custom Frequency Picker (16)] -- UI polish on existing selector
-[Real Audio Sprites (17)] -- asset work, no code logic changes
-[recharts tech debt (18)] -- dependency management only
+[Off-day analytics]
+    +-- depends-on --> [Existing OffDay model + off-days API]
+    +-- depends-on --> [New backend endpoint for off-day impact calculation]
+    +-- enhanced-by --> [Weekly/monthly rate cards] (rates should account for off-days)
+
+[Weekly/monthly completion rates]
+    +-- depends-on --> [Existing /analytics/summary?period= backend endpoint]
+    +-- no new backend needed, just multiple frontend calls
+
+[Streak leaderboard]
+    +-- depends-on --> [Existing HabitTodayResponse.streak_current]
+    +-- no backend changes needed
+
+[Uncheck feedback]
+    +-- depends-on --> [Existing animation queue + sound system]
+    +-- no backend changes needed (check_habit handles unchecking)
+
+[Streak-break acknowledgment]
+    +-- depends-on --> [Existing StatusResponse with roast/welcome_back]
+    +-- enhanced-by --> [Existing Vegeta roast system + RoastWelcomeCard]
+
+[Best/worst day highlights]
+    +-- depends-on --> [Existing CalendarDay data from calendar/all API]
+    +-- no backend changes needed
+
+[Day-of-week patterns]
+    +-- depends-on --> [New backend endpoint OR heavy frontend aggregation]
+    +-- enhanced-by --> [Weekly/monthly rates] (both are analytics additions)
 ```
 
 ### Dependency Notes
 
-- **Streak Milestones (2) requires Achievement System (3):** Milestone badges need to be persisted as achievements. Build achievement service first, then add milestone detection hook in the streak update flow.
-- **Calendar Popover (8) requires Per-habit API (9):** The popover needs per-habit breakdown data for a specific date. Without the API, the popover has nothing to show.
-- **Attribute Level-Up (10) requires backend changes:** The current check_habit response does not indicate whether an attribute level changed. The `attribute_service.py` already has `get_level_for_xp()` and title lookup -- it just needs to compare before/after and include the delta in the response.
-- **Habit Drag-and-Drop (7) is split:** Backend endpoint must exist before frontend dnd-kit integration. The sort_order field is already in the model.
-- **6 features need zero backend work:** Features 4, 5a, 5b, 6, 11, 12, 13 all use existing API data or local state. These can be built in parallel with backend work.
+- **Dashboard polish BEFORE responsive:** Fix spacing/alignment on desktop first, then adapt breakpoints. Polishing after responsive creates double work (adjust values, then re-adjust for each breakpoint).
+- **Responsive is the foundation for everything else:** Every v1.3 feature must work on mobile. Responsive work should happen early or in parallel with feature development.
+- **Off-day analytics is the only feature requiring a new backend endpoint:** Everything else either uses existing APIs, derives from existing data, or wires up orphaned endpoints.
+- **Habit detail view can reuse orphaned endpoints:** `GET /habits/{id}/calendar` and `GET /habits/{id}/stats` exist in the backend but the frontend uses different data paths. Wire these up rather than creating new APIs.
+- **6 features need zero backend changes:** Streak leaderboard, uncheck feedback, best/worst day highlights, weekly/monthly rates (existing API), streak-break acknowledgment (existing StatusResponse), and shareable summary are all pure frontend work.
 
-## Build Priority and Phasing Recommendation
+## MVP Definition
 
-### Phase A: Backend Foundation (APIs that unblock frontend work)
+### Must Ship (v1.3 Core)
 
-| Feature | What to Build | Why First |
-|---------|---------------|-----------|
-| Achievement service + API (3) | `achievement_service.py`, GET /achievements endpoint | Unblocks streak milestones and transformation recording |
-| Streak milestone detection (2 backend) | Hook into `update_overall_streak` to detect milestone crossings | Depends on achievement service |
-| Vegeta escalation logic (1 backend) | Missed day detection + severity-filtered quote selection | Independent, high-value |
-| PUT /habits/reorder (7 backend) | Batch sort_order update endpoint | Unblocks drag-and-drop UI |
-| Per-habit calendar + stats API (9) | Two new endpoints | Unblocks calendar popover |
-| Archived habits endpoints (14 backend) | GET /habits/archived + PUT /habits/{id}/restore | Unblocks archive UI |
-| Attribute level-up in response (10 backend) | Enhance check_habit to return level change info | Unblocks level-up animation |
+These features define the milestone. Without them, v1.3 has not achieved its goal.
 
-### Phase B: Pure Frontend Features (existing APIs, no backend needed)
+- [ ] **Responsive mobile layout** -- the primary goal ("daily phone use")
+- [ ] **Dashboard spacing/alignment polish** -- prerequisite for responsive
+- [ ] **Uncheck feedback** (sound + negative XP popup) -- closes obvious interaction symmetry gap
+- [ ] **Streak-break acknowledgment** -- closes feedback gap, surfaces Zenkai mechanic
+- [ ] **Habit detail view** with completion rates, target time, attribute XP -- most-wanted view per PROJECT.md
 
-| Feature | What to Build | Complexity |
-|---------|---------------|------------|
-| Capsule history view (5a) | Scrollable list in Analytics | LOW |
-| Wish history view (5b) | Scrollable list in Analytics | LOW |
-| Per-habit contribution graphs (4) | Custom SVG 90-day grid | MEDIUM |
-| "You're close!" nudge (12) | Conditional banner from todayHabits state | LOW |
-| Daily summary toast (13) | react-hot-toast on last check | LOW |
-| Power level milestones (11) | Before/after comparison + fanfare | LOW |
+### Should Ship (v1.3 Enhanced)
 
-### Phase C: Animations + Visual Polish
+High-value, low-to-medium effort features that round out the polish pass.
 
-| Feature | What to Build | Complexity |
-|---------|---------------|------------|
-| Zenkai recovery animation (6) | Animation overlay on zenkai_activated | LOW |
-| Attribute level-up animation (10 frontend) | Level-up overlay + title reveal | MEDIUM |
-| Streak milestone notifications (2 frontend) | Badge reveal + character quote animation | MEDIUM |
-| Vegeta escalation UI (1 frontend) | Severity-scaled roast display on dashboard | LOW |
+- [ ] **Weekly/monthly completion rate cards** -- low effort, high insight value, existing API
+- [ ] **Streak leaderboard** (personal power rankings) -- pure frontend, thematic, fun
+- [ ] **Shareable daily summary** (copy-to-clipboard) -- low effort, unique differentiator
+- [ ] **Off-day analytics panel** -- medium effort, unique differentiator, strategic value
+- [ ] **Best/worst day highlights** -- low effort, derived from existing calendar data
 
-### Phase D: UI Enhancements
+### Defer (v1.4+)
 
-| Feature | What to Build | Complexity |
-|---------|---------------|------------|
-| Habit drag-and-drop (7 frontend) | dnd-kit sortable list + persist via reorder API | MEDIUM |
-| Calendar day popover (8) | Clickable calendar cells + popover with per-habit data | MEDIUM |
-| Archived habits view (14 frontend) | Settings section with archived list + restore | LOW |
-| Temporary habit date pickers (15) | HabitForm toggle + date inputs | LOW |
-| Custom frequency day picker (16) | Pill-style tappable day buttons | LOW |
-
-### Phase E: Tech Debt + Assets
-
-| Feature | What to Build | Complexity |
-|---------|---------------|------------|
-| Real audio sprites (17) | Source sounds, build sprite, update config | MEDIUM |
-| recharts react-is (18) | Check upstream fix, remove override if possible | LOW |
+- [ ] **Day-of-week pattern analysis** -- medium effort, needs new backend query or heavy frontend compute. Good candidate for next milestone.
+- [ ] **Image-based shareable summary** -- high effort, low relative value vs text
+- [ ] **CSV/PDF export** -- scope creep for a polish pass
+- [ ] **Time-of-day completion patterns** -- over-instrumentation
 
 ## Feature Prioritization Matrix
 
-| Feature | User Value | Implementation Cost | Priority | Existing Infrastructure |
-|---------|------------|---------------------|----------|------------------------|
-| Achievement system (3) | HIGH | MEDIUM | P1 | DB model exists, needs service + API |
-| Streak milestones + badges (2) | HIGH | MEDIUM | P1 | Constants defined, achievement model ready |
-| Vegeta escalation roasts (1) | HIGH | MEDIUM | P1 | Quote severity field exists, needs detection |
-| Capsule history view (5a) | MEDIUM | LOW | P1 | API endpoint exists and returns data |
-| Wish history view (5b) | MEDIUM | LOW | P1 | API endpoint exists and returns data |
-| "You're close!" nudge (12) | HIGH | LOW | P1 | Pure frontend, todayHabits state |
-| Per-habit contribution graphs (4) | MEDIUM | MEDIUM | P1 | API endpoint exists and returns data |
-| Daily summary toast (13) | MEDIUM | LOW | P1 | react-hot-toast already in project |
-| Calendar day popover (8) | MEDIUM | MEDIUM | P2 | Needs API extension for per-habit data |
-| Per-habit calendar + stats API (9) | MEDIUM | MEDIUM | P2 | Standard queries, enables popover |
-| Zenkai recovery animation (6) | MEDIUM | LOW | P2 | Response flag exists, needs overlay |
-| Attribute level-up animation (10) | MEDIUM | MEDIUM | P2 | Backend response enhancement needed |
-| Habit drag-and-drop (7) | MEDIUM | MEDIUM | P2 | sort_order field exists, needs API + dnd-kit |
-| Power level milestones (11) | LOW | LOW | P2 | Pure frontend comparison |
-| Archived habits (14) | LOW | LOW | P2 | Soft delete exists, needs list + restore |
-| Real audio sprites (17) | HIGH | MEDIUM | P2 | Howler.js sprite system in place |
-| Temporary habits (15) | LOW | LOW | P3 | Model fields exist, form update only |
-| Custom frequency picker (16) | LOW | LOW | P3 | Partial UI exists, polish only |
-| recharts tech debt (18) | LOW | LOW | P3 | Override works, check for upstream fix |
+| Feature | User Value | Implementation Cost | Priority |
+|---------|------------|---------------------|----------|
+| Responsive mobile layout | HIGH | HIGH | P1 |
+| Dashboard spacing/alignment polish | HIGH | MEDIUM | P1 |
+| Uncheck feedback | HIGH | LOW | P1 |
+| Streak-break acknowledgment | MEDIUM | LOW | P1 |
+| Habit detail view (expanded) | HIGH | MEDIUM | P1 |
+| Weekly/monthly completion rates | MEDIUM | LOW | P2 |
+| Streak leaderboard | MEDIUM | LOW | P2 |
+| Shareable daily summary | MEDIUM | LOW | P2 |
+| Off-day analytics panel | MEDIUM | MEDIUM | P2 |
+| Best/worst day highlights | LOW | LOW | P2 |
+| Day-of-week pattern analysis | MEDIUM | MEDIUM | P3 |
 
 **Priority key:**
-- P1: High-value features or low-hanging fruit with existing infrastructure
-- P2: Important features that require more work or depend on P1
-- P3: Low-value polish, defer to end
+- P1: Must have -- closes gaps, enables daily phone use, defines the milestone
+- P2: Should have -- adds insight and delight, low-to-medium effort
+- P3: Nice to have -- defer if time is tight
 
 ## Competitor Feature Analysis
 
-| Feature | Habitica | Streaks (iOS) | Atoms (Atomic Habits) | Saiyan Tracker v1.2 Approach |
-|---------|----------|---------------|----------------------|------------------------------|
-| Streak milestones | Generic level-up notification | Streak count only | Simple streaks | DBZ-themed badges with character quotes per milestone (Piccolo at 21, Whis at 60) |
-| Achievement system | 200+ achievements, deep RPG system | None | Minimal | Focused set: transformation unlocks + streak milestones. Quality over quantity. |
-| Missed day feedback | HP loss (punitive) | Streak resets (punitive) | None | Vegeta escalating roasts (humorous, escalating severity). Entertaining, never punishing. |
-| Contribution graph | None | None | None | GitHub-style per-habit 90-day grid. Unique in habit tracker space. |
-| History views | Basic task logs | Calendar only | Minimal | Capsule drop history + wish grant history. Unique gamification artifacts. |
-| Drag-and-drop | Yes | Limited | No | dnd-kit vertical list reorder. Touch + keyboard accessible. |
-| Nudge/motivation | Party pressure (social) | Streak fear | Push notifications | In-app "You're close!" banner + daily summary toast. Positive, not punitive. |
-| Archive/restore | Yes (soft delete) | Yes | No | Soft-delete with archived view + one-click restore. |
-| Temporary habits | No (habits/dailies/todos) | No | No | Start/end date for time-boxed challenges. Unique feature. |
-| Level-up celebrations | Basic "Level X!" toast | None | None | Attribute-specific level-up animation with title reveal ("STR Level 10: Warrior!") |
-| Round number celebrations | None | None | None | Power level milestone fanfare at 1K, 5K, 10K, etc. Unique dopamine moments between transformations. |
-| Audio on every interaction | None | None | None | Full audio sprite with 13+ real sounds. No competitor does this. |
+| Feature | Habitify | Streaks (iOS) | Loop Habit Tracker | Our Approach |
+|---------|----------|---------------|-------------------|--------------|
+| Habit detail view | Full stats page with charts, completion rate, best streak, trend line | Minimal -- just streak count and calendar ring | Detailed stats: frequency histograms, calendar, streaks, score | Bottom sheet (exists) expanded with completion rates, contribution grid (exists), target time, attribute XP total. Faster access than a full page -- one tap from dashboard. |
+| Off-day handling | Skip day, no analytics about impact | Freeze streak, no analytics | No explicit off-day concept | Off-day with reason tagging (exists). ADD: impact analytics showing XP cost, streak saves, and reason breakdown. Unique in the market. |
+| Shareable summary | No built-in share | No share feature | Export to CSV only | Copy-to-clipboard DBZ-themed text summary. No competitor does themed text sharing. |
+| Mobile responsive | Native iOS/Android apps | Native iOS only | Native Android | Web app with Tailwind responsive breakpoints. Must match native feel -- bottom tab bar, 44px touch targets, swipe gestures for bottom sheets. |
+| Completion rate trends | Avg completion rate line graph (weekly/monthly/yearly) behind premium | Basic percentage per habit | Detailed frequency charts and histograms | Period-filtered stat cards with week-over-week comparison. Simple, clear, no premium gate. |
+| Streak ranking | No habit-vs-habit ranking | No ranking (all habits equal) | Habits sortable by various metrics | "Power Rankings" -- habits sorted by streak with DBZ theming (flame icons, position numbers). Personal, not social. |
+| Day-of-week analysis | Mentioned in blog, appears behind premium | No | Yes -- bar chart showing day-of-week patterns | Bar or radar chart in analytics. Available to all (no premium tier in a solo app). |
+
+## Implementation Notes
+
+### Responsive Mobile Layout Strategy
+
+The existing app uses Tailwind CSS v4 with `@theme` tokens (28 color tokens). Key responsive challenges:
+
+1. **Navigation:** Current top nav bar should become a fixed bottom tab bar on mobile (< 768px). Icons for Dashboard, Analytics, Settings. Standard mobile pattern used by Instagram, YouTube, etc.
+2. **HeroSection/MiniHero:** Already uses IntersectionObserver for collapse. On mobile, start with MiniHero (compact) as the default. Hero takes too much viewport on < 640px.
+3. **HabitCard:** Drag handle + checkbox + title + attribute + streak + importance all need to fit in ~375px width. Stack attribute/streak below title on mobile. Ensure drag handle and checkbox are 44px minimum.
+4. **Analytics charts:** All Recharts components wrapped in `<ResponsiveContainer width="100%" height={...}>`. On mobile, charts go full-width with larger touch-friendly tooltips. Reduce chart height on mobile to avoid excessive scrolling.
+5. **Bottom sheets:** `HabitDetailSheet` and `HabitFormSheet` already use bottom sheet pattern -- good for mobile. Ensure max-height respects mobile viewport (use `dvh` units).
+6. **Settings forms:** Stack form fields vertically on mobile. Ensure all inputs have adequate spacing for thumb interaction.
+
+### Shareable Daily Summary Format
+
+```
+SAIYAN TRACKER | March 8, 2026
+================================
+Power Level: 3,247 (Super Saiyan 2)
+Today: 5/6 habits (83%) -- Kaio-ken x10
+Streak: 14 days (+70% XP bonus)
+Dragon Balls: 5/7
+
+Completed:
+  Workout (STR) | Read 20 pages (INT)
+  Drink Water (VIT) | Meditate (KI)
+  Family time (KI)
+
+XP Earned: 125
+================================
+```
+
+Copy via `navigator.clipboard.writeText()`. Button appears on dashboard when >= 1 habit is checked. Show a brief toast confirmation ("Copied to clipboard!") after tap.
+
+### Off-Day Analytics Data Model
+
+| Metric | Data Source | Computation |
+|--------|------------|-------------|
+| Total off-days (period) | OffDay table | COUNT where off_date in period range |
+| Off-days by reason | OffDay table | GROUP BY reason, COUNT each |
+| Estimated XP missed | DailyLog + OffDay | avg(xp_earned from DailyLog) * off-day count in period |
+| Streaks preserved | OffDay + Streak history | Count off-days where the day before and after both had >= 80% completion (streak continued through the off-day) |
+| Off-day frequency | OffDay + DailyLog | off-day count / total days in period |
+
+Backend option: new endpoint `GET /analytics/off-day-impact?period=week|month|all` returning these metrics. Alternatively, extend the existing `/analytics/summary` response to include off-day fields.
+
+### Habit Detail View Expansion
+
+Current `HabitDetailSheet` shows: emoji, title, current streak, best streak, total completions (90 days), contribution grid (90-day binary SVG).
+
+Expand with:
+- **Completion rate** (all-time, this week, this month) -- wire up orphaned `/habits/{id}/stats` endpoint
+- **Total attribute XP earned** -- sum from HabitLog.attribute_xp_awarded for this habit
+- **Target time display** -- from `habit.target_time` (already in schema, never surfaced in UI)
+- **Created date** -- from `habit.created_at` (already in HabitResponse)
+- **Category badge** -- resolve category name/color from `habit.category_id`
+- **Importance and attribute tags** -- already in HabitTodayResponse, just not rendered in the detail sheet
+
+### Streak Leaderboard Layout
+
+Simple ranked list, no new data needed:
+1. Sort `todayHabits` by `streak_current` descending
+2. Display as numbered list: `#1 Workout (14 days) | #2 Drink Water (12 days) | ...`
+3. Flame icon size scales with streak length (small < 7, medium 7-30, large 30+)
+4. Habits with 0 streak shown dimmed at bottom
+5. Placement: new section in Analytics page OR a collapsible panel on Dashboard
 
 ## Sources
 
-- [Reclaim: 10 Best Habit Tracker Apps 2026](https://reclaim.ai/blog/habit-tracker-apps) -- feature expectations and market patterns
-- [Trophy: 20 Productivity App Gamification Examples 2025](https://trophy.so/blog/productivity-gamification-examples) -- gamification design patterns
-- [Habitica](https://habitica.com) -- RPG habit tracker, achievement system and HP-based punishment model reference
-- [dnd-kit](https://dndkit.com/) -- recommended React drag-and-drop library (modular, lightweight, accessible)
-- [dnd-kit sortable preset docs](https://docs.dndkit.com/presets/sortable) -- vertical list reorder pattern
-- [Puck: Top 5 DnD Libraries for React 2026](https://puckeditor.com/blog/top-5-drag-and-drop-libraries-for-react) -- confirms dnd-kit as top choice
-- [@uiw/react-heat-map](https://github.com/uiwjs/react-heat-map) -- heatmap component reference
-- [Knock: Top 9 React Notification Libraries 2026](https://knock.app/blog/the-top-notification-libraries-for-react) -- confirms react-hot-toast and sonner as top choices
-- [LogRocket: React Toast Libraries 2025](https://blog.logrocket.com/react-toast-libraries-compared-2025/) -- react-hot-toast already in project, sufficient for daily summary toast
-- [Howler.js](https://howlerjs.com/) -- audio sprite documentation and best practices
-- [audiosprite GitHub](https://github.com/tonistiigi/audiosprite) -- sprite generation tool for Howler.js
-- [Cohorty: Best Habit Tracker Apps with Reminders 2025](https://www.cohorty.app/blog/best-habit-tracker-apps-with-reminders-smart-notifications-2025) -- nudge patterns and smart reminders
-- [Freesound.org](https://freesound.org/) -- CC0 sound effects source
-- [HabitKit](https://www.habitkit.app/) -- archive/restore UX pattern reference
-- [Habitify](https://habitify.me/) -- nudge timing and smart reminder patterns
+- [Habitify -- Let Data Tell Your Story (Analytics Features)](https://habitify.me/blog/let-data-tell-your-story) -- analytics views, completion rate trends, progress dimensions
+- [RapidNative -- Habit Tracker Calendar UX Best Practices](https://www.rapidnative.com/blogs/habit-tracker-calendar) -- calendar grid design, state indicators, streak counters
+- [Trophy -- Streaks Gamification Case Study 2025](https://trophy.so/blog/streaks-gamification-case-study) -- streak psychology, loss aversion, personal vs social leaderboards
+- [Plotline -- Streaks for Gamification in Mobile Apps](https://www.plotline.so/blog/streaks-for-gamification-in-mobile-apps) -- streak milestone design, gamification patterns
+- [Writing Analytics -- Habit Tracker and Streaks](https://support.writinganalytics.co/guides/habit-tracker-and-streaks) -- off-day handling, streak freeze patterns
+- [James Clear -- The Ultimate Habit Tracker Guide](https://jamesclear.com/habit-tracker) -- fundamental habit tracking principles
+- [Reclaim AI -- Best Habit Tracker Apps 2026](https://reclaim.ai/blog/habit-tracker-apps) -- market feature expectations
+- [GetNerdify -- 10 Mobile App Design Best Practices 2025](https://getnerdify.com/blog/mobile-app-design-best-practices/) -- responsive design, bottom navigation, touch targets
+- [Chop Dawg -- UI/UX Design Trends 2025](https://www.chopdawg.com/ui-ux-design-trends-in-mobile-apps-for-2025/) -- mobile-first design patterns
 
 ---
-*Feature research for: Saiyan Tracker v1.2 PRD Complete*
-*Researched: 2026-03-06*
+*Feature research for: Saiyan Tracker v1.3 QoL Polish*
+*Researched: 2026-03-08*

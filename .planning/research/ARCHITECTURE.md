@@ -1,27 +1,36 @@
-# Architecture Research: v1.2 Feature Integration
+# Architecture Research: v1.3 QoL Feature Integration
 
-**Domain:** Feature integration into existing DBZ habit tracker (v1.2 milestone)
-**Researched:** 2026-03-06
+**Domain:** QoL features for existing DBZ habit tracker (v1.3 -- responsive, habit detail, off-day analytics, shareable summary, enhanced data views)
+**Researched:** 2026-03-08
 **Confidence:** HIGH (based on direct codebase analysis of all touchpoints)
 
-## Existing Architecture Overview
+## Existing Architecture Snapshot
 
 ```
-Frontend (React 19 + Zustand + Motion)
+Frontend (React 19 + Zustand + Motion + Tailwind v4)
  +---------------------------------------------------------+
  |  Pages: Dashboard | Analytics | Settings                |
  |  +---------+  +-----------+  +-----------+              |
  |  |HeroSect.|  |CalHeatmap |  |RewardSect.|              |
- |  |HabitList|  |AttrChart  |  |WishSect.  |              |
- |  |StatsPane|  |PowerChart |  |CategoryS. |              |
- |  |HabitCard|  |StatCards  |  |PrefsS.    |              |
+ |  |MiniHero |  |AttrChart  |  |WishSect.  |              |
+ |  |StatsPanl|  |PowerChart |  |CategoryS. |              |
+ |  |HabitList|  |StatCards  |  |PrefsS.    |              |
+ |  |HabitCard|  |CapsuleHist|  |ArchivedH. |              |
+ |  |HabitDtl |  |WishHist   |  |OffDaySel. |              |
+ |  |NudgeBnr |  |AchievGrid |  |                          |
+ |  |RoastCard|  |DayPopover |  |                          |
  |  +---------+  +-----------+  +-----------+              |
  |                                                         |
- |  Stores: habitStore | powerStore | rewardStore | uiStore|
+ |  Stores: habitStore | powerStore | uiStore              |
+ |          rewardStore | statusStore                      |
  |                                                         |
  |  AnimationPlayer (queue consumer, root-level)           |
- |   -> PerfectDay | CapsuleDrop | DragonBall | Transform  |
- |   -> Shenron | XpPopup | TierChange                     |
+ |   11 event types, 3-tier priority system                |
+ |   Tier 1: transformation, shenron, power_milestone,     |
+ |           zenkai_recovery                               |
+ |   Tier 2: tier_change, perfect_day, capsule_drop,       |
+ |           level_up, streak_milestone                    |
+ |   Tier 3: xp_popup, dragon_ball (inline, bypass queue)  |
  +---------------------------------------------------------+
           |  ky HTTP client (services/api.ts)
           v
@@ -30,506 +39,566 @@ Frontend (React 19 + Zustand + Motion)
  |  9 API Routers:                                         |
  |   habits | analytics | power | quotes | rewards         |
  |   wishes | off-days | categories | settings             |
+ |   achievements | status                                 |
  |                                                         |
- |  Services Layer (pure functions, no session.add):       |
- |   habit_service.check_habit() orchestrates:             |
- |    -> xp_service     (calc_daily_xp, get_attribute_xp)  |
- |    -> streak_service  (update_overall, update_habit)     |
- |    -> capsule_service (roll_capsule_drop)                |
- |    -> dragon_ball_service (award/revoke)                 |
- |    -> power_service   (recalculate, check_transform)    |
+ |  Services Layer:                                        |
+ |   check_habit() orchestrates 10 services                |
+ |   achievement_service (streak/level/transform detect)   |
+ |   off_day_service (mark/cancel with XP clawback)        |
  |                                                         |
- |  15 SQLAlchemy Models (Achievement model exists but     |
- |   has NO service, NO endpoints)                         |
+ |  15 SQLAlchemy Models                                   |
+ |  Tech debt: 2 orphaned endpoints (habit calendar/stats) |
  +---------------------------------------------------------+
           |
           v
  SQLite (saiyan_tracker.db)
 ```
 
-### Critical Data Flow: check_habit()
-
-This is the architectural centerpiece. Every habit tap flows through:
-
-```
-User tap -> habitStore.checkHabit() [optimistic toggle]
-  -> POST /habits/{id}/check
-    -> habit_service.check_habit() [10-step atomic transaction]
-      1. Toggle HabitLog
-      2. Award/claw-back attribute XP
-      3. Update DailyLog (completion rate, tier)
-      4. Check Zenkai recovery (first log of day)
-      5. Update overall + habit streaks
-      6. Recalculate daily XP
-      7. Update power level + transformation
-      8. Handle Dragon Ball award/revoke
-      9. Roll capsule RNG
-     10. Flush (no commit - caller commits)
-    -> API layer: enrich capsule, select quote, shape response
-  <- CheckHabitResponse (18 fields including nested objects)
-  -> habitStore: update local habit state from server
-  -> powerStore.updateFromCheck()
-  -> uiStore.enqueueAnimation() [0-N events queued]
-  -> AnimationPlayer: consume queue sequentially (AnimatePresence mode="wait")
-```
-
-## Integration Analysis: All Features
-
-### Group 1: Backend Service Additions (Hook into check_habit())
-
-These features require new services that plug into the existing `check_habit()` orchestration pipeline.
-
-#### 1. Achievement Service + API
-
-**What exists:** `Achievement` model with `achievement_type`, `achievement_key`, `milestone_type`, `unlocked_at`, `metadata_json`. No service, no endpoints, no relationship used.
-
-**Integration points:**
-- NEW: `backend/app/services/achievement_service.py` -- `check_achievements(db, user_id, result_dict) -> list[Achievement]`
-- MODIFY: `habit_service.check_habit()` -- add Step 10.5: call `check_achievements()` after flush, return new achievements in response
-- MODIFY: `CheckHabitResponse` schema -- add `achievements: list[AchievementDetail] | None`
-- NEW: `backend/app/api/v1/achievements.py` -- `GET /achievements/` (list all unlocked), `GET /achievements/recent` (last 7 days)
-- NEW: `backend/app/schemas/achievement.py` -- `AchievementResponse`, `AchievementDetail`
-- MODIFY: API router registration in `__init__.py`
-
-**Pattern:** Achievement service receives the full `check_habit()` result dict and checks against rules (streak milestones, transformation unlocks, attribute level-ups, perfect day counts). Returns list of newly unlocked achievements. This is a read-then-write pattern: query existing achievements, compare against thresholds, insert new ones.
-
-**Frontend:**
-- MODIFY: `habitStore.checkHabit()` -- read `result.achievements`, enqueue animation events
-- MODIFY: `uiStore.AnimationEvent` type union -- add `{ type: 'achievement'; title: string; description: string }`
-- NEW: `components/animations/AchievementOverlay.tsx`
-- MODIFY: `AnimationPlayer.renderOverlay()` -- add achievement case
-- NEW: `components/analytics/AchievementList.tsx` or `components/settings/AchievementSection.tsx`
-
-#### 2. Vegeta Roast Detection Service
-
-**What exists:** Quote model has `severity` field (mild/medium/savage). `trigger_event` includes "roast". Constants define `VALID_SEVERITIES`. No logic to detect missed days or select severity-scaled roasts.
-
-**Integration points:**
-- NEW: `backend/app/services/roast_service.py` -- `detect_roast_context(db, user_id, local_date) -> RoastContext | None`
-  - Logic: count consecutive missed days (gap between last_active_date and today, minus off-days)
-  - Severity mapping: 1 day = mild, 2-3 days = medium, 4+ days = savage
-- MODIFY: `habits.py` router `select_quote_for_context()` -- add roast priority check (if returning after gap AND is first check of day)
-- MODIFY: Quote query in `select_quote_for_context()` -- filter by `severity` when trigger is "roast"
-- MODIFY: `CheckHabitResponse` -- the existing `quote` field already supports this, no schema change needed
-
-**Pattern:** Roast detection happens at the API layer (not in `check_habit()` service) because it only affects quote selection, not game state. The Zenkai recovery info already computed in Step 4 provides the gap detection data -- reuse `zenkai_info` to determine if a roast is appropriate.
-
-**Frontend:**
-- MODIFY: `CharacterQuote.tsx` -- add Vegeta-specific styling/animation when quote character is "vegeta" and trigger is "roast"
-- No new store changes needed -- quote is already in CheckHabitResponse
-
-#### 3. Streak Milestone Detection
-
-**What exists:** `STREAK_MILESTONES = [3, 7, 21, 30, 60, 90, 365]` constant defined but unused. `streak_service.update_overall_streak()` returns current/best streak. `trigger_event` includes "streak_milestone".
-
-**Integration points:**
-- MODIFY: `streak_service.update_overall_streak()` -- after incrementing streak, check if `new_value in STREAK_MILESTONES`, return `milestone_reached: int | None` in result dict
-- MODIFY: `habit_service.check_habit()` -- pass streak milestone info through to response
-- MODIFY: `CheckHabitResponse` -- add `streak_milestone: int | None`
-- This feeds into Achievement service (streak milestones create achievements)
-
-**Frontend:**
-- MODIFY: `habitStore.checkHabit()` -- check `result.streak_milestone`, enqueue animation
-- MODIFY: `uiStore.AnimationEvent` -- add `{ type: 'streak_milestone'; days: number }`
-- NEW: `components/animations/StreakMilestoneOverlay.tsx`
-- MODIFY: `AnimationPlayer.renderOverlay()` -- add streak_milestone case
-
-#### 4. Attribute Level-Up Detection
-
-**What exists:** `ATTRIBUTE_TITLES` with level thresholds per attribute. `ATTRIBUTE_LEVEL_FORMULA_EXPONENT = 1.5`. XP is awarded in `check_habit()` Step 2. No level-up detection occurs.
-
-**Integration points:**
-- NEW or MODIFY: `backend/app/services/attribute_service.py` -- add `check_attribute_level_up(old_xp, new_xp, attribute) -> LevelUpInfo | None`
-  - Uses formula: `level = floor((xp / 100) ^ (1/1.5))`
-  - Compare old_level vs new_level
-  - Check if new_level matches any `ATTRIBUTE_TITLES` threshold
-- MODIFY: `habit_service.check_habit()` Step 2 -- capture old_xp before award, call `check_attribute_level_up()`, include in response
-- MODIFY: `CheckHabitResponse` -- add `attribute_level_up: AttributeLevelUp | None` with fields `attribute`, `new_level`, `title_unlocked`
-
-**Frontend:**
-- MODIFY: `habitStore.checkHabit()` -- check `result.attribute_level_up`, enqueue animation
-- MODIFY: `uiStore.AnimationEvent` -- add `{ type: 'attribute_level_up'; attribute: string; level: number; title?: string }`
-- NEW: `components/animations/AttributeLevelUpOverlay.tsx`
-
-### Group 2: New API Endpoints (No check_habit() Changes)
-
-#### 5. Drag-and-Drop Reordering
-
-**What exists:** `Habit.sort_order` field (default=0). No reorder endpoint. Frontend `HabitList` renders habits but has no DnD.
-
-**Integration points:**
-- NEW: `PUT /habits/reorder` endpoint in `habits.py` router
-  - Body: `{ habit_ids: list[UUID] }` -- ordered list, index becomes sort_order
-  - Updates `sort_order` for each habit in one transaction
-- MODIFY: `today_list` endpoint -- add `.order_by(Habit.sort_order)` to query
-- NEW: `HabitReorderRequest` schema
-
-**Frontend:**
-- MODIFY: `services/api.ts` -- add `habitsApi.reorder(ids: string[])`
-- MODIFY: `habitStore` -- add `reorderHabits(ids: string[])` action with optimistic reorder
-- MODIFY: `HabitList.tsx` -- integrate `@dnd-kit/core` + `@dnd-kit/sortable` for drag handles
-- NEW dependency: `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`
-
-**Pattern:** Use `@dnd-kit` because it is the standard React DnD library with excellent touch support (critical for mobile-first habit tracker). Optimistic reorder: update local sort order immediately, PUT to API, rollback on failure.
-
-#### 6. Per-Habit Calendar + Stats API
-
-**What exists:** `GET /habits/{id}/contribution-graph` returns daily booleans. No per-habit calendar with detailed stats.
-
-**Integration points:**
-- NEW: `GET /habits/{id}/calendar` endpoint -- returns per-habit daily data for a month (completed dates, streak at each point)
-- NEW: `GET /habits/{id}/stats` endpoint -- returns habit-specific stats (total completions, current streak, best streak, completion rate by weekday)
-- NEW schemas: `HabitCalendarDay`, `HabitStats`
-
-**Frontend:**
-- MODIFY: `services/api.ts` -- add `habitsApi.calendar()`, `habitsApi.stats()`
-- These feed the per-habit contribution graph and calendar popover features
-
-#### 7. Calendar Day Popover (Per-Habit Breakdown)
-
-**What exists:** `CalendarHeatmap` has `selectedDay` state and a basic tooltip showing tier/XP/off-day. No per-habit breakdown.
-
-**Integration points:**
-- NEW: `GET /habits/calendar/day-detail?date=YYYY-MM-DD` endpoint -- returns list of habits due that day with completion status
-- NEW schema: `CalendarDayDetail` with `habits: list[HabitDayStatus]`
-- MODIFY: `CalendarHeatmap.tsx` -- on day click, fetch day detail, render expanded popover with per-habit list
-- NEW: `components/analytics/CalendarDayPopover.tsx` -- shows habit-by-habit breakdown for selected day
-
-**Pattern:** Lazy-load day detail on click (not preloaded for every day). Show loading spinner in popover while fetching. Cache fetched days in component state to avoid refetch.
-
-#### 8. Archived Habits Endpoints
-
-**What exists:** `DELETE /habits/{id}` soft-deletes (sets `is_active = false`). No way to view or restore archived habits.
-
-**Integration points:**
-- NEW: `GET /habits/archived` endpoint -- returns habits where `is_active == False`
-- NEW: `PUT /habits/{id}/restore` endpoint -- sets `is_active = True`
-- NEW schema: `HabitArchivedResponse`
-- MODIFY: `services/api.ts` -- add `habitsApi.archived()`, `habitsApi.restore()`
-
-### Group 3: New Animation Types (Frontend Queue Extension)
-
-These add new animation event types to the existing queue system. Backend detection logic from Group 1 feeds data; these are the visual consumers.
-
-#### 9. Power Level Milestone Celebrations
-
-**Integration points:**
-- MODIFY: `habit_service.check_habit()` -- after Step 7 (power level update), check if power level crossed a milestone (1K, 5K, 10K, 50K, 100K)
-- MODIFY: `CheckHabitResponse` -- add `power_milestone: int | None`
-- MODIFY: `uiStore.AnimationEvent` -- add `{ type: 'power_milestone'; level: number }`
-- NEW: `components/animations/PowerMilestoneOverlay.tsx`
-- MODIFY: `habitStore.checkHabit()` -- enqueue power_milestone animation
-
-#### 10. Zenkai Recovery Animation
-
-**What exists:** `zenkai_activated` field already in `CheckHabitResponse`. `habitStore.checkHabit()` does NOT currently enqueue any animation for Zenkai.
-
-**Integration points:**
-- MODIFY: `habitStore.checkHabit()` -- add Zenkai animation enqueue when `result.zenkai_activated === true`
-- MODIFY: `uiStore.AnimationEvent` -- add `{ type: 'zenkai_recovery'; halvedFrom: number; newStreak: number }`
-- MODIFY: `CheckHabitResponse` -- add `zenkai_halved_from: int | None` (currently only in streak_result, not surfaced to response)
-- NEW: `components/animations/ZenkaiRecoveryOverlay.tsx`
-
-### Group 4: New UI Components (Frontend Only, No Backend Changes)
-
-#### 11. Capsule Drop History View
-
-**What exists:** `GET /analytics/capsule-history` API endpoint returns `CapsuleHistoryItem[]`. `analyticsApi.capsuleHistory()` exists in `services/api.ts`. No UI component renders this data.
-
-**Integration points:**
-- NEW: `components/analytics/CapsuleHistoryList.tsx` -- scrollable list with rarity color coding
-- MODIFY: Analytics page -- add tab or section for capsule history
-- No backend changes needed
-
-#### 12. Wish Grant History View
-
-**What exists:** `GET /analytics/wish-history` API endpoint. `analyticsApi.wishHistory()` exists. No UI.
-
-**Integration points:**
-- NEW: `components/analytics/WishHistoryList.tsx` -- timeline of granted wishes
-- MODIFY: Analytics page -- add tab or section
-- No backend changes needed
-
-#### 13. Per-Habit Contribution Graphs
-
-**What exists:** `GET /habits/{id}/contribution-graph` API endpoint returns `ContributionDay[]` (date + completed boolean). `habitsApi.contributionGraph()` exists. No UI renders it.
-
-**Integration points:**
-- NEW: `components/analytics/ContributionGraph.tsx` -- GitHub-style 90-day grid
-- MODIFY: Analytics page -- add per-habit contribution section with habit selector dropdown
-- No backend changes needed
-
-#### 14. Nudge Banner ("You're Close!")
-
-**Integration points:**
-- NEW: `components/dashboard/NudgeBanner.tsx` -- derived from `habitStore.todayHabits`
-  - Logic: `remaining = todayHabits.filter(h => !h.completed).length`
-  - Show when `remaining === 1 || remaining === 2` AND `todayHabits.length >= 3`
-  - Display: "Just {remaining} more! You got this!" with pulsing animation
-- MODIFY: `Dashboard.tsx` -- render NudgeBanner between StatsPanel and HabitList
-- Pure frontend derivation, no API needed
-
-#### 15. Daily Summary Toast
-
-**Integration points:**
-- MODIFY: `habitStore.checkHabit()` -- after processing, check if all habits are now completed
-  - If `todayHabits.every(h => h.completed)` after update: perfect day (already handled by animation)
-  - If this is a non-perfect final check: summary toast with XP/streak info
-- NEW: `components/dashboard/DailySummaryToast.tsx` -- custom toast with XP earned, streak info, completion rate
-- Uses existing `react-hot-toast` for positioning
-
-#### 16. Temporary Habit UI (Start/End Date)
-
-**What exists:** `Habit` model has `is_temporary`, `start_date`, `end_date` fields. Backend fully supports them. Frontend `HabitForm` sets `start_date` to today on create but does NOT expose `is_temporary` or `end_date`.
-
-**Integration points:**
-- MODIFY: `HabitForm.tsx` -- add "Temporary Habit" toggle in "More options" section
-  - When toggled: show date pickers for start_date and end_date
-  - Set `is_temporary: true` in create/update payload
-- MODIFY: `HabitCard.tsx` -- show visual indicator (badge/icon) for temporary habits
-  - Show remaining days: `end_date - today` countdown
-- No backend changes needed
-
-#### 17. Custom Frequency Day Picker Enhancement
-
-**What exists:** `HabitForm.tsx` already has custom day picker with `DAY_LABELS` and `toggleCustomDay()`. The UI shows Mon-Sun buttons when frequency is "custom".
-
-**Assessment:** The basic UI is ALREADY IMPLEMENTED. However, there is a potential index mismatch bug (see Potential Bugs section). The enhancement needed is visual polish and UX improvements to the existing picker.
-
-#### 18. Archived Habits View + Restore (Frontend)
-
-**Integration points:**
-- NEW: `components/settings/ArchivedHabitsSection.tsx` -- list archived habits with restore button
-- MODIFY: Settings page -- add Archived Habits collapsible section
-- Depends on Group 2 archived habits endpoints
-
-#### 19. Achievement Display (Frontend)
-
-**Integration points:**
-- NEW: `components/analytics/AchievementGrid.tsx` or section -- display unlocked achievements with icons
-- MODIFY: Analytics page -- add achievements section
-- Depends on Group 1 achievement service + API
-
-## Component Responsibilities (New + Modified)
-
-| Component | Type | Responsibility | Communicates With |
-|-----------|------|----------------|-------------------|
-| `achievement_service` | NEW backend | Detect achievements from check_habit result | check_habit(), Achievement model |
-| `roast_service` | NEW backend | Detect missed-day gap, map to severity | streak data, Quote model |
-| `AchievementOverlay` | NEW frontend | Full-screen achievement unlock animation | AnimationPlayer, uiStore |
-| `StreakMilestoneOverlay` | NEW frontend | Streak milestone celebration | AnimationPlayer, uiStore |
-| `AttributeLevelUpOverlay` | NEW frontend | Attribute level-up with title reveal | AnimationPlayer, uiStore |
-| `PowerMilestoneOverlay` | NEW frontend | Power level round-number celebration | AnimationPlayer, uiStore |
-| `ZenkaiRecoveryOverlay` | NEW frontend | Zenkai recovery visual feedback | AnimationPlayer, uiStore |
-| `NudgeBanner` | NEW frontend | "Almost there" motivational banner | habitStore (derived) |
-| `DailySummaryToast` | NEW frontend | End-of-day closure toast | habitStore, react-hot-toast |
-| `CapsuleHistoryList` | NEW frontend | Render capsule drop timeline | analyticsApi |
-| `WishHistoryList` | NEW frontend | Render wish grant timeline | analyticsApi |
-| `CalendarDayPopover` | NEW frontend | Per-habit day breakdown | new API endpoint |
-| `ContributionGraph` | NEW frontend | Per-habit 90-day grid | habitsApi.contributionGraph() |
-| `ArchivedHabitsSection` | NEW frontend | View/restore archived habits | new API endpoints |
-| `AchievementGrid` | NEW frontend | Display unlocked achievements | new API endpoints |
-
-## Modified Data Flows
-
-### Enhanced check_habit() Response Flow
-
-```
-check_habit() existing 10 steps
-  + Step 2.5: Check attribute level-up (old_xp vs new_xp)
-  + Step 5.5: Check streak milestone (current_streak in STREAK_MILESTONES)
-  + Step 7.5: Check power milestone (crossed 1K/5K/10K/50K/100K)
-  + Step 10.5: Check achievements (pass full result to achievement_service)
-
-Enhanced CheckHabitResponse adds:
-  + achievements: list[AchievementDetail] | None
-  + streak_milestone: int | None
-  + attribute_level_up: AttributeLevelUp | None
-  + power_milestone: int | None
-  + zenkai_halved_from: int | None
-
-habitStore.checkHabit() animation enqueue additions:
-  + if result.achievements -> enqueue per achievement
-  + if result.streak_milestone -> enqueue streak_milestone
-  + if result.attribute_level_up -> enqueue attribute_level_up
-  + if result.power_milestone -> enqueue power_milestone
-  + if result.zenkai_activated -> enqueue zenkai_recovery
+## Integration Plan: v1.3 Features
+
+### Feature 1: Responsive / Mobile Design
+
+**What changes:** CSS only. No new components, no new state, no new API calls.
+
+**Integration approach:** The app already uses mobile-first patterns (bottom tab bar at 64px, FAB button at bottom-right, fixed-position elements). The gap is that some layouts assume desktop widths and don't adapt gracefully.
+
+**Components to modify:**
+
+| Component | Current Issue | Fix |
+|-----------|--------------|-----|
+| `AppShell` | No max-width constraint | Add `max-w-lg mx-auto` or `max-w-xl mx-auto` for tablet/desktop centering |
+| `HeroSection` | Wide layout, large avatar area | Stack vertically below `sm:`, scale SaiyanAvatar + AuraGauge down |
+| `MiniHero` | Fixed sticky bar works but no safe-area | Add safe-area-inset-top padding |
+| `StatsPanel` | Horizontal stat cards in a row | 2-column grid on mobile, 4-column on `md:` |
+| `HabitCard` | Functional but cramped on <360px screens | Reduce gap/padding at base, increase at `sm:` |
+| `AttributeGrid` | 4-column layout | 2-column at base, 4-column at `sm:` |
+| `CalendarHeatmap` | Fixed cell sizes, overflows narrow screens | Horizontal scroll wrapper with `overflow-x-auto` |
+| `ContributionGrid` | 90-day grid fixed width | `overflow-x-auto` with scroll snap |
+| `BottomTabBar` | Already mobile-appropriate | Add `pb-safe` for notched phone safe area |
+| `Analytics` page | All sections stack fine but some charts are wide | Wrap Recharts in responsive containers |
+| `HabitDetailSheet` | `max-h-[70vh]` is fine, width is `left-0 right-0` (full) | Works on mobile already |
+| `HabitFormSheet` | Bottom sheet, likely full-width | Verify it works on narrow screens |
+
+**Key pattern:** Tailwind v4 default breakpoints: `sm:640px`, `md:768px`, `lg:1024px`. Do NOT add custom breakpoints. Base styles = mobile (phone), then progressively enhance.
+
+**Safe area support to add to `index.css`:**
+```css
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+}
 ```
 
-### Animation Queue Extension
+**Touch targets:** Verify all interactive elements are at least 44x44px (Apple HIG) or 48x48dp (Material). The existing `HabitCard` is tappable on the full card area (good), but the drag handle (`GripVertical` at `w-4 h-4`) and menu button need padding review.
+
+**No new stores, no new API calls, no backend changes.** Pure presentational.
+
+---
+
+### Feature 2: Habit Detail View (Full Version)
+
+**What exists:** `HabitDetailSheet` is a Motion-animated bottom sheet showing:
+- Habit emoji + title + close button
+- 3 stat cards: Current Streak, Best Streak, Completions (from contribution data)
+- 90-day `ContributionGrid`
+- Legend (completed/missed)
+
+The sheet is opened from `HabitCard` via local `showDetail` state. Data is fetched with local `useState` + `useEffect` (not in Zustand).
+
+**What v1.3 adds:** Target time display, attribute XP earned, completion rate, streak history timeline.
+
+**Data sources -- what already exists vs what's new:**
+
+| Data | Existing? | Source |
+|------|-----------|--------|
+| Contribution graph (90d) | YES | `GET /habits/{id}/contribution-graph` -- already used |
+| Current/best streak | YES | `HabitTodayResponse.streak_current`, `streak_best` -- passed as props |
+| Target time | YES | `HabitTodayResponse.target_time` -- available but not displayed |
+| Per-habit calendar | YES (orphaned) | `GET /habits/{id}/calendar` -- endpoint exists, not wired to frontend |
+| Per-habit stats | YES (orphaned) | `GET /habits/{id}/stats` -- endpoint exists, not wired to frontend |
+| Total attribute XP for habit | PARTIAL | Need to aggregate from HabitLog or add to stats endpoint |
+| Streak history timeline | NO | Need new backend query or derive from contribution data |
+
+**Component changes:**
+
+| Component | Change Type | Details |
+|-----------|------------|---------|
+| `HabitDetailSheet` | MODIFY | Add sections: target time badge, attribute XP total, lifetime completion rate, streak timeline. Accept `target_time` and `attribute` as new props from `HabitCard`. |
+| `HabitCard` | MODIFY | Pass `habit.target_time` and `habit.attribute` to `HabitDetailSheet` |
+| `StreakTimeline` | NEW | Small visual component showing streak periods as colored bars on a timeline. Derives from contribution graph data (consecutive completed days = streak segments). |
+
+**State management:** Keep the existing pattern -- local `useState` + `useEffect` fetch inside `HabitDetailSheet`. This is read-only view data with no cross-component dependencies. Adding it to Zustand would be an anti-pattern (see Anti-Patterns section).
+
+**API additions to `services/api.ts`:**
+```typescript
+// Wire the orphaned endpoints
+habitStats: (id: string) => api.get(`habits/${id}/stats`).json<HabitStats>(),
+habitCalendar: (id: string, month: string) =>
+  api.get(`habits/${id}/calendar`, { searchParams: { month } }).json<HabitCalendarDay[]>(),
+```
+
+**New types needed:**
+```typescript
+interface HabitStats {
+  total_completions: number;
+  total_attribute_xp: number;
+  completion_rate: number;        // 0.0-1.0, lifetime
+  avg_weekly_completions: number;
+  created_at: string;
+}
+
+interface HabitCalendarDay {
+  date: string;
+  completed: boolean;
+  attribute_xp_awarded: number;
+}
+```
+
+**Backend work:** Verify the orphaned `GET /habits/{id}/stats` endpoint returns the data needed. If it's missing `total_attribute_xp`, add a SUM query on `HabitLog.attribute_xp_awarded` filtered by habit_id. This is a small modification to an existing endpoint.
+
+**Streak timeline derivation:** Rather than a new backend endpoint, derive streak segments client-side from the contribution graph data. Walk the `ContributionDay[]` array and group consecutive `completed: true` days into segments. This avoids another API call and the data is already fetched.
+
+---
+
+### Feature 3: Off-Day Analytics
+
+**What exists:**
+- `OffDay` model: `id`, `user_id`, `off_date`, `reason` (sick/vacation/rest/injury/other), `notes`, `created_at`
+- `mark_off_day()` service: reverses completed habits, claws back XP, revokes dragon balls. Returns `{ off_date, habits_reversed, xp_clawed_back }` but does NOT persist these impact numbers on the OffDay record
+- Frontend: `offDaysApi.list(month?)` fetches off-days, `OffDaySelector` in Settings allows marking off-days
+- Calendar heatmap already shows `is_off_day` on `CalendarDay` type
+
+**What v1.3 adds:** Aggregate analytics about off-day usage (frequency, reason breakdown, impact on progress).
+
+**Backend -- new endpoint:**
+
+| Endpoint | Method | Response |
+|----------|--------|----------|
+| `GET /analytics/off-day-summary` | GET | `OffDayAnalytics` |
+
+**Schema:**
+```python
+class OffDayAnalytics(BaseModel):
+    total_off_days: int
+    by_reason: dict[str, int]       # {"sick": 3, "rest": 5, "vacation": 2}
+    by_month: list[MonthCount]      # [{month: "2026-01", count: 2}, ...]
+    avg_days_between: float | None  # average gap between off-days
+    longest_gap_without: int        # longest stretch without an off-day
+```
+
+**Critical pitfall -- XP clawback data not persisted:** The `mark_off_day()` service computes `habits_reversed` and `xp_clawed_back` but only returns them in the response -- they are NOT stored on the `OffDay` model. Two options:
+
+- **(A) Add columns to OffDay (recommended):** Add `habits_reversed: int` and `xp_clawed_back: int` columns with default 0. Modify `mark_off_day()` to set them before flush. Small Alembic migration. Existing rows get default 0 (acceptable -- historical data loss is minimal).
+- **(B) Skip XP impact in analytics:** Only show count/reason/frequency data, not XP impact. Simpler but less useful.
+
+Recommend option A. The migration is trivial and the data is already computed.
+
+**Frontend -- new component:**
+
+| Component | Type | Location |
+|-----------|------|----------|
+| `OffDayAnalyticsCard` | NEW | Analytics page, after `StatCards` section |
+
+**Rendering:** Reason breakdown as a simple horizontal stacked bar or pie chart (Recharts is already installed). Monthly frequency as small text stats. No complex charts needed -- this is supplementary data.
+
+**Data fetching:** Add `offDaySummary()` to `analyticsApi`. Fetch in the Analytics page alongside existing data. Can be added to `useAnalyticsData` hook or fetched independently in the component.
+
+---
+
+### Feature 4: Shareable Daily Summary
+
+**What exists:**
+- `showDailySummary()` in `habitStore.ts` fires a toast when all habits are checked, showing completion rate, tier, and XP
+- `habitStore.todayHabits` has all habit data (completed status, titles, emojis)
+- `powerStore` has current power level and transformation name
+- The daily summary toast uses `react-hot-toast` custom rendering
+
+**What v1.3 adds:** Copy-to-clipboard text recap of the day.
+
+**This is entirely frontend. No backend changes.**
+
+**Data flow:**
+```
+User taps "Share" button
+    |
+    v
+Read from stores (one-shot, no subscription needed):
+  habitStore.getState().todayHabits -> completed/total
+  powerStore.getState() -> powerLevel, transformation
+    |
+    v
+formatDailySummary() -> text string
+    |
+    v
+navigator.clipboard.writeText(text)
+    |
+    v
+toast.success("Copied to clipboard!")
+```
+
+**Where to place the Share button:**
+
+| Location | Trigger | Pros | Cons |
+|----------|---------|------|------|
+| `StatsPanel` | Manual button always visible | Available anytime, discoverable | Button clutter in stats area |
+| Daily summary toast | Auto-appears when all habits checked | Natural timing, contextual | Only available at 100% or final check |
+| Both | -- | Best of both | Slightly more implementation |
+
+**Recommendation:** Add to `StatsPanel` as a small icon button (share/clipboard icon). Also add a "Copy" button to the daily summary toast. Two small touch points, no component bloat.
+
+**New utility file:**
+```typescript
+// utils/shareSummary.ts
+export function formatDailySummary(
+  habits: HabitTodayResponse[],
+  powerLevel: number,
+  transformation: string,
+): string {
+  const completed = habits.filter(h => h.completed).length;
+  const total = habits.length;
+  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const streakEmoji = pct === 100 ? ' | Perfect Day' : '';
+  return [
+    `Saiyan Tracker | ${pct}% (${completed}/${total})${streakEmoji}`,
+    `Power Level: ${powerLevel.toLocaleString()} | ${transformation}`,
+  ].join('\n');
+}
+```
+
+---
+
+### Feature 5: Enhanced Data Views
+
+**What exists:**
+- `AnalyticsSummary`: flat numbers -- `avg_completion`, `perfect_days`, `longest_streak`, `total_xp`, `days_tracked` with period filter (week/month/all)
+- `StatCards` renders the summary
+- `CalendarHeatmap` shows daily tiers by month
+- `AttributeChart` and `PowerLevelChart` exist (Recharts)
+- Recharts is installed and working (react-is@19 peer dep resolved in v1.2)
+
+**What v1.3 adds:**
+1. Weekly/monthly completion rate trend (time series)
+2. Streak leaderboard (per-habit streak ranking)
+3. Best/worst day-of-week patterns
+
+**Backend -- 3 new endpoints:**
+
+| Endpoint | Returns | Query Logic |
+|----------|---------|-------------|
+| `GET /analytics/completion-trend?period=week\|month&range=12` | `CompletionTrendPoint[]` | Group DailyLog by ISO week or month, avg completion_rate per group |
+| `GET /analytics/streak-leaderboard` | `StreakLeaderboardEntry[]` | Join Habit + per-habit streak data, order by current_streak desc |
+| `GET /analytics/day-patterns` | `DayPattern[]` | Group DailyLog by day-of-week (Python `date.weekday()`), avg completion |
+
+**Schemas:**
+```python
+class CompletionTrendPoint(BaseModel):
+    period_label: str        # "W10" or "Mar" or "2026-03"
+    completion_rate: float
+    xp_earned: int
+    days_tracked: int
+
+class StreakLeaderboardEntry(BaseModel):
+    habit_id: str
+    habit_title: str
+    habit_emoji: str
+    attribute: str
+    current_streak: int
+    best_streak: int
+
+class DayPattern(BaseModel):
+    day_of_week: int         # 0=Monday ... 6=Sunday (Python weekday())
+    day_name: str            # "Monday", "Tuesday", ...
+    avg_completion_rate: float
+    total_days: int
+```
+
+**Frontend -- 3 new components:**
+
+| Component | Type | Chart Library | Location |
+|-----------|------|---------------|----------|
+| `CompletionTrendChart` | NEW | Recharts `LineChart` | Analytics page |
+| `StreakLeaderboard` | NEW | Plain list (no chart needed) | Analytics page |
+| `DayPatternChart` | NEW | Recharts `BarChart` | Analytics page |
+
+**State/fetching:** Extend `useAnalyticsData` hook to fetch these three endpoints alongside existing data. They all share the same lifecycle (fetch on mount + period change).
+
+**API additions:**
+```typescript
+// Add to analyticsApi in services/api.ts
+completionTrend: (period: 'week' | 'month', range?: number) =>
+  api.get('analytics/completion-trend', { searchParams: { period, ...(range ? { range } : {}) } })
+    .json<CompletionTrendPoint[]>(),
+streakLeaderboard: () =>
+  api.get('analytics/streak-leaderboard').json<StreakLeaderboardEntry[]>(),
+dayPatterns: () =>
+  api.get('analytics/day-patterns').json<DayPattern[]>(),
+```
+
+---
+
+### Feature 6: Dashboard Decluttering + Feedback Gaps
+
+**Uncheck feedback:** Currently unchecking plays `undo` sound but has no visual indicator. Add a brief "Unchecked" text flash on the HabitCard (similar to XpPopup but for undo). Modify `HabitCard.handleTap()` to show a brief label when `result.is_checking === false`.
+
+**Streak-break acknowledgment:** When `habitStore.fetchToday()` returns habits with lower `streak_current` than the previous render, show a brief toast acknowledging the break. Compare previous vs new streak values in the store update. This is subtle -- not an animation overlay, just a small toast.
+
+**Dashboard spacing/alignment:** CSS-only adjustments to padding, gaps, and alignment across dashboard components. Part of the responsive work in Feature 1.
+
+**No new stores, no new API calls for these.**
+
+---
+
+## Component Boundaries Summary
+
+### New Components
+
+| Component | Responsibility | Data Source | Location |
+|-----------|---------------|-------------|----------|
+| `StreakTimeline` | Visual streak segments for a habit | Derived from ContributionDay[] | Inside HabitDetailSheet |
+| `OffDayAnalyticsCard` | Off-day frequency and reason breakdown | `analyticsApi.offDaySummary()` | Analytics page |
+| `CompletionTrendChart` | Line chart of weekly/monthly completion rates | `analyticsApi.completionTrend()` | Analytics page |
+| `StreakLeaderboard` | Ranked list of habits by streak | `analyticsApi.streakLeaderboard()` | Analytics page |
+| `DayPatternChart` | Bar chart of avg completion by day-of-week | `analyticsApi.dayPatterns()` | Analytics page |
+| `ShareButton` | Copy daily summary to clipboard | Reads habitStore + powerStore | StatsPanel |
+
+### Modified Components
+
+| Component | What Changes | Why |
+|-----------|-------------|-----|
+| `HabitDetailSheet` | Add target time, attribute XP, completion rate sections, embed StreakTimeline | Expand from minimal to full detail view |
+| `HabitCard` | Pass additional props to HabitDetailSheet, add uncheck feedback flash | Support expanded detail + feedback gap |
+| `StatsPanel` | Add ShareButton | Shareable summary trigger |
+| `Analytics` page | Add 4 new sections (off-day, trend, leaderboard, patterns) | Enhanced data views |
+| `useAnalyticsData` hook | Fetch 4 new endpoints | Data for new analytics components |
+| ~10 components | Responsive Tailwind class adjustments | Mobile design |
+| `index.css` | Safe area utility classes | Phone notch support |
+| `services/api.ts` | Wire orphaned endpoints + add new analytics endpoints | Backend connectivity |
+| `types/index.ts` | Add new response types | Type safety |
+
+## Data Flow: New Features
+
+### Habit Detail (expanded)
 
 ```
-Existing AnimationEvent types (7):
-  tier_change | perfect_day | capsule_drop | dragon_ball |
-  transformation | xp_popup | shenron
-
-New AnimationEvent types (5):
-  achievement | streak_milestone | attribute_level_up |
-  power_milestone | zenkai_recovery
-
-QUEUED_TYPES set in AnimationPlayer must include new overlay types.
-AnimationPlayer.renderOverlay() switch must handle new cases.
+User taps chart icon on HabitCard
+    |
+    v
+HabitCard sets showDetail=true (local state)
+    |
+    v
+HabitDetailSheet mounts, fires parallel fetches:
+  habitsApi.contributionGraph(id, 90)  -- existing, already works
+  habitsApi.habitStats(id)             -- wire orphaned endpoint
+    |
+    v
+Renders: target time (from props), streak stats, attribute XP,
+         completion rate, contribution grid, streak timeline (derived)
 ```
 
-### New Independent Data Flows
+### Off-Day Analytics
 
 ```
-Drag-and-drop reorder:
-  User drag -> habitStore.reorderHabits() [optimistic] -> PUT /habits/reorder -> confirm/rollback
-
-Calendar day detail:
-  Day click -> CalendarHeatmap -> fetch GET /habits/calendar/day-detail?date=X -> CalendarDayPopover
-
-Archived habits:
-  Settings -> ArchivedHabitsSection -> GET /habits/archived -> render list
-  Restore click -> PUT /habits/{id}/restore -> refetch list
-
-Nudge banner (pure derived state):
-  habitStore.todayHabits -> NudgeBanner derives remaining count -> conditional render
+Analytics page mounts
+    |
+    v
+useAnalyticsData fires all fetches including:
+  analyticsApi.offDaySummary()  -- new endpoint
+    |
+    v
+OffDayAnalyticsCard renders: reason breakdown bar, count, frequency
 ```
 
-## Suggested Build Order (Dependency-Aware)
+### Shareable Summary
 
-### Phase 1: Backend Detection Services
+```
+User taps Share button in StatsPanel
+    |
+    v
+Read one-shot from stores (no subscription):
+  habitStore.getState().todayHabits
+  powerStore.getState().powerLevel + transformation
+    |
+    v
+formatDailySummary() -> clipboard text
+    |
+    v
+navigator.clipboard.writeText(text)
+    |
+    v
+toast.success("Copied!")
+```
 
-Build order within phase:
+### Enhanced Analytics
 
-1. **Streak milestone detection** -- modify `streak_service.update_overall_streak()`, simplest change (1 constant lookup)
-2. **Attribute level-up detection** -- new function in `attribute_service`, requires XP math
-3. **Power milestone detection** -- add to `power_service`, simple threshold crossing check
-4. **Achievement service** -- depends on all above detections to populate achievement types
-5. **Roast detection service** -- independent, reuses Zenkai gap detection data
-6. **Reorder endpoint** -- independent, new `PUT /habits/reorder`
-7. **Calendar day-detail endpoint** -- independent, new query endpoint
-8. **Archived habits endpoints** -- independent, `GET /habits/archived` + `PUT /habits/{id}/restore`
-9. **Per-habit calendar/stats endpoints** -- independent, new query endpoints
+```
+Analytics page, period selector changes
+    |
+    v
+useAnalyticsData refetches:
+  analyticsApi.summary(period)            -- existing
+  analyticsApi.completionTrend('week', 12) -- new
+  analyticsApi.streakLeaderboard()         -- new
+  analyticsApi.dayPatterns()               -- new
+  analyticsApi.offDaySummary()             -- new
+    |
+    v
+Each chart component renders independently
+```
 
-**Rationale:** Detection services must exist before frontend can consume their data. Achievement service depends on streak/attribute/power detections being in the response. Roast and CRUD endpoints are independent.
+## Recommended Build Order
 
-### Phase 2: check_habit() Response Extension
+The ordering is driven by dependency chains, risk profile, and daily-use impact.
 
-1. **Extend CheckHabitResponse schema** -- add all new optional fields
-2. **Wire detections into check_habit()** -- insert new steps (2.5, 5.5, 7.5, 10.5)
-3. **Update API layer** -- shape new response fields in `check_habit_endpoint()`
-4. **Update roast logic in quote selection** -- modify `select_quote_for_context()`
+### Phase 1: Responsive Design
 
-**Rationale:** All backend detections feed through one response. Extending the schema and wiring in one phase prevents partial integration states.
+**Scope:** CSS-only changes across ~10 existing components + safe area utilities.
+**Dependencies:** None.
+**Risk:** Zero functional risk -- purely presentational.
+**Why first:** Highest daily-use impact. Sergio uses this on his phone. Pure CSS means no integration risk. Can be verified by resizing browser / device preview. Unblocks comfortable phone use for all subsequent features.
 
-### Phase 3: Animation Overlays (frontend)
+### Phase 2: Backend Endpoints
 
-1. **Extend `AnimationEvent` type union** -- add 5 new event types
-2. **Update `QUEUED_TYPES` set** in AnimationPlayer
-3. **Build overlay components** in dependency order:
-   - `ZenkaiRecoveryOverlay` (simplest, single message)
-   - `StreakMilestoneOverlay` (number + message)
-   - `PowerMilestoneOverlay` (number + celebration)
-   - `AttributeLevelUpOverlay` (attribute + level + optional title)
-   - `AchievementOverlay` (title + description + icon)
-4. **Update `renderOverlay()` switch** in AnimationPlayer
-5. **Update `habitStore.checkHabit()`** -- add enqueue calls for new event types
+**Scope:** 4 new analytics endpoints + 1 OffDay model migration + verify/fix 2 orphaned habit endpoints.
+**Dependencies:** None (backend-only).
+**Risk:** Low -- all queries against existing models. Migration is additive (2 nullable columns).
+**Why second:** All frontend features in Phases 3-5 depend on backend data. Building backend first means frontend phases proceed without blocks.
 
-**Rationale:** Animation components are independent of each other but all depend on the extended AnimationEvent type. Build simplest first to validate the pattern.
+| Endpoint | Feature It Unblocks |
+|----------|---------------------|
+| Verify `GET /habits/{id}/stats` | Habit detail (Phase 3) |
+| `GET /analytics/off-day-summary` | Off-day analytics (Phase 4) |
+| `GET /analytics/completion-trend` | Trend chart (Phase 4) |
+| `GET /analytics/streak-leaderboard` | Streak ranking (Phase 4) |
+| `GET /analytics/day-patterns` | Day pattern chart (Phase 4) |
+| OffDay model migration (add `habits_reversed`, `xp_clawed_back`) | Off-day analytics accuracy |
 
-### Phase 4: Dashboard Enhancements
+### Phase 3: Habit Detail View
 
-1. **NudgeBanner** -- pure derived state, no API dependency
-2. **DailySummaryToast** -- hooks into existing checkHabit flow
-3. **HabitForm enhancements** -- temporary habit toggle + date pickers
-4. **HabitCard badges** -- temporary habit indicator, streak milestone badges
+**Scope:** Expand `HabitDetailSheet`, add `StreakTimeline` sub-component, wire to backend stats endpoint.
+**Dependencies:** Phase 2 (backend stats endpoint).
+**Risk:** Low -- modifying one existing component + one new small component.
+**Why third:** Self-contained change touching only `HabitDetailSheet` and `HabitCard`. Provides immediate visible value.
 
-**Rationale:** Dashboard features are independent and user-facing. NudgeBanner is trivial. Form enhancements use existing backend fields.
+### Phase 4: Off-Day Analytics + Enhanced Data Views
 
-### Phase 5: Drag-and-Drop + Analytics Views
+**Scope:** 4 new analytics components on the Analytics page.
+**Dependencies:** Phase 2 (all analytics endpoints).
+**Risk:** Low -- independent read-only display components. Recharts is proven in the codebase.
+**Why fourth:** All components are independent of each other; can be built as parallel sub-tasks. Largest batch of new components but all follow the same pattern (fetch + render chart).
 
-1. **Install @dnd-kit** -- add dependency
-2. **HabitList DnD** -- integrate sortable with optimistic reorder
-3. **CapsuleHistoryList** -- render existing API data
-4. **WishHistoryList** -- render existing API data
-5. **ContributionGraph** -- render existing API data
-6. **CalendarDayPopover** -- depends on Phase 1 day-detail endpoint
+### Phase 5: Shareable Summary + Feedback Gaps + Polish
 
-**Rationale:** DnD is the highest-complexity frontend feature. History views are data-display-only (API already exists). Group them because they are all independent UI additions.
-
-### Phase 6: Settings + Achievement Display + Polish
-
-1. **ArchivedHabitsSection** -- depends on Phase 1 endpoints
-2. **AchievementGrid** -- display unlocked achievements
-3. **Custom frequency day picker bug fix** -- verify 0-indexed vs 1-indexed day mapping
-4. **Audio sprites** for new animation types
-5. **Tech debt: recharts react-is resolution**
+**Scope:** Copy-to-clipboard utility, ShareButton, uncheck feedback flash, streak-break acknowledgment toast, dashboard spacing.
+**Dependencies:** None (frontend-only, uses existing data).
+**Risk:** Minimal -- small additions, no structural changes.
+**Why last:** Smallest scope, lowest risk, no blocking dependencies. Polish layer on top of everything else.
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Bloating check_habit() With Inline Feature Logic
+### Anti-Pattern 1: New Zustand Stores for Read-Only View Data
 
-**What people do:** Put achievement checking, roast detection, milestone checking directly inside `check_habit()` as inline code.
-**Why it is wrong:** `check_habit()` is already 180+ lines orchestrating 10 services. Adding inline logic makes it untestable and unmaintainable.
-**Do this instead:** Create discrete service functions (`check_achievements()`, `check_streak_milestone()`) that receive the result dict and return additional data. Keep `check_habit()` as an orchestrator that calls composable functions.
+**What people do:** Create `habitDetailStore` or `analyticsDetailStore` for the new analytics data.
+**Why it's wrong:** This data is fetched once on component mount, displayed, and discarded when the component unmounts. Stores add subscription overhead, stale-data risks, and complexity for zero benefit.
+**Do this instead:** Local `useState` + `useEffect` in the component, matching the existing `HabitDetailSheet` pattern. The `useAnalyticsData` hook is the right abstraction for analytics fetches -- extend it rather than creating new stores.
 
-### Anti-Pattern 2: Fetching Day Detail for Every Calendar Cell
+### Anti-Pattern 2: Creating a New Route for Habit Detail
 
-**What people do:** Preload per-habit breakdown for every day in the calendar month.
-**Why it is wrong:** 30 API calls on calendar render. Most days will never be clicked.
-**Do this instead:** Lazy-load day detail on click. Cache fetched days in component state. Show a loading indicator in the popover.
+**What people do:** Add `/habits/:id` as a separate page.
+**Why it's wrong:** On mobile, navigating away from the dashboard loses scroll position, feels slow, and breaks the "tap to peek" interaction. The bottom sheet pattern is already implemented and correct.
+**Do this instead:** Keep `HabitDetailSheet` as a bottom sheet over the dashboard. Expand its content, not its navigation pattern.
 
-### Anti-Pattern 3: Bypassing the Animation Queue
+### Anti-Pattern 3: Client-Side Analytics Computation
 
-**What people do:** Fire new animations (achievement, streak milestone) directly from components instead of going through `uiStore.enqueueAnimation()`.
-**Why it is wrong:** The existing system uses `AnimatePresence mode="wait"` for sequential playback. Bypassing creates visual chaos where overlays stack.
-**Do this instead:** All new animation types go through `uiStore.enqueueAnimation()`. Add new types to `QUEUED_TYPES` set. The AnimationPlayer handles sequencing automatically.
+**What people do:** Fetch all DailyLogs and compute trends/patterns in JavaScript.
+**Why it's wrong:** As data grows (months of usage), shipping all raw records to the client wastes bandwidth and makes the browser do SQL's job. Also duplicates aggregation logic.
+**Do this instead:** Backend computes aggregates via SQL queries. Frontend receives pre-computed data and renders charts.
 
-### Anti-Pattern 4: Separate API Calls for Each Detection
+### Anti-Pattern 4: Adding Loading Spinners to Primary Interactions
 
-**What people do:** Add `GET /achievements/check`, `GET /streaks/milestone-check` as separate endpoints called after each habit check.
-**Why it is wrong:** Creates race conditions, N+1 API calls, and the frontend must coordinate multiple responses.
-**Do this instead:** All detections happen inside the `check_habit()` transaction. The single `CheckHabitResponse` carries all new data. One request, one response, one source of truth.
+**What people do:** Add loading states to the share button or uncheck feedback that block interaction.
+**Why it's wrong:** The app's core value is instant feedback. Clipboard copy via `navigator.clipboard.writeText()` is synchronous in practice. Uncheck feedback should fire optimistically.
+**Do this instead:** Clipboard write -> immediate toast. Uncheck visual -> immediate flash alongside the existing optimistic toggle.
 
-### Anti-Pattern 5: Global Store for Transient UI State
+### Anti-Pattern 5: Over-Engineering Responsive Breakpoints
 
-**What people do:** Add `nudgeBannerVisible`, `dailySummaryShown` to Zustand stores.
-**Why it is wrong:** These are derived from existing state (`todayHabits`). Duplicating derivable state creates sync bugs.
-**Do this instead:** Derive in the component: `const remaining = todayHabits.filter(h => !h.completed).length`. Use component-local state for dismiss behavior.
+**What people do:** Add custom breakpoints, create separate mobile/desktop component variants, or use CSS container queries everywhere.
+**Why it's wrong:** The app is mobile-first for a single user. One layout that scales up is sufficient. Maintaining two component trees doubles the code for no user benefit.
+**Do this instead:** Base styles = mobile. Use `sm:` and `md:` for minor enhancements on wider screens. The `max-w-lg mx-auto` on AppShell keeps it phone-shaped even on desktop.
 
-### Anti-Pattern 6: Putting DnD State in Zustand
+### Anti-Pattern 6: Fetching Streak History as a Separate Endpoint
 
-**What people do:** Store drag-in-progress state, drag handle positions, and overlay coordinates in the global store.
-**Why it is wrong:** Drag state changes at 60fps during active drag. Zustand updates trigger React re-renders. This creates jank.
-**Do this instead:** Let `@dnd-kit` manage its own drag state internally. Only commit the final order to Zustand + API on `onDragEnd`.
+**What people do:** Create `GET /habits/{id}/streak-history` returning start/end/length of each streak.
+**Why it's wrong:** This data can be derived from the contribution graph data already being fetched. Adding another round-trip for derivable data adds latency.
+**Do this instead:** Walk the `ContributionDay[]` array client-side. Group consecutive `completed: true` days into streak segments. This is O(n) where n=90 and runs once on mount.
 
-## Potential Bug: Custom Day Index Mismatch
+## Integration Points
 
-The frontend `HabitForm.tsx` uses 0-indexed days (Mon=0 through Sun=6 based on array index in `DAY_LABELS`). The backend `get_habits_due_on_date()` uses `target.isoweekday()` which returns Mon=1 through Sun=7. If a user selects Monday (index 0) in the frontend, the backend checks `0 in custom_days` against `isoweekday() == 1`, which will never match.
+### Internal Boundaries
 
-**This must be verified and fixed** before adding any frequency-related features. Either:
-- Frontend should save 1-indexed values (Mon=1) -- align with `isoweekday()`
-- Or backend should convert to 0-indexed before comparison
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| `HabitDetailSheet` <-> `habitsApi` | Direct fetch (local state) | Existing pattern. Keep it. |
+| `Analytics` page <-> `useAnalyticsData` | Hook manages all analytics fetches | Extend hook with new endpoints. Single loading/error state for all analytics data. |
+| `ShareButton` <-> stores | One-shot `getState()` read | No subscriptions. Read current values at click time. |
+| New analytics endpoints <-> existing models | SQL queries on DailyLog, OffDay, HabitLog, Streak | All models exist. No new tables. Only OffDay gets 2 new columns. |
 
-## Summary of Touchpoints
+### Backend Model Change
 
-| Existing File | Modifications Needed |
-|---------------|---------------------|
-| `backend/app/services/habit_service.py` | Add steps 2.5, 5.5, 7.5, 10.5 for new detections |
-| `backend/app/services/streak_service.py` | Return `milestone_reached` from `update_overall_streak()` |
-| `backend/app/api/v1/habits.py` | Add reorder/archived/day-detail endpoints, modify quote selection for roasts |
-| `backend/app/schemas/check_habit.py` | Add 5 new optional fields to CheckHabitResponse |
-| `frontend/src/store/uiStore.ts` | Add 5 new AnimationEvent types |
-| `frontend/src/store/habitStore.ts` | Add reorder action, enqueue new animation types in checkHabit |
-| `frontend/src/components/animations/AnimationPlayer.tsx` | Add 5 new overlay cases to renderOverlay(), update QUEUED_TYPES |
-| `frontend/src/services/api.ts` | Add reorder, archived, restore, day-detail, achievements API functions |
-| `frontend/src/components/habit/HabitForm.tsx` | Add temporary habit toggle + date pickers |
-| `frontend/src/components/analytics/CalendarHeatmap.tsx` | Enhanced popover with per-habit breakdown |
-| `frontend/src/pages/Dashboard.tsx` | Add NudgeBanner rendering |
-| `frontend/src/pages/Analytics.tsx` | Add capsule/wish history, contribution graph, achievements sections |
-| `frontend/src/pages/Settings.tsx` | Add archived habits section |
+The only schema change is adding 2 columns to `OffDay`:
+
+```python
+habits_reversed: Mapped[int] = mapped_column(default=0)
+xp_clawed_back: Mapped[int] = mapped_column(default=0)
+```
+
+These values are already computed by `mark_off_day()` -- the service just needs to set them on the OffDay record before returning. Backward-compatible (default 0 for existing rows).
+
+### Files Touched Summary
+
+**Backend (modify):**
+
+| File | Change |
+|------|--------|
+| `backend/app/models/off_day.py` | Add 2 columns |
+| `backend/app/services/off_day_service.py` | Persist impact values on OffDay |
+| `backend/app/api/v1/analytics.py` | Add 4 new endpoints |
+| `backend/app/schemas/analytics.py` | Add 4 new response schemas |
+| `backend/app/api/v1/habits.py` | Verify orphaned stats/calendar endpoints return needed data |
+
+**Frontend (modify):**
+
+| File | Change |
+|------|--------|
+| `frontend/src/services/api.ts` | Wire orphaned endpoints + add new analytics API functions |
+| `frontend/src/types/index.ts` | Add 6 new response types |
+| `frontend/src/hooks/useAnalyticsData.ts` | Fetch new analytics endpoints |
+| `frontend/src/pages/Analytics.tsx` | Render 4 new section components |
+| `frontend/src/components/dashboard/HabitDetailSheet.tsx` | Expand with stats, target time, streak timeline |
+| `frontend/src/components/dashboard/HabitCard.tsx` | Pass new props, add uncheck feedback |
+| `frontend/src/components/dashboard/StatsPanel.tsx` | Add ShareButton |
+| `frontend/src/index.css` | Safe area utility classes |
+| ~10 components | Tailwind responsive class additions |
+
+**Frontend (new):**
+
+| File | Purpose |
+|------|---------|
+| `frontend/src/components/dashboard/StreakTimeline.tsx` | Visual streak segments |
+| `frontend/src/components/analytics/OffDayAnalyticsCard.tsx` | Off-day breakdown |
+| `frontend/src/components/analytics/CompletionTrendChart.tsx` | Weekly/monthly trend line |
+| `frontend/src/components/analytics/StreakLeaderboard.tsx` | Per-habit streak ranking |
+| `frontend/src/components/analytics/DayPatternChart.tsx` | Day-of-week completion bars |
+| `frontend/src/components/common/ShareButton.tsx` | Copy summary to clipboard |
+| `frontend/src/utils/shareSummary.ts` | Format summary text |
 
 ## Sources
 
-- Direct codebase analysis of all files listed in integration points
-- Existing architecture patterns established in v1.0 and v1.1
-- `STREAK_MILESTONES`, `ATTRIBUTE_TITLES`, `TRANSFORMATIONS` constants in `backend/app/core/constants.py`
-- Achievement model schema in `backend/app/models/achievement.py`
-- Quote model severity field in `backend/app/models/quote.py`
+- Direct codebase analysis of all source files listed in integration points
+- Existing patterns: habitStore (optimistic UI), HabitDetailSheet (local fetch), useAnalyticsData (hook-based fetching), uiStore (animation queue)
+- Tailwind CSS v4 `@theme` configuration in `index.css` (28 custom color tokens, default breakpoints)
+- Backend models: DailyLog, OffDay, HabitLog, Streak (all 15 models already exist)
+- Tech debt note from PROJECT.md: 2 orphaned endpoints (habit calendar/stats)
 
 ---
-*Architecture research for: Saiyan Tracker v1.2 feature integration*
-*Researched: 2026-03-06*
+*Architecture research for: Saiyan Tracker v1.3 QoL feature integration*
+*Researched: 2026-03-08*

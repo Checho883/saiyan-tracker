@@ -1,300 +1,325 @@
-# Technology Stack: v1.2 Additions
+# Stack Research: v1.3 Additions
 
-**Project:** Saiyan Tracker v1.2 -- PRD Complete
-**Researched:** 2026-03-06
-**Scope:** NEW libraries/changes needed for 19 v1.2 features only. Existing stack is validated and not re-researched.
+**Domain:** QoL features for existing habit tracker (responsive design, sharing, analytics, animation feedback)
+**Researched:** 2026-03-08
+**Confidence:** HIGH
 
 ---
 
 ## Existing Stack (DO NOT change)
 
-React 19 + Vite 7 + TypeScript + Zustand 5 + Motion 12 + Tailwind CSS v4 + Recharts 3.7 + Howler.js 2.2.4 + ky + react-hot-toast + vaul + lucide-react + react-router 7 + Vitest
+React 19.2 + Vite 7.3 + TypeScript 5.9 + Zustand 5 + Motion 12 + Tailwind CSS v4.2 + Recharts 3.7 + Howler.js 2.2.4 + ky + react-hot-toast + vaul 1.1 + lucide-react + react-router 7.13 + @floating-ui/react 0.27 + @dnd-kit 6.3 + Vitest 4
 
 ---
 
 ## New Libraries Required
 
-### 1. Drag-and-Drop: `@dnd-kit/sortable` (via `@dnd-kit/core`)
+### NONE
+
+v1.3 requires **zero new npm dependencies**. Every feature is achievable with the existing stack plus browser-native APIs. This is the correct outcome for a polish milestone -- the stack is mature and the features are refinements, not new capability domains.
+
+---
+
+## Feature-by-Stack Mapping
+
+### 1. Responsive/Mobile Design: Tailwind CSS v4 (existing)
 
 | Property | Value |
 |----------|-------|
-| Package | `@dnd-kit/core` + `@dnd-kit/sortable` + `@dnd-kit/utilities` |
-| Version | 6.3.x (stable) |
-| Purpose | Habit card reordering on dashboard |
+| Package | `tailwindcss` (already installed, v4.2.1) |
+| What's needed | Mobile-first responsive classes, container queries |
 | Confidence | HIGH |
 
-**Why dnd-kit over alternatives:**
+**Why no new library is needed:**
 
-- **vs `@hello-pangea/dnd`:** hello-pangea is heavier (must import entire package), was created as a stopgap fork of react-beautiful-dnd. dnd-kit is modular -- import only the sortable preset. Better performance for our use case (single vertical list, ~6-10 items).
-- **vs `pragmatic-drag-and-drop`:** Atlassian's new library is headless but documentation is immature. dnd-kit has extensive docs, tutorials, and community answers. For a single sortable list, dnd-kit's `useSortable` hook is battle-tested.
-- **vs `@dnd-kit/react` (0.3.x experimental):** The maintainer is working on a framework-agnostic rewrite on the `experimental` branch. Version 0.3.2 was published recently but is pre-1.0 and unstable. Use the stable 6.3.x packages.
-- **vs native HTML5 drag:** No keyboard accessibility, no touch support, no animation control. dnd-kit provides all three.
+Tailwind CSS v4 has everything required for responsive mobile design:
 
-**Integration points:**
-- Wraps the habit list on Dashboard with `DndContext` + `SortableContext`
-- Each `HabitCard` gets `useSortable` hook for drag handle, transform, and transition
-- On `onDragEnd`, call `PUT /habits/reorder` with new sort_order array
-- `verticalListSortingStrategy` is purpose-built for this exact use case
-- Motion's `layoutId` on habit cards provides smooth reorder animation for free
+- **Mobile-first breakpoints** are built-in: `sm:` (640px), `md:` (768px), `lg:` (1024px), `xl:` (1280px). Unprefixed styles apply to all screen sizes (mobile-first by default).
+- **Container queries** are built-in to v4 (no plugin needed): add `@container` to a parent, use `@sm:`, `@md:` etc. on children. This is useful for the dashboard cards which live inside varying-width containers.
+- **Custom breakpoints** can be added via `@theme { --breakpoint-xs: 24rem; }` in `index.css` if the defaults don't suffice.
+- **Range modifiers** like `md:max-lg:hidden` enable targeting specific ranges without custom media queries.
 
-**React 19 compatibility:** dnd-kit 6.3.x works with React 19. The peer dependency specifies `react >=16.8.0`. No conflicts expected.
+**Current state of responsiveness:** The app has only 27 responsive class usages across 10 files. This is a desktop-first build that needs systematic mobile-first conversion. The work is pure CSS/class changes on existing components, not library additions.
 
-```bash
-npm install @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities
-```
+**Integration approach:**
+- Audit all pages (Dashboard, Analytics, Settings) at 375px, 768px, and 1024px
+- Convert fixed layouts to responsive grids: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`
+- Use `@container` queries on dashboard card sections so child components respond to their container width, not viewport
+- vaul drawers (already used for forms) are inherently mobile-friendly -- they slide up from bottom
+- Recharts already provides `<ResponsiveContainer>` for chart resizing
 
-### 2. Contribution Graph: Custom SVG Component (NO library)
+**What NOT to add:**
+- No CSS-in-JS libraries (styled-components, emotion) -- Tailwind v4 handles everything
+- No responsive utility libraries (react-responsive, use-media-query) -- Tailwind breakpoint prefixes are declarative and simpler
+- No mobile UI framework (Ionic, Framework7) -- this is a web app with responsive design, not a hybrid mobile app
+
+### 2. Shareable Daily Summary: Clipboard API (browser-native)
 
 | Property | Value |
 |----------|-------|
-| Package | None -- build it |
-| Purpose | Per-habit GitHub-style completion grid (90 days) |
+| Package | None -- `navigator.clipboard.writeText()` is a browser API |
+| What's needed | Copy formatted text summary to clipboard |
 | Confidence | HIGH |
 
-**Why build custom instead of using a library:**
+**Why no library is needed:**
 
-- **vs `@uiw/react-heat-map`:** React 19 compatibility is unverified. Adds a dependency for a component that is ~80 lines of SVG `<rect>` elements. The library's customization API would fight our specific design needs (DBZ color scheme, custom tooltips, integration with existing Tailwind theme tokens).
-- **vs `react-calendar-heatmap`:** Last meaningful update was years ago. Same dependency risk for minimal value.
-- **The component is trivial:** A contribution graph is a grid of colored rectangles. The data is an array of `{ date, completed }` from `GET /habits/{id}/contribution-graph?days=90`. Map 90 days into 13 columns x 7 rows of SVG `<rect>` elements with Tailwind color classes.
+The Clipboard API (`navigator.clipboard.writeText()`) reached Baseline Newly Available status in March 2025 and is supported in all modern browsers (Chrome, Edge, Firefox, Safari). It requires:
+- Secure context (HTTPS or localhost) -- the dev server runs on localhost, production would need HTTPS
+- User gesture (button click) -- the "Share" button click satisfies this
+- Tab focus -- not an issue since the user is actively clicking
 
 **Implementation approach:**
 ```typescript
-// ~80 lines: map dates to a 7-row x N-column grid of <rect> SVG elements
-// Color: completed = green/gold, missed = gray, future = transparent
-// Tooltip: date + "Completed" / "Missed" / "Off Day" on hover
-// Uses existing @theme CSS custom properties for colors
+// Build a plain-text summary string from today's data
+const summary = buildDailySummary(todayHabits, dailyLog, streak);
+// e.g. "SAIYAN TRACKER -- Mar 8, 2026\n4/6 habits (67%) | Kaio-ken x10\nStreak: 14 days | +70% XP bonus\n..."
+
+await navigator.clipboard.writeText(summary);
+toast.success('Summary copied to clipboard!');
 ```
 
-**Integration points:**
-- Lives in `components/analytics/ContributionGraph.tsx`
-- Data from `GET /habits/{id}/contribution-graph?days=90` (new API endpoint)
-- Rendered per-habit in the Analytics page
-- Hover tooltip can use the existing `title` attribute or a simple `<div>` positioned with CSS -- no floating-ui needed here
+**Why plain text, not image:**
+- `navigator.clipboard.write()` with `ClipboardItem` for images has spottier browser support and requires canvas rendering
+- A text summary is instantly pasteable into any chat app (WhatsApp, Discord, iMessage)
+- Text is more useful for sharing than a screenshot -- the user can paste it anywhere
+- If image sharing is wanted later, `html2canvas` could be added, but that is scope creep for v1.3
 
-### 3. Calendar Day Popover: `@floating-ui/react`
+**What NOT to add:**
+- No `clipboard-copy` or `copy-to-clipboard` npm packages -- they are thin wrappers around the same browser API, adding dependencies for 3 lines of code
+- No `html2canvas` or `dom-to-image` for screenshot sharing -- text clipboard is the v1.3 scope
+- No Web Share API (`navigator.share()`) -- it launches the OS share sheet which is mobile-only and overkill for "copy to clipboard"
+
+### 3. Enhanced Analytics Views: Recharts 3.7 + Custom Components (existing)
 
 | Property | Value |
 |----------|-------|
-| Package | `@floating-ui/react` |
-| Version | 0.27.x |
-| Purpose | Calendar day click popover with per-habit breakdown |
+| Package | `recharts` (already installed, v3.7.0) |
+| What's needed | Weekly/monthly completion rate charts, streak leaderboard, best/worst day patterns |
 | Confidence | HIGH |
 
-**Why @floating-ui/react:**
+**Why no new charting library:**
 
-- **vs `@radix-ui/react-popover`:** Radix Popover is 91.3kb unpacked and brings in multiple Radix sub-packages. Floating UI is lighter and more composable. We need exactly ONE popover in the entire app (calendar day detail). Radix is justified when you adopt 5+ primitives; for one component it is overkill.
-- **vs `vaul` (already installed):** vaul is a drawer component, not a popover. Different UI pattern. The calendar needs a positioned popover anchored to the clicked day cell, not a bottom drawer.
-- **vs building with CSS only:** Positioning a popover correctly (viewport collision, scroll handling, arrow placement) is surprisingly hard. Floating UI handles this with `useFloating` + `flip` + `shift` middleware. Worth the ~8kb for correctness.
-- **vs no popover (navigate to detail page):** The PRD specifies "Click any day -> popover with per-habit breakdown." A popover keeps context without navigation.
+Recharts 3.7 already handles all the new chart types needed:
 
-**Integration points:**
-- Enhances existing `CalendarHeatmap.tsx` (which already has a `selectedDay` state)
-- `useFloating` + `useClick` + `useDismiss` + `useRole` for accessible popover
-- Content: list of habits for that day with check/miss status, XP earned, tier
-- Data from `GET /habits/calendar/all?month=YYYY-MM` (already exists, add habit breakdown to response)
+- **Weekly/monthly completion rates:** `<BarChart>` or `<AreaChart>` with `<ResponsiveContainer>`. Data from the existing `/analytics/summary?period=week|month` endpoint (may need enhancement to return per-day breakdown).
+- **Best/worst day patterns:** `<BarChart>` grouped by day-of-week (Mon-Sun). Aggregate completion rates by weekday from daily_logs table.
+- **Streak leaderboard:** This is a sorted list, not a chart. A simple table/list component with per-habit streak data, sorted by `current_streak` descending. No charting library needed.
 
-```bash
-npm install @floating-ui/react
-```
+**Backend additions needed (not stack, but flagged):**
+- New endpoint or enhanced `/analytics/summary` to return daily breakdown by weekday
+- New endpoint for per-habit streak ranking (or compute from existing `/habits/today/list` data which includes streaks)
+- Enhanced off-day analytics: count off-days by reason, impact on streaks/XP
 
-### 4. Day Picker for Custom Frequency: NO new library
+**Integration approach:**
+- New chart components in `components/analytics/` using existing Recharts imports
+- All charts wrapped in `<ResponsiveContainer width="100%" height={300}>` for mobile responsiveness
+- Use existing Tailwind theme tokens for chart colors (attribute colors are already defined)
+- Streak leaderboard is a styled list component, not a chart
+
+**What NOT to add:**
+- No `victory` or `nivo` or `chart.js` -- Recharts is already integrated and sufficient
+- No `d3` directly -- Recharts abstracts d3 internals; adding raw d3 would create two charting paradigms
+
+### 4. Habit Detail View: Existing Components + React Router (existing)
 
 | Property | Value |
 |----------|-------|
-| Package | None -- build it |
-| Purpose | Tappable day-of-week selector (Mon-Sun) for custom habit frequency |
+| Package | `react-router` (already installed, v7.13.1) |
+| What's needed | New route `/habits/:id` with full history, streaks, contribution graph |
 | Confidence | HIGH |
 
-**Why no library:**
+**Implementation approach:**
+- Add route `/habits/:id` in App.tsx router config
+- Compose from existing components: `ContributionGraph` (built in v1.2), streak display, calendar
+- New: full completion history list (paginated or virtualized if >100 entries)
+- Data from existing endpoints: `GET /habits/{id}/contribution-graph`, `GET /habits/{id}/stats`, `GET /habits/{id}/calendar`
 
-This is 7 toggle buttons labeled "M T W T F S S." It is not a date picker or calendar widget. It maps to the existing `custom_days` JSON field (`["mon","wed","fri"]`). Adding a date picker library (react-day-picker, react-datepicker) would be absurd overkill.
+**Virtualization consideration:** If habit history grows long (365+ entries), a virtualized list improves performance. However, adding `@tanstack/react-virtual` or `react-window` is premature -- the app is single-user with at most a year of data (~365 rows per habit). A simple paginated list with "Load more" is sufficient. Flag for v2 if performance becomes an issue.
 
-**Implementation:** 7 `<button>` elements in a flex row. Each toggles its day in/out of a `Set<string>`. Styled with Tailwind (active = orange fill, inactive = gray outline). ~30 lines.
+**What NOT to add:**
+- No `@tanstack/react-virtual` or `react-window` -- premature for single-user data volumes
+- No separate detail page framework -- React Router dynamic segments handle this cleanly
 
-### 5. Temporary Habit Date Picker: Native `<input type="date">`
+### 5. Additional Animation/Feedback Events: Motion 12 + uiStore (existing)
+
+| Property | Value |
+|----------|-------|
+| Package | `motion` (already installed, v12.35.0) |
+| What's needed | Uncheck feedback, streak-break acknowledgment, milestone celebrations |
+| Confidence | HIGH |
+
+**New animation events to add to `AnimationEvent` union type in `uiStore.ts`:**
+
+| Event | Type | Tier | Description |
+|-------|------|------|-------------|
+| Habit uncheck | `uncheck` | 3 (Inline) | Brief "undo" visual feedback when unchecking a habit |
+| Streak break | `streak_break` | 2 (Banner) | Acknowledgment overlay with Vegeta quote when streak breaks |
+
+**Why these fit the existing architecture:**
+
+The priority-tiered animation queue in `uiStore.ts` already handles 11 event types across 3 tiers. Adding 2 more event types is a pattern extension, not an architecture change:
+- Add new types to the `AnimationEvent` union
+- Add tier mappings to `PRIORITY_TIERS`
+- Add new overlay/inline components in `components/animations/`
+- Wire sound IDs in `EVENT_SOUND_MAP`
+
+**Uncheck feedback specifics:**
+- Tier 3 (inline) so it fires immediately without queuing
+- Brief visual: red flash on the habit card, XP floats down (reverse of check)
+- Sound: a short "power down" effect (reverse of scouter beep) -- reuse existing `power_down` SoundId or add a reversed audio sample
+- Motion: `animate={{ scale: [1, 0.95, 1] }}` with red border flash
+
+**Streak break acknowledgment:**
+- Tier 2 (banner) so it shows as an overlay
+- Triggers when the backend returns a streak break event (new field in check response or detected on daily load)
+- Shows Vegeta roast quote with streak halving info: "Streak: 14 -> 7 (Zenkai halved)"
+- Motion: dramatic entrance with red/purple color scheme
+
+**What NOT to add:**
+- No `react-confetti` or `canvas-confetti` -- Motion handles all particle/celebration effects
+- No `lottie-react` or `@lottiefiles/react` -- Lottie animations are overkill; Motion keyframes + CSS gradients create the DBZ aesthetic
+- No `react-spring` -- Motion is already the animation library; mixing two animation libraries creates confusion
+
+### 6. Off-Day Analytics: Backend Enhancement + Existing Frontend (no new deps)
 
 | Property | Value |
 |----------|-------|
 | Package | None |
-| Purpose | Start/end date selection for temporary habits |
+| What's needed | Impact analysis of off-days on streaks, XP, power level |
 | Confidence | HIGH |
 
-**Why native inputs:**
+**Backend work needed:**
+- New endpoint `GET /analytics/off-days` or enhanced existing `/off-days/` endpoint
+- Return: total off-days by reason, off-day frequency by month, impact metrics (XP lost to off-days, streak pauses)
+- Query the existing `off_days` table joined with `daily_logs` and `streaks`
 
-- The habit form needs two date fields: start_date and end_date (only shown when `is_temporary` is toggled on)
-- Native `<input type="date">` renders a calendar picker on all modern browsers
-- The app is single-user (Sergio), not a design-system product. Native inputs are functional and consistent.
-- Adding `react-datepicker` (200kb) or `react-day-picker` (30kb) for two date inputs in one form is unjustified.
-- If native styling clashes with the dark theme, style with Tailwind's `[&::-webkit-calendar-picker-indicator]` pseudo-element selector and `color-scheme: dark`.
+**Frontend:** New section in Analytics page using existing Recharts components for visualization.
 
-### 6. react-is Peer Dependency: Install explicitly
+### 7. Dashboard Decluttering: Tailwind + Motion (existing)
 
 | Property | Value |
 |----------|-------|
-| Package | `react-is` |
-| Version | ^19.0.0 |
-| Purpose | Satisfy recharts 3.7.x peer dependency |
+| Package | None |
+| What's needed | Spacing/alignment polish, collapsible sections, mobile layout |
 | Confidence | HIGH |
 
-**Current situation:** The project already has an `overrides` entry for `react-is` in package.json. Recharts 3.7.x moved `react-is` from `dependencies` to `peerDependencies`, meaning it must be explicitly installed by the consuming project.
-
-**Resolution:**
-```bash
-npm install react-is@^19.0.0
-```
-
-Then remove the `overrides` block from package.json. With react-is properly installed as a direct dependency matching React 19, the override hack becomes unnecessary. This is the clean fix the recharts maintainers intended.
+**Approach:**
+- Use Tailwind responsive classes to stack sections vertically on mobile, grid on desktop
+- Collapsible sections with Motion `animate={{ height: "auto" }}` for Saiyan Stats, Transformations
+- vaul drawer (already used) for habit detail sheets on mobile tap
 
 ---
 
-## Audio Strategy: Real Sound Files
+## Libraries Explicitly NOT Needed for v1.3
 
-| Property | Value |
-|----------|-------|
-| Package | None (file sourcing, not code) |
-| Purpose | Replace placeholder audio sprite with real DBZ-style sounds |
-| Confidence | MEDIUM |
-
-**Current state:** The app uses a Howler.js sprite sheet with 13 named sound effects, but the actual audio files are placeholders.
-
-**Sourcing strategy -- two tiers:**
-
-**Tier 1: Royalty-free sound-alikes (RECOMMENDED)**
-- Use [Pixabay Sound Effects](https://pixabay.com/sound-effects/) -- royalty-free, no attribution required, free for commercial use
-- Search terms: "power up," "energy charge," "explosion," "beep scanner," "achievement fanfare," "thunder," "magic chime," "whoosh"
-- These are generic sci-fi/anime-style effects that evoke DBZ without being copyrighted DBZ audio
-- Download as MP3, trim to <3 seconds with Audacity or ffmpeg
-
-**Tier 2: Game rips (PERSONAL USE ONLY)**
-- Sources like [The Sounds Resource](https://sounds.spriters-resource.com/) have Dragon Ball FighterZ rips
-- [SoundBible](https://soundbible.com/tags-dragon-ball-z.html) has some DBZ effects
-- These are copyrighted. Acceptable for a personal single-user app that will never be distributed, but cannot be open-sourced or deployed publicly.
-
-**Recommended approach:** Use Tier 1 (royalty-free sound-alikes) for all 13 effects. They will be close enough to DBZ sounds without legal risk. The app is personal-use, but clean licensing avoids issues if the repo is ever shared.
-
-**Audio sprite rebuild:**
-- Keep the existing Howler.js sprite sheet architecture
-- Use [audiosprite](https://www.npmjs.com/package/audiosprite) CLI to combine individual MP3s into a single sprite file with timing definitions
-- Or: just load individual short MP3s from `public/sounds/` -- with 13 files under 3 seconds each, total payload is ~200-400kb. No need for sprite sheet complexity.
-
-**Individual files vs sprite sheet:** Given that the app already uses individual `useSound` calls per component (not a single sprite), switch to individual MP3 files in `public/sounds/`. This simplifies the architecture -- each sound is independently loadable, cacheable, and replaceable.
-
----
-
-## Libraries NOT Needed (Explicitly Rejected)
-
-| Feature | Library Considered | Why Rejected | What to Use |
-|---------|-------------------|-------------|-------------|
-| Contribution graph | `@uiw/react-heat-map` | React 19 unverified, trivial to build custom | Custom SVG component (~80 LOC) |
-| Contribution graph | `react-calendar-heatmap` | Unmaintained, adds dep for simple grid | Custom SVG component |
-| Day-of-week picker | `react-day-picker` | Wrong tool -- we need 7 toggle buttons, not a calendar | 7 Tailwind-styled `<button>` elements |
-| Date picker | `react-datepicker` | 200kb for 2 date inputs | Native `<input type="date">` |
-| Badge/achievement icons | Icon library | Already have lucide-react + emoji support | Lucide icons + inline SVG for badge shapes |
-| Toast notifications | New library | Already have react-hot-toast installed | Existing react-hot-toast (streak milestones, daily summary, nudge banner) |
-| Popover (contrib graph tooltip) | `@floating-ui/react` | Simple hover tooltip, not positioned popover | Native `title` attr or CSS-positioned `<div>` |
-| State management for achievements | New store | Fits in existing Zustand stores | Add to powerStore (badges/achievements are progression data) |
-| Animation for celebrations | New library | Motion 12 handles everything | `AnimatePresence` + `motion.div` variants |
+| Feature | Library Considered | Why Rejected | What to Use Instead |
+|---------|-------------------|-------------|---------------------|
+| Responsive design | `react-responsive` | Tailwind breakpoint prefixes are declarative and simpler | Tailwind `sm:` `md:` `lg:` prefixes |
+| Responsive design | CSS-in-JS (emotion, styled-components) | Already using Tailwind v4; mixing paradigms adds complexity | Tailwind v4 utility classes |
+| Container queries | `@container-queries` plugin | Built into Tailwind CSS v4 natively, no plugin needed | Tailwind `@container` + `@sm:` `@md:` |
+| Clipboard copy | `clipboard-copy` / `copy-to-clipboard` | 3 lines of browser API code; npm package adds dependency for nothing | `navigator.clipboard.writeText()` |
+| Image sharing | `html2canvas` / `dom-to-image` | Text clipboard is the v1.3 scope; image is a different feature | Plain text summary |
+| Share sheet | Web Share API wrapper libs | Mobile-only, overkill for "copy to clipboard" | Direct clipboard API |
+| Charting | `nivo` / `victory` / `chart.js` | Recharts already integrated; switching adds migration work | Recharts 3.7 (existing) |
+| Animation | `react-confetti` / `lottie-react` | Motion 12 handles all effects; mixing animation libs is bad DX | Motion 12 (existing) |
+| Virtualized list | `@tanstack/react-virtual` / `react-window` | Premature; max ~365 rows per habit for single user | Simple pagination / "Load more" |
+| Mobile UI kit | Ionic / Framework7 / Capacitor | This is responsive web, not a hybrid mobile app | Tailwind responsive + vaul drawers |
+| Date/time display | `date-fns` / `dayjs` / `luxon` | The app already uses native `Date` and `Intl.DateTimeFormat` | Continue with native APIs |
+| Toast library swap | `sonner` | react-hot-toast is already installed and themed | react-hot-toast (existing) |
 
 ---
 
 ## Installation Summary
 
 ```bash
-# New production dependencies
-npm install @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities @floating-ui/react react-is@^19.0.0
-
-# Then clean up package.json:
-# Remove the "overrides": { "react-is": "^19.0.0" } block
-# (react-is is now a direct dependency, override no longer needed)
-
-# No new dev dependencies required
+# No new dependencies needed for v1.3
+# The existing stack handles everything
 ```
 
-**Total new dependencies: 5 packages** (3 dnd-kit + floating-ui + react-is)
-**Total new bundle size impact:** ~25-30kb gzipped (dnd-kit ~15kb, floating-ui ~8kb, react-is ~2kb)
+**Total new dependencies: 0 packages**
+**Total new bundle size impact: 0kb**
 
 ---
 
-## Version Compatibility Matrix (New Additions)
+## Version Compatibility Notes
 
-| Package | Version | React 19 | Notes |
-|---------|---------|----------|-------|
-| `@dnd-kit/core` | 6.3.x | Yes | Peer dep: `react >=16.8.0` |
-| `@dnd-kit/sortable` | 9.0.x | Yes | Follows core compatibility |
-| `@dnd-kit/utilities` | 3.2.x | Yes | Utility functions, no React peer dep issues |
-| `@floating-ui/react` | 0.27.x | Yes | Uses `useSyncExternalStore`, React 18+ |
-| `react-is` | 19.0.0 | Yes | Must match React major version |
-| `recharts` | 3.7.x (existing) | Yes | With react-is@19 installed, no overrides needed |
+All existing packages are at current versions as of March 2026. No upgrades needed for v1.3 features.
+
+| Package | Current Version | Status |
+|---------|----------------|--------|
+| `tailwindcss` | 4.2.1 | Container queries built-in, responsive breakpoints ready |
+| `motion` | 12.35.0 | All animation patterns needed are supported |
+| `recharts` | 3.7.0 | `ResponsiveContainer` works (minor console warning in v3, non-blocking) |
+| `vaul` | 1.1.2 | Drawer component already mobile-friendly |
+| `react-router` | 7.13.1 | Dynamic routes for habit detail view |
+| `@floating-ui/react` | 0.27.19 | Available for any new popover needs |
+| `react-hot-toast` | 2.6.0 | Handles clipboard success/error feedback |
 
 ---
 
-## Integration Architecture
+## Integration Architecture for v1.3
 
-### How new libraries connect to existing stack
+### How features map to existing stack
 
 ```
-Dashboard Page
+RESPONSIVE DESIGN (Tailwind v4)
   |
-  +-- DndContext + SortableContext (NEW: @dnd-kit)
-  |     |
-  |     +-- HabitCard (EXISTING) + useSortable hook
-  |           |
-  |           +-- onDragEnd -> PUT /habits/reorder -> invalidateQueries
-  |
-  +-- Motion AnimatePresence (EXISTING)
-        |
-        +-- Streak milestone notification (NEW: uses existing animation queue)
-        +-- Power level celebration (NEW: uses existing animation queue)
-        +-- Zenkai recovery animation (NEW: uses existing animation queue)
-        +-- Attribute level-up animation (NEW: uses existing animation queue)
+  +-- Dashboard: grid-cols-1 -> md:grid-cols-2 -> lg:grid-cols-3
+  +-- Analytics: stacked charts on mobile, side-by-side on desktop
+  +-- Settings: single-column forms on mobile (vaul drawers already work)
+  +-- @container queries on card sections for component-level responsiveness
 
-Analytics Page
+SHAREABLE SUMMARY (Browser Clipboard API)
   |
-  +-- CalendarHeatmap (EXISTING)
-  |     |
-  |     +-- useFloating popover (NEW: @floating-ui/react)
-  |           |
-  |           +-- DayDetailPopover content (per-habit breakdown)
-  |
-  +-- ContributionGraph (NEW: custom SVG, no library)
-  |
-  +-- CapsuleHistory (NEW: component, existing recharts)
-  +-- WishHistory (NEW: component, existing recharts)
+  +-- New "Share" button on Dashboard (lucide-react Share2 icon)
+  +-- buildDailySummary() utility function
+  +-- navigator.clipboard.writeText() on click
+  +-- react-hot-toast for success/error feedback
 
-Settings Page
+HABIT DETAIL VIEW (React Router + existing components)
   |
-  +-- HabitFormModal (EXISTING, enhanced)
-        |
-        +-- DayPicker (NEW: 7 toggle buttons, no library)
-        +-- DateInputs (NEW: native <input type="date">)
-        +-- ArchivedHabitsView (NEW: component, no new deps)
+  +-- New route: /habits/:id
+  +-- Reuses: ContributionGraph, streak display, calendar components
+  +-- New: completion history list, target time display
+  +-- Data: existing GET /habits/{id}/stats + /contribution-graph endpoints
+
+ENHANCED ANALYTICS (Recharts + custom components)
+  |
+  +-- Weekly/monthly rates: BarChart or AreaChart in ResponsiveContainer
+  +-- Best/worst days: BarChart grouped by weekday
+  +-- Streak leaderboard: styled list (not a chart)
+  +-- Off-day analytics: PieChart by reason + impact metrics
+
+NEW ANIMATION EVENTS (Motion + uiStore)
+  |
+  +-- Add 'uncheck' (Tier 3) and 'streak_break' (Tier 2) to AnimationEvent
+  +-- New overlay components in components/animations/
+  +-- Wire to existing EVENT_SOUND_MAP
+  +-- Extend existing priority queue -- no architecture changes
 ```
 
-### Animation queue additions (no new libraries)
+### Backend additions needed (flagged, not stack changes)
 
-All new animations (streak milestone, power level celebration, Zenkai recovery, attribute level-up, nudge banner) use the existing Motion `AnimatePresence` queue system. The `uiStore.queueAnimation()` pattern from v1.1 handles sequencing. No new animation libraries needed.
-
-### Toast additions (no new libraries)
-
-Daily summary toast, nudge banner, and streak milestone notifications use the existing `react-hot-toast`. The project already has it installed and themed. No switch to sonner needed for v1.2 -- that is a potential v1.3 improvement.
+| Endpoint | Purpose | Complexity |
+|----------|---------|------------|
+| `GET /analytics/off-days` | Off-day impact analysis | Low -- query existing tables |
+| `GET /analytics/daily-breakdown` | Per-weekday completion rates | Low -- aggregate daily_logs |
+| `GET /habits/streak-ranking` | Sorted streak leaderboard | Low -- query habit_streaks |
+| Enhanced `/habits/{id}/check` response | Include streak_break event data | Low -- add field to existing response |
 
 ---
 
 ## Sources
 
-- [dnd-kit official docs](https://docs.dndkit.com/) -- sortable preset, useSortable hook -- HIGH
-- [dnd-kit maintenance status (GitHub #1194)](https://github.com/clauderic/dnd-kit/issues/1194) -- active development, framework-agnostic rewrite in progress -- HIGH
-- [DnD library comparison (Puck 2026)](https://puckeditor.com/blog/top-5-drag-and-drop-libraries-for-react) -- dnd-kit vs hello-pangea vs pragmatic -- MEDIUM
-- [Floating UI popover docs](https://floating-ui.com/docs/popover) -- useFloating + useClick pattern -- HIGH
-- [Floating UI React docs](https://floating-ui.com/docs/react) -- React-specific hooks -- HIGH
-- [@radix-ui/react-popover npm](https://www.npmjs.com/package/@radix-ui/react-popover) -- 91.3kb package size -- MEDIUM
-- [recharts dependency discussion (#5701)](https://github.com/recharts/recharts/discussions/5701) -- react-is moved to peerDependencies in 3.x -- HIGH
-- [recharts npm](https://www.npmjs.com/package/recharts) -- v3.7.0, peerDeps: react + react-dom + react-is ^16-19 -- HIGH
-- [@uiw/react-heat-map GitHub](https://github.com/uiwjs/react-heat-map) -- React 19 compat unverified -- LOW
-- [Pixabay Sound Effects](https://pixabay.com/sound-effects/) -- royalty-free, no attribution -- MEDIUM
-- [The Sounds Resource](https://sounds.spriters-resource.com/pc_computer/dragonballfighterz/) -- game rips, copyrighted -- LOW
+- [Tailwind CSS v4 responsive design docs](https://tailwindcss.com/docs/responsive-design) -- built-in breakpoints, mobile-first -- HIGH
+- [Tailwind CSS v4 container queries](https://www.sitepoint.com/tailwind-css-v4-container-queries-modern-layouts/) -- native support, no plugin -- MEDIUM
+- [Clipboard API: writeText (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/writeText) -- browser support, secure context requirement -- HIGH
+- [Clipboard API: writeText (Can I Use)](https://caniuse.com/mdn-api_clipboard_writetext) -- Baseline Newly Available March 2025 -- HIGH
+- [Recharts ResponsiveContainer docs](https://recharts.github.io/en-US/api/ResponsiveContainer/) -- width/height percentage support -- HIGH
+- [Recharts 3 ResponsiveContainer issue #6716](https://github.com/recharts/recharts/issues/6716) -- console warning, non-blocking -- MEDIUM
+- [Motion for React docs](https://motion.dev/docs/react) -- animation capabilities, spring/keyframe support -- HIGH
 
 ---
 
-*Stack additions research for: Saiyan Tracker v1.2 -- PRD Complete*
-*Researched: 2026-03-06*
+*Stack additions research for: Saiyan Tracker v1.3 -- The Polish Pass*
+*Researched: 2026-03-08*

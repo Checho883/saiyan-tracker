@@ -1,288 +1,263 @@
 # Pitfalls Research
 
-**Domain:** Adding 19 features to an existing gamified DBZ habit tracker (v1.2)
-**Researched:** 2026-03-06
-**Confidence:** HIGH (based on direct codebase analysis of uiStore, AnimationPlayer, habitStore, habit_service.py, streak_service.py, soundMap, HabitCard + ecosystem knowledge)
+**Domain:** Adding responsive design, habit detail expansion, off-day analytics, shareable summary, feedback gaps, and enhanced data views to an existing gamified DBZ habit tracker (v1.3 QoL)
+**Researched:** 2026-03-08
+**Confidence:** HIGH (based on direct codebase analysis of AppShell, Dashboard, HabitCard, HabitDetailSheet, AnimationPlayer, uiStore, habitStore, index.css @theme tokens, BottomTabBar, Analytics page, HeroSection)
 
 ## Critical Pitfalls
 
-### Pitfall 1: Animation Queue Overload — Single Habit Check Enqueues 8+ Overlays
+### Pitfall 1: Responsive Retrofit Breaks the Animation Overlay System
 
 **What goes wrong:**
-A single `checkHabit()` call already enqueues up to 6 animation events: `xp_popup`, `tier_change`, `capsule_drop`, `transformation`, `perfect_day`, and `dragon_ball`. v1.2 adds `streak_milestone`, `attribute_level_up`, `power_level_milestone`, `zenkai_recovery`, and `daily_summary` events. The worst case is the "last habit of a perfect day at a streak milestone that also crosses a power level milestone and triggers an attribute level-up with a capsule drop" -- that is 9-10 queued events. The `AnimationPlayer` uses `AnimatePresence mode="wait"` and processes one overlay at a time. With each overlay taking 2-3 seconds, the user stares at sequential animations for 15-25 seconds before they can interact.
+The `AnimationPlayer` renders fixed-position full-screen overlays (`PerfectDayOverlay`, `TransformationOverlay`, `ShenronCeremony`, etc.) that assume a wide viewport. These overlays use absolute pixel positioning, large text, and particle effects designed for desktop. On a 375px-wide phone screen: text clips, particle systems extend beyond viewport causing horizontal scroll, and the dismiss tap target becomes unreachable behind the `BottomTabBar` (which is `fixed bottom-0` with `h-16`). The Dashboard already has `pb-20` padding to account for the tab bar, but animation overlays mount via `AnimationPlayer` at the AppShell level (`AppShell.tsx` line 39) OUTSIDE the padded content area.
 
 **Why it happens:**
-The current `habitStore.checkHabit()` (lines 73-119 of habitStore.ts) enqueues every event independently with zero deduplication, priority, or batching. The `AnimationPlayer` renders the first `QUEUED_TYPES` match from the queue, waits for completion, dequeues, then renders the next. Each new v1.2 feature gets naively added the same way: "if result has X, enqueue X animation."
+Responsive design is typically applied to page content components (Dashboard, Analytics, Settings). The animation overlay system sits at the app shell level and is easy to forget. Each overlay component was built desktop-first with hardcoded sizes. When the responsive pass touches page layouts but skips `components/animations/`, mobile users get broken overlays on top of a perfectly responsive dashboard.
 
 **How to avoid:**
-- Implement animation priority tiers. Events in the same tier batch into one overlay:
-  - **Tier 1 (exclusive overlay):** `shenron`, `perfect_day`, `transformation` -- only one plays, highest priority wins
-  - **Tier 2 (banner/badge, shown inside Tier 1 overlay or standalone):** `streak_milestone`, `power_level_milestone`, `attribute_level_up`, `zenkai_recovery`
-  - **Tier 3 (inline, non-blocking):** `xp_popup`, `tier_change`, `daily_summary`
-  - **Tier 4 (deferred notification):** `capsule_drop` -- show as a badge/indicator, user opens it later
-- When `perfect_day` fires, embed streak milestone and power milestone badges INSIDE the perfect day overlay instead of as separate overlays.
-- Cap total queued overlays to 3. If more would queue, show a single "combo summary" overlay listing all events.
-- The `QUEUED_TYPES` set in `AnimationPlayer.tsx` (line 12-18) must be updated to only include Tier 1 events. Tier 2 events render as toast/badge, not full-screen overlays.
+- Audit ALL 11 overlay components in `components/animations/` for mobile viewport compatibility: `PerfectDayOverlay`, `CapsuleDropOverlay`, `DragonBallTrajectory`, `TransformationOverlay`, `ShenronCeremony`, `TierChangeBanner`, `ComboSummaryOverlay`, `PowerMilestoneOverlay`, `LevelUpOverlay`, `ZenkaiRecoveryOverlay`, `StreakMilestoneOverlay`.
+- Ensure overlays use `inset-0` (or equivalent full-viewport coverage) and center content with flexbox, not absolute pixel offsets.
+- Add `pb-16` or `mb-16` to overlay dismiss buttons to keep them above the fixed BottomTabBar.
+- Test the "last habit perfect day" scenario on a 375px viewport width -- this triggers the most complex overlay sequence.
 
 **Warning signs:**
-- Testing the "last habit of the day" scenario produces 4+ sequential overlays.
-- User has to wait more than 5 seconds before they can interact after a habit check.
-- The `animationQueue` array length exceeds 5 at any point.
+- Horizontal scrollbar appears when an overlay is active on mobile.
+- Overlay dismiss/continue button is hidden behind the bottom tab bar.
+- Particle effects or text extend beyond viewport edges.
 
 **Phase to address:**
-Animation queue refactor must happen FIRST, before any new event types are added. Adding new events to the current unbounded queue is the single highest-risk integration pitfall.
+Responsive design phase. Overlay audit must be part of the responsive pass, not deferred to a separate phase.
 
 ---
 
-### Pitfall 2: Streak Milestone Detection Fires Retroactively on App Load
+### Pitfall 2: Dashboard Decluttering That Removes Dopamine Touchpoints
 
 **What goes wrong:**
-The `Achievement` model exists in the DB (table 8.14) but has zero service logic. `STREAK_MILESTONES = [3, 7, 21, 30, 60, 90, 365]` is defined in `constants.py` (line 64) but not consumed by any service. When someone implements milestone detection, the naive approach is: check all streaks against milestones, fire notifications for any met. If Sergio already has a 14-day streak when this ships, he gets bombarded with 3-day and 7-day milestone notifications he already passed. Every page refresh re-triggers because nothing records that the milestone was already acknowledged.
+The Dashboard currently stacks: RoastWelcomeCard, HeroSection (avatar + aura gauge + scouter HUD), StatsPanel (attributes + streaks + dragon balls), HabitList, NudgeBanner, and a FAB. On mobile, this is a LOT of content above the fold before the user reaches the habit list. The instinct is to "declutter" by hiding or collapsing sections. But the core value is "every interaction must feel like something happened." If the aura gauge, scouter HUD, or dragon ball tracker are collapsed/hidden by default on mobile, the user loses the visual feedback loop that makes habit-checking feel rewarding.
 
 **Why it happens:**
-No `achievement_service.py` exists yet. The first implementation checks `streak.current_streak >= milestone` without querying the `achievements` table for already-recorded milestones. The detection logic gets put in `fetchToday()` or app load instead of inside `check_habit()`.
+Responsive design principles say "reduce visual noise on small screens." ADHD dopamine design says "maximize visible feedback." These goals directly conflict. A developer following mobile-first best practices will hide the "non-essential" sections (dragon balls, attribute grid, streaks) -- but those ARE the dopamine. Hiding them kills the product's core value.
 
 **How to avoid:**
-- Milestone detection MUST ONLY fire inside `check_habit()` in `habit_service.py`, specifically between step 5 (update streaks) and step 6 (recalculate XP). Never on app load, never in `fetchToday()`.
-- Before enqueuing any milestone animation, query: `SELECT id FROM achievements WHERE achievement_type = 'streak_milestone' AND achievement_key = 'streak_7' AND user_id = ?`. If a row exists, skip.
-- Create `achievement_service.py` with `check_and_record_milestones(db, user_id, current_streak) -> list[dict]` that atomically checks + inserts in the same transaction.
-- On first deploy: run a one-time migration that seeds the `achievements` table with already-passed milestones based on `streak.current_streak` and `streak.best_streak`.
+- Never auto-hide the AuraGauge or SaiyanAvatar on mobile. These are the PRIMARY feedback mechanisms. Scale them down (120px instead of 160px) but keep them visible.
+- The HeroSection with collapsing MiniHero (via IntersectionObserver, Dashboard.tsx lines 24-41) already solves the "too much above fold" problem elegantly. Do NOT replace this with a different mechanism.
+- StatsPanel content (attributes, streaks, dragon balls) can be reorganized into a horizontal scrollable row on mobile instead of being hidden.
+- The RoastWelcomeCard can be made dismissible on mobile (swipe to dismiss) since it is informational, not feedback.
+- Rule of thumb: if the element changes visually when a habit is checked, it MUST stay visible. If it is static/informational, it can be collapsed or made scrollable.
 
 **Warning signs:**
-- Achievement notifications appear on page refresh.
-- Same achievement fires multiple times.
-- User opens app after feature deploy and sees 3+ celebration overlays immediately.
+- Habit list is the first thing visible on mobile (nothing above it provides context/feedback).
+- Aura gauge or avatar are inside a collapsed accordion on mobile.
+- User checks a habit on mobile and nothing visually changes above the habit card itself.
+- The MiniHero sticky header is removed in favor of a different pattern.
 
 **Phase to address:**
-Achievement system phase. The achievement service and migration must be built BEFORE streak milestone UI, and streak milestone detection must be added INSIDE `check_habit()`, not alongside it.
+Responsive design phase. The PRD review for "what stays visible on mobile" must happen BEFORE writing responsive CSS.
 
 ---
 
-### Pitfall 3: Temporary Habits Corrupt Daily Completion Percentage
+### Pitfall 3: Habit Detail View Fetches on Every Card Render
 
 **What goes wrong:**
-The completion rate calculation in `check_habit()` (lines 131-148 of habit_service.py) uses `get_habits_due_on_date()` to count habits due and completed. Temporary habits with `end_date` boundaries create three failure modes:
-
-1. **Off-by-one:** A habit with `end_date = "2026-03-05"` -- is it due on March 5th? The current filter `habit.end_date < local_date` (line 55) excludes it on March 5th. This means the LAST day set by the user is NOT included, which is counterintuitive. A user who creates a "7-day challenge ending March 5th" expects it to appear on March 5th.
-
-2. **Denominator shift:** Expired temporary habits no longer count in `habits_due_count`, which changes the completion rate formula. If the user had 6 habits (5 permanent + 1 temporary), checking 5/6 = 83%. After the temporary habit expires: 5/5 = 100%. The user's historical analytics show 83% for that day, but the current calculation says 100%. Which is truth?
-
-3. **Phantom habit:** Frontend shows the temporary habit (fetched from active habits list) but backend does not count it as due (because end_date passed). User checks it, but it does not affect completion %.
+The current `HabitDetailSheet` (`HabitDetailSheet.tsx` lines 28-44) fires `habitsApi.contributionGraph(habitId, 90)` inside a `useEffect` every time the sheet opens. This is fine when the detail sheet is a bottom drawer opened by explicit user action. But if v1.3 expands the detail view into a full page route (e.g., `/habits/:id`) or a persistent panel, the API call fires on mount. If the dashboard also mounts detail data for preview purposes (e.g., showing mini-graphs on each habit card), that is N API calls on dashboard load (one per habit). With 8 habits, that is 8 parallel requests to the SQLite backend, which is single-threaded.
 
 **Why it happens:**
-The `end_date` semantics are ambiguous. The current code uses `<` (strictly before), making end_date the first day the habit is NOT due. But users think of end_date as "last active day" (inclusive). The `daily_log` table already snapshots `habits_due` and `habits_completed` at check time, which is correct -- but if the frontend recalculates locally, it will drift.
+The v1.3 PRD says "habit detail view (full history, streaks, contribution graph, target time)." The natural implementation is to create a richer detail view. If the richer view is eagerly loaded or mounted as part of the habit list, the data fetching multiplies. SQLite with synchronous SQLAlchemy handles one request at a time -- 8 concurrent contribution graph queries create serial blocking.
 
 **How to avoid:**
-- Change the filter to `habit.end_date < local_date` -> `habit.end_date is not None and habit.end_date < local_date`. The current code already does this (line 55-56), but the comparison should be inclusive: the habit IS due on its end_date. Change to `habit.end_date < local_date` (strictly before today, meaning end_date is the last active day). Actually the current behavior IS correct for "end_date = last active day" IF we document it.
-- Document the semantic explicitly: `end_date` is the LAST day the habit is due (inclusive). The filter `end_date < local_date` means "skip if end_date is before today" which correctly includes end_date itself.
-- Write explicit boundary test cases: `end_date = today` -> IS due. `end_date = yesterday` -> NOT due.
-- Frontend habit form must display end_date as "Last active day" not "End date" to avoid ambiguity.
-- NEVER recalculate historical daily_log values. The snapshot is truth.
+- Keep the detail view as a user-initiated action (tap to open), NOT eagerly rendered. The current bottom sheet pattern is correct.
+- If adding a route-based detail view (`/habits/:id`), fetch data on navigation, not on dashboard mount.
+- Cache contribution graph data in a Zustand store slice with a TTL (e.g., 5 minutes). If the user opens the same habit detail twice within 5 minutes, use cached data.
+- NEVER render mini contribution graphs on HabitCard components. The card already shows streak count -- that is sufficient inline data.
+- If adding new detail data (weekly/monthly rates, best/worst patterns), aggregate on the backend in a single endpoint, not multiple calls.
 
 **Warning signs:**
-- Completion % shows 4/5 when user sees 5 habits on screen.
-- Temporary habit appears on dashboard but checking it does not change the aura bar.
-- Historical calendar heatmap changes colors after a temporary habit expires.
+- Dashboard load triggers N API calls (one per habit) visible in Network tab.
+- SQLite "database is locked" errors under concurrent requests.
+- Detail view shows loading spinner every time it opens, even for the same habit.
 
 **Phase to address:**
-Temporary habit phase. Must include boundary date tests and frontend label clarity.
+Habit detail view phase. API design must be a single `/habits/:id/detail` endpoint returning all detail data, not multiple calls.
 
 ---
 
-### Pitfall 4: Drag-and-Drop vs. Checkbox Tap Conflict on HabitCard
+### Pitfall 4: Clipboard Sharing Silently Fails on Mobile Browsers
 
 **What goes wrong:**
-`HabitCard` (line 81-89 of HabitCard.tsx) uses the entire card as a click target with `role="button"` and `onClick={handleTap}`. Adding drag-and-drop makes the card a drag source. On touch devices, a tap and a drag start identically (touchstart). Without disambiguation: (a) every drag attempt also toggles the habit completion, or (b) every tap has a 200ms+ delay while the library determines intent, violating the "every interaction must feel instant" core value.
+The `navigator.clipboard.writeText()` API requires either a secure context (HTTPS) or a user gesture. In development (localhost), it works. On a phone accessing the app via local IP (e.g., `http://192.168.1.x:5173`), `navigator.clipboard` is undefined because the context is not secure. Even on HTTPS, some mobile browsers (older Safari, Firefox) require the copy to happen inside a direct click handler -- not inside an async callback. If the share summary formats text, makes an API call to get stats, THEN copies, the user gesture chain is broken and the copy silently fails.
 
 **Why it happens:**
-The existing card is designed as a single large tap target. Drag-and-drop libraries wrap items in drag containers that also capture pointer events. The click handler and drag handler fight over the same gesture. Using `activationConstraint` with a distance or delay threshold makes taps feel sluggish.
+Clipboard API works perfectly in dev (localhost is treated as secure). The developer never tests on an actual phone over the network. Or: the copy fires after an await (e.g., formatting the summary requires fetching today's stats), which breaks the user gesture requirement on some browsers.
 
 **How to avoid:**
-- Add a dedicated drag handle (3-line grip icon) to the left side of the HabitCard. Only the handle initiates drag. The rest of the card continues to work as a tap-to-check target.
-- Only show drag handles in "reorder mode" toggled by a button in the habit list header. In normal mode, the card works exactly as today -- zero changes to the existing tap behavior.
-- Use `@hello-pangea/dnd` for the drag library -- it is purpose-built for vertical list reordering, has excellent touch support, and its `DragHandleProps` isolate the drag zone.
-- NEVER use delay-based activation (`activationConstraint: { delay: 200 }`) -- it makes every interaction feel broken for an ADHD user who expects instant feedback.
+- Pre-compute the shareable summary text BEFORE the user taps "Copy." The summary data (completion %, habits done, streak, power level) is already in Zustand stores. Do NOT make an API call at copy time.
+- Use a fallback chain: `navigator.clipboard.writeText()` first, then fall back to the legacy `document.execCommand('copy')` with a temporary textarea element.
+- Show a toast confirming success ("Copied!") or failure ("Couldn't copy -- tap and hold to select text") so the user knows what happened.
+- If targeting PWA later, ensure the service worker does not intercept clipboard operations.
+- Test on actual mobile device over HTTP and HTTPS to verify both paths.
 
 **Warning signs:**
-- Habit check takes >100ms to respond after adding drag-and-drop.
-- Dragging a card also toggles its completion state.
-- Mobile users report they "can't check habits" or "can't reorder."
+- Copy button does nothing on mobile (no toast, no clipboard content).
+- Copy works in Chrome desktop but not Safari mobile.
+- Copy works on first tap after page load but fails on subsequent taps.
 
 **Phase to address:**
-Drag-and-drop reorder phase. Must be tested on mobile touch with both tap and drag gestures.
+Shareable summary phase. Must include fallback mechanism and mobile testing.
 
 ---
 
-### Pitfall 5: Vegeta Roast System Feels Punishing — ADHD User Avoids the App
+### Pitfall 5: New Animation Events Without Sound Mappings
 
 **What goes wrong:**
-The PRD says "No punishment -- only positive reinforcement + Vegeta verbal roasts." But a Vegeta quote saying "You call yourself a Saiyan? Disgraceful" after 3 missed days IS punishment. If the roast is the first thing Sergio sees when he opens the app after missing days, it creates negative emotional association with the app. For ADHD users, this is the death spiral: miss days -> feel bad -> avoid the app -> miss more days.
+v1.3 introduces new feedback events: uncheck feedback, streak-break acknowledgment, and additional milestone celebrations. The existing system has a tight coupling between animation events and sound: `EVENT_SOUND_MAP` in `useSoundEffect.ts` maps each `AnimationEvent` type to a `SoundId`. If a new event type is added to the `AnimationEvent` union in `uiStore.ts` but not to `EVENT_SOUND_MAP`, the event fires silently. The core value is "every interaction must have audio feedback." A silent event violates this principle.
 
 **Why it happens:**
-The quote `severity` field (mild/medium/savage) exists in the database but no escalation logic exists yet. The developer implements the escalation spec literally (1 day = mild, 2 days = medium, 3+ days = savage) without testing the emotional impact. The "savage" quotes read as insulting rather than motivating.
+Adding a new `AnimationEvent` type requires updating 4 locations: (1) `AnimationEvent` type union in `uiStore.ts`, (2) `PRIORITY_TIERS` record in `uiStore.ts`, (3) `renderOverlay` switch in `AnimationPlayer.tsx`, (4) `EVENT_SOUND_MAP` in `useSoundEffect.ts`. It is easy to update 3 of 4 and miss one. The TypeScript compiler will catch a missing switch case (if using `exhaustive` checks) but will NOT catch a missing `EVENT_SOUND_MAP` entry because that record uses partial typing.
 
 **How to avoid:**
-- Roasts must NEVER be the first thing the user sees when returning. Show a `welcome_back` Goku quote first ("You came back! That's what makes you a true Saiyan!"). Only show Vegeta on the SECOND interaction or as a small character quote bar, not a modal.
-- Add a "Vegeta mode" toggle in Settings (default: ON, but can be turned off or set to "mild only").
-- Review ALL roast quotes for tone. Reframe from insults to challenges: "A true Saiyan wouldn't stay down" (pride-based) instead of "Disgraceful" (shame-based).
-- Never show roasts mid-session while the user is actively checking habits.
-- The `check_zenkai_recovery()` function (streak_service.py, line 52-93) already detects gaps. Use its `zenkai_activated` flag to trigger roasts -- do not add a second gap-detection system.
+- Make `EVENT_SOUND_MAP` use `Record<AnimationEvent['type'], SoundId>` (required for all keys) instead of `Partial<Record<...>>`. This way TypeScript will error if a new event type has no sound mapping.
+- Before adding any new event type, decide: does it use an EXISTING sound (reuse from the 13 available) or need a NEW sound? v1.2 already established the pattern of reusing sounds (`power_milestone` -> `explosion`, `level_up` -> `reveal_chime`). Follow this pattern.
+- Candidate mappings for v1.3 events: `uncheck` already has `play('undo')` in HabitCard; `streak_break` could use `power_down`; new milestone celebrations reuse `reveal_chime`.
+- Create a pre-merge checklist: "Does every new AnimationEvent type have entries in PRIORITY_TIERS, renderOverlay, and EVENT_SOUND_MAP?"
 
 **Warning signs:**
-- Vegeta quote appears as a modal dialog blocking the dashboard.
-- Roast is the first UI element visible after returning from absence.
-- No Settings toggle to control roast behavior.
-- Analytics show longer gaps after missed days (user avoidance pattern).
+- New overlay plays but no sound accompanies it.
+- TypeScript compiles clean but a runtime console.warn appears for unmapped event type.
+- New event type works in isolation but sounds break when queued with existing events.
 
 **Phase to address:**
-Vegeta roast system phase. Must include a Settings toggle, tone review, and UX flow that shows welcome_back first.
+Feedback gaps phase. Must be coordinated with any phase that adds new AnimationEvent types.
 
 ---
 
-### Pitfall 6: Audio Sprite Replacement Breaks All 13 Existing Sound Mappings
+### Pitfall 6: Off-Day Analytics Query Returns Wrong Data for Partial Off-Days
 
 **What goes wrong:**
-The current `soundMap.ts` has 13 sounds with hardcoded `[offset_ms, duration_ms]` sprite coordinates (lines 20-34). The sprite file at `/audio/sprite.webm` and `/audio/sprite.mp3` is a placeholder. Replacing it with real audio files means every single offset changes. If even one offset is wrong, the wrong sound plays (`explosion` sound plays for `scouter_beep`), or sounds clip/overlap. v1.2 also adds new sounds (achievement fanfare, streak chime, Vegeta grunt, zenkai whoosh, nudge tone) -- these must be integrated into the same sprite.
+The existing off-day system marks entire days as off-days in Settings (specific weekdays). Off-day analytics should show "impact of off-days on streaks, XP, and power level." But the off-day concept has an edge case: a user might check some habits on an off-day before realizing it is an off-day (or the off-day setting might be changed mid-day). The `daily_log` table records the day's actual state. If analytics queries filter `WHERE is_off_day = true`, they miss days where the user partially completed habits AND the day was configured as off. If they use Settings weekday config, they get the CURRENT config, not the historical one (the user might have changed which days are off-days).
 
 **Why it happens:**
-Audio sprite compilation tools generate new offset maps. The developer updates the audio file but manually edits `SPRITE_MAP` offsets -- one typo silently misaligns every subsequent sound. Or: the developer compiles the sprite in a different order than the `SPRITE_MAP` expects.
+Off-day status is derived from Settings (which weekdays are off), not stored per-day. If the user changes off-day settings (e.g., removes Saturday as an off-day after 3 months), historical analytics retroactively recategorize all past Saturdays as non-off-days. This is a classic "derived vs. stored" data problem.
 
 **How to avoid:**
-- Use an automated sprite compilation pipeline that outputs BOTH the audio file and a JSON manifest of offsets. Parse the JSON to generate the TypeScript `SPRITE_MAP`.
-- Keep individual source sound files in a `/audio/sources/` directory. The sprite is compiled from these, never hand-edited.
-- Define ALL new v1.2 sound IDs before compiling: `achievement_fanfare`, `streak_chime`, `vegeta_grunt`, `zenkai_whoosh`, `nudge_tone`. Compile the sprite ONCE with all sounds.
-- Write a smoke test: load the Howler sprite, play each sound ID, verify the duration matches the expected range (within 100ms tolerance).
-- Update `EVENT_SOUND_MAP` in `useSoundEffect.ts` (lines 8-16) for all new animation event types at the same time.
+- Store `is_off_day: boolean` on the `daily_log` table (or verify it already exists). The off-day status should be snapshotted at the time the log is created, not derived retroactively from current Settings.
+- If `daily_log` does not have this field, add a migration that backfills it from the current off-day schedule (best approximation).
+- Analytics queries should use `daily_log.is_off_day`, never re-derive from Settings config.
+- Show off-day analytics separately: "Your off-day completion rate" vs. "Your active-day completion rate" -- do not mix them.
 
 **Warning signs:**
-- One sound plays but it is the wrong sound for the event.
-- Some sounds are silent (offset points to gap between sounds).
-- New sounds play correctly but existing sounds are now broken.
+- Changing off-day settings retroactively changes historical analytics charts.
+- Off-day analytics shows 0% for days where the user actually completed habits.
+- No `is_off_day` field on daily_log records.
 
 **Phase to address:**
-Audio sprite phase. Must happen AFTER all new sound IDs for v1.2 are defined (so the sprite is compiled once) but BEFORE other features that need those sounds.
+Off-day analytics phase. The data model must be verified/migrated before building the analytics views.
 
 ---
 
-### Pitfall 7: recharts react-is Override Removal Breaks Chart Rendering
+### Pitfall 7: Responsive Tailwind Classes Conflict with Existing @theme Token System
 
 **What goes wrong:**
-The `package.json` has `"overrides": { "react-is": "^19.0.0" }` (line 26-28). This forces recharts' `react-is` dependency to use the React 19 version. Removing this override to "fix" the tech debt without verifying recharts has internalized the fix causes `Cannot read properties of undefined` errors in recharts components. Charts silently fail or crash during render, breaking the existing calendar heatmap and attribute progression charts.
+The app uses Tailwind v4 with `@theme` tokens in `index.css` (28 custom color tokens). Responsive design typically uses Tailwind breakpoint prefixes (`sm:`, `md:`, `lg:`). The existing codebase has ZERO responsive prefixes -- everything is mobile-width by default because it was designed for a single desktop-width layout that happens to be narrow. Adding responsive prefixes retroactively means touching almost every component. The risk is introducing inconsistencies: some components get responsive classes, others do not, creating a mixed experience.
 
 **Why it happens:**
-recharts 3.7.x still lists `react-is` as a peer dependency. Per the [recharts discussion #5701](https://github.com/recharts/recharts/discussions/5701), the maintainers moved react-is to peerDependencies. The override forces npm to resolve it to v19. Removing the override lets npm resolve to whatever recharts requests (v18), which is incompatible with React 19 internals.
+The app was built as a "phone-width column on desktop" design. It actually looks decent on mobile already because the layout is narrow. The real responsive issues are: (1) the HeroSection `size={160}` AuraGauge is too large on small screens, (2) fixed-position elements (BottomTabBar, FAB, NudgeBanner, MiniHero) overlap on short viewports, (3) Analytics page charts overflow narrow viewports, (4) modals/sheets assume minimum viewport height. These are surgical fixes, not a full responsive rewrite.
 
 **How to avoid:**
-- Check if a newer recharts version (3.8+) has dropped `react-is` entirely before attempting removal. If not, KEEP the override.
-- If keeping the override, add a comment in `package.json`: `// REQUIRED: recharts 3.7.x needs react-is override for React 19 compat`.
-- If upgrading recharts, test ALL chart components (calendar heatmap, attribute charts, any new contribution graphs) with both empty and populated datasets.
-- Evaluate honestly: if the override causes zero runtime issues, mark this tech debt as "acceptable, documented" and move on. The override is a single line with no real cost.
+- Do NOT do a "responsive rewrite" of every component. The narrow single-column layout already works on mobile. Focus on the specific breakage points listed above.
+- Use `min-h-dvh` (dynamic viewport height) instead of `min-h-screen` to handle mobile browser chrome (address bar, tab bar). The current `min-h-screen` in AppShell may cause content to be hidden behind iOS Safari's bottom bar.
+- For the AuraGauge, pass size as a prop derived from viewport: `const gaugeSize = useMediaQuery('(min-width: 768px)') ? 160 : 120` or use responsive Tailwind classes on the container.
+- For overlapping fixed elements: audit all `fixed` position elements. On a 568px tall viewport (iPhone SE landscape): BottomTabBar (64px) + FAB (56px + 80px offset from bottom) + MiniHero (when sticky) + NudgeBanner can consume 200px+ of viewport, leaving minimal space for content.
+- For charts: ensure recharts `ResponsiveContainer` is used everywhere (it likely already is, but verify).
 
 **Warning signs:**
-- Charts render in development but crash in production build.
-- `npm install` shows peer dependency warnings after override removal.
-- Charts work for some data shapes but crash for empty datasets.
+- Every component file gets touched in the responsive PR (scope creep signal).
+- Some pages look responsive, others do not (inconsistent application).
+- iOS Safari users report content hidden behind browser chrome.
+- iPhone SE landscape shows more fixed UI than scrollable content.
 
 **Phase to address:**
-Tech debt phase. Attempt early so charts are stable for new analytics features. Must include immediate rollback plan (restore override).
+Responsive design phase. Scope should be surgical fixes to specific breakage points, not a full rewrite.
 
 ---
 
-### Pitfall 8: Calendar Day Popover Fails on Mobile Touch
+### Pitfall 8: Weekly/Monthly Completion Rates Computed Client-Side from Raw Data
 
 **What goes wrong:**
-Calendar day cells in the heatmap are dense and small (typically 16-20px). A popover positioned absolutely relative to a clicked cell renders off-screen on narrow mobile viewports. On touch devices, there is no hover state -- the user does not know cells are tappable. Closing the popover requires a click-outside handler that conflicts with the calendar grid's own tap handlers (tapping another day should close the current popover AND open a new one, not just close).
+v1.3 includes "weekly/monthly completion rates, streak leaderboard, best/worst day patterns." The naive approach is to fetch all `daily_log` records for the period and compute aggregates in JavaScript. For a month, that is 30 records -- fine. For "all time" after a year, that is 365 records with per-habit breakdowns. The real danger is not performance but ACCURACY: the frontend might calculate completion rate as `completedHabits / totalHabits` using the CURRENT habit count, but the actual rate should use the habit count on EACH historical day (which varies as habits are added/removed/archived).
 
 **Why it happens:**
-Calendar heatmaps are designed for information display, not interaction. The click-to-detail requirement is being retrofitted onto a component that was built for passive viewing. Popover positioning libraries assume desktop viewport widths.
+The `daily_log` table already stores `habits_due` and `habits_completed` per day -- the correct denominator is snapshotted. But if the frontend computes from habit-level data instead of using daily_log snapshots, the denominator is wrong. A developer might also compute "best day" by looking at habits, not daily_logs.
 
 **How to avoid:**
-- Use `vaul` (already in `package.json`, line 22) as a bottom drawer on mobile viewports (<768px). Use a positioned popover only on desktop.
-- Switch between the two presentations using a `window.matchMedia('(min-width: 768px)')` check.
-- Make calendar cells at least 28x28px with 2px gap on mobile for adequate touch targets.
-- Popover/drawer content: date, completion %, list of habits with check/miss icons, XP earned. No charts inside -- keep it scannable.
-- Tapping a different day while popover is open: close current, open new. Do not require explicit dismiss first.
+- All aggregate analytics MUST be computed from `daily_log` snapshots, never from current habit state.
+- Create a dedicated backend endpoint: `GET /analytics/summary?period=week|month|all` that returns pre-computed aggregates: average completion rate, best day of week, worst day of week, streak leaderboard (sorted habits by current streak).
+- The streak leaderboard is a simple sort of active habits by `streak_current` -- this can be computed from the existing `todayHabits` data in habitStore without a new endpoint.
+- Best/worst day patterns: `GROUP BY day_of_week` on daily_logs, average `completion_rate` per weekday. This MUST be a backend query, not client-side.
 
 **Warning signs:**
-- Calendar day tap does nothing on iOS Safari.
-- Popover renders off the right edge on iPhone SE viewport.
-- Popover opens but tapping outside does not close it.
+- Analytics show 120% completion rate (denominator mismatch).
+- Adding a new habit retroactively lowers all historical completion rates.
+- "Best day" computation takes visible time on the frontend.
 
 **Phase to address:**
-Calendar popover phase. Must be tested on actual mobile device or Safari/Chrome emulator.
+Enhanced data views phase. Backend aggregation endpoint must exist before frontend views are built.
 
 ---
 
-### Pitfall 9: Archived Habit Restore Creates sort_order Conflicts
+### Pitfall 9: Uncheck Feedback Triggers Reverse Animation Chaos
 
 **What goes wrong:**
-When a habit is archived (`is_active = false`), its `sort_order` value is preserved. While archived, the user reorders remaining active habits via drag-and-drop. Habit B now occupies archived Habit A's `sort_order` position. Restoring Habit A creates a collision: two active habits with the same `sort_order`. The habit list renders in unpredictable order or, if there is a unique constraint, the restore fails.
+v1.3 includes "uncheck feedback" and "streak-break acknowledgment." Currently, unchecking a habit plays `play('undo')` and that is it (`HabitCard.tsx` line 84). If uncheck gets full animation treatment (reverse aura shrink, streak break overlay, power level decrease animation), the animation queue -- which was designed for positive-direction events -- must handle negative-direction events. The priority tier system (`PRIORITY_TIERS` in uiStore.ts) has no concept of "negative" events. An uncheck that fires a `streak_break` event at Tier 2 could get combo-batched with positive events from a previous check, creating nonsensical summaries like "Streak Broken! + Capsule Drop!"
 
 **Why it happens:**
-Archive is currently a soft delete (`is_active = false`) that preserves all fields including `sort_order`. The restore path is just `is_active = true`. Nobody checks for collisions. The drag-and-drop reorder feature (new in v1.2) makes this worse because `sort_order` values are now actively user-managed.
+The animation system was designed for the "things getting better" direction. Every event type is celebratory. Introducing negative events (uncheck, streak break) into the same queue creates semantic conflicts. The combo batching system groups Tier 2 events by count, not by valence.
 
 **How to avoid:**
-- On restore: always assign `sort_order = MAX(sort_order of active habits) + 1`. The restored habit goes to the bottom of the list. The user can drag it to their preferred position.
-- The restore API response should include the new `sort_order` so the frontend inserts correctly.
-- Archived habits view should sort by archive date (or original created_at), not by sort_order -- sort_order is meaningless for inactive habits.
-- The `PUT /habits/reorder` endpoint should only accept active habit IDs. Validate that all submitted IDs are `is_active = true`.
+- Negative feedback should NOT use the animation queue. Keep it simple and inline:
+  - Uncheck: `play('undo')` + subtle visual pulse on the HabitCard (current behavior is already correct).
+  - Streak break: show a small inline toast or character quote (Vegeta), NOT a full overlay. Use `showCharacterQuote()` which already exists.
+  - Aura gauge decrease: this already happens naturally when the percentage drops (AuraGauge re-renders with new percent).
+- If a streak break acknowledgment overlay IS desired, give it a separate rendering path from the positive animation queue. Use a simple `useState` in Dashboard, not `useUiStore.enqueueAnimation`.
+- The `AnimationPlayer` and combo batching system should remain exclusively for positive/celebratory events.
 
 **Warning signs:**
-- After restoring a habit, two habits appear at the same position.
-- Drag-and-drop reorder saves, but the restored habit jumps to an unexpected position on refresh.
-- Reorder endpoint accepts archived habit IDs and silently corrupts sort_order.
+- Uncheck triggers a full-screen overlay.
+- Combo summary includes both positive and negative events.
+- Unchecking a habit causes a 3-second animation delay before the UI updates.
 
 **Phase to address:**
-Archived habits phase. Must coordinate with drag-and-drop reorder to ensure sort_order management is consistent.
+Feedback gaps phase. Explicitly decide: negative feedback is inline-only, positive feedback uses the queue.
 
 ---
 
-### Pitfall 10: History Views Load Unbounded Data Without Pagination
+### Pitfall 10: Shareable Summary Text Looks Bad When Pasted
 
 **What goes wrong:**
-The capsule history and wish history API endpoints (`/analytics/capsule-history`, `/analytics/wish-history`) return ALL records. After 6 months: ~540 capsule drops (6 habits x 25% rate x 180 days x avg 2 checks/habit = ~540). The frontend renders all items in a single list, causing scroll jank and slow initial render on the Analytics page.
+The clipboard summary is plain text that will be pasted into messaging apps (WhatsApp, Discord, iMessage). If the summary uses emoji-heavy formatting that looks good in the app but renders as boxes or misaligned text in some messaging apps, or if it includes internal jargon ("Tier: Kaio-ken x10", "Zenkai activated") that makes no sense to recipients, the share feature is useless.
 
 **Why it happens:**
-The existing analytics endpoints have no `limit`/`offset` parameters. This works fine for month 1 but degrades linearly. The contribution graph is naturally bounded (90 days) but history lists grow unbounded.
+The developer formats the summary for how it looks in the app's console/preview, not how it renders when pasted into common destinations. Emoji rendering varies across platforms. Line breaks (`\n`) render differently in different apps.
 
 **How to avoid:**
-- Add `?limit=50&offset=0` pagination to both history endpoints from the start.
-- Frontend uses "load more" button or infinite scroll, never renders the full list.
-- Default to showing most recent 50 items, sorted by date descending.
-- Contribution graphs and calendar are naturally bounded -- no pagination needed.
+- Keep the summary simple and universally readable:
+  ```
+  Saiyan Tracker - March 8, 2026
+  Completed: 6/6 habits (100%)
+  Current streak: 14 days
+  Power Level: 12,450
+  ```
+- Avoid emoji in the core data lines. One optional emoji at the top is fine.
+- Use `\n` line breaks (not `\r\n`), which work in all modern messaging apps.
+- Do NOT include internal game terms that require context (no "Kaio-ken", "Zenkai", "capsule drops" unless the user opts in).
+- Test by copying and pasting into: (1) WhatsApp, (2) Discord, (3) plain text editor.
 
 **Warning signs:**
-- Analytics page takes >500ms to load after 3+ months.
-- Capsule history list scrolls endlessly with no performance concern addressed.
-- Browser DevTools shows 500+ DOM nodes for history list.
+- Summary text has broken formatting when pasted into WhatsApp.
+- Summary includes game mechanics that confuse non-users.
+- Summary is more than 5 lines (too long for casual sharing).
 
 **Phase to address:**
-Analytics history views phase. Pagination must be part of initial API design.
-
----
-
-### Pitfall 11: Custom Frequency Day Picker — JavaScript vs ISO Weekday Mismatch
-
-**What goes wrong:**
-The backend uses Python's `date.isoweekday()` (1=Monday through 7=Sunday) in `get_habits_due_on_date()` (line 65 of habit_service.py): `target.isoweekday() in habit.custom_days`. The existing `custom_days` JSON stores isoweekday integers. A new frontend day picker component might use JavaScript's `Date.getDay()` (0=Sunday through 6=Saturday). If the frontend sends JavaScript indices, a habit set to "Monday" (JS getDay=1, ISO=1) works by coincidence, but "Sunday" (JS getDay=0, ISO=7) becomes "no valid day" or the wrong day.
-
-**Why it happens:**
-Python and JavaScript use different weekday numbering with different zero points and different start days. The existing data format uses ISO convention, but a new UI component may default to JS convention. The off-by-one-and-different-start confusion is a classic date handling bug.
-
-**How to avoid:**
-- The day picker component MUST emit isoweekday values (1-7, Mon=1, Sun=7) to match the existing backend convention and stored data.
-- Define a mapping constant: `const ISO_WEEKDAY = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 } as const`.
-- Display the day picker starting with Monday (not Sunday) to match ISO convention visually.
-- Write an integration test: create habit with `custom_days: [1, 3, 5]`, verify it appears on Monday, Wednesday, Friday and NOT on Tuesday, Thursday, Saturday, Sunday.
-- Test Sunday specifically: `custom_days: [7]` must match `isoweekday() == 7`.
-
-**Warning signs:**
-- Habit set to "Mon/Wed/Fri" appears on wrong days.
-- Habit set to "Sun" never appears as due (0 is not in the 1-7 range check).
-- Day picker shows Sunday first (American convention) but backend starts weeks on Monday (ISO).
-
-**Phase to address:**
-Custom frequency day picker phase. Must include backend integration test.
+Shareable summary phase. Format must be tested by actual paste into messaging apps.
 
 ---
 
@@ -290,102 +265,99 @@ Custom frequency day picker phase. Must include backend integration test.
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Adding new AnimationEvent types without priority system | Each feature ships faster | Animation queue becomes a 15-25 second slideshow on combo events | Never -- add priority in the same PR as new event types |
-| Keeping recharts override without documenting | Avoids investigation | Next developer removes it and breaks charts | Acceptable if documented with inline comment |
-| Hardcoding streak milestone values in frontend AND backend | Quick milestone badge display | Lists drift when one is updated but not the other | Never -- single source of truth in constants.py, frontend fetches from API |
-| Skipping pagination on history endpoints | Faster initial development | Analytics page degrades after 3 months | Only if pagination is committed to within this milestone |
-| Using inline `animate` props for new animations instead of variants | Faster prototyping | Animation definitions scattered, inconsistent durations/easings | Acceptable for one-off animations; use variants for any animation used in 2+ components |
+| Adding responsive classes only to Dashboard, skipping Analytics/Settings | Faster to ship responsive dashboard | Inconsistent experience across tabs; user notices | Never -- all three pages must get responsive treatment in the same phase |
+| Computing analytics aggregates client-side | No new backend endpoint needed | Wrong denominators, slow on large datasets, duplicated logic | Only for streak leaderboard (simple sort of existing data) |
+| Skipping overlay audit during responsive pass | Responsive page layouts ship faster | Overlays break on mobile, discovered by user during celebrations | Never -- overlays are part of the core experience |
+| Hardcoding share summary format without config | Quick implementation | Cannot adjust format without code change | Acceptable for v1.3; make it a utility function for easy future changes |
+| Using `window.innerWidth` checks instead of Tailwind breakpoints | Works immediately | Duplicates breakpoint logic, does not respond to resize | Acceptable ONLY for JavaScript logic (gauge size); use Tailwind for CSS |
 
 ## Integration Gotchas
 
 | Integration Point | Common Mistake | Correct Approach |
 |-------------------|----------------|------------------|
-| New AnimationEvent type in uiStore | Adding to `AnimationEvent` union but forgetting `QUEUED_TYPES` set, `renderOverlay` switch, AND `EVENT_SOUND_MAP` | Checklist: update all 4 locations (type union, QUEUED_TYPES if overlay, renderOverlay, EVENT_SOUND_MAP) |
-| Achievement service + check_habit() | Calling achievement check AFTER transaction commits, creating race condition or missed recording | Add achievement check INSIDE `check_habit()` between steps 5 and 6, within the same flush |
-| New CheckHabitResponse fields + habitStore | Adding fields to backend response but not consuming them in `habitStore.checkHabit()` distribution logic | Update `habitStore.checkHabit()` to distribute new fields (achievement, milestone) to the correct stores |
-| New SoundId + sprite | Adding ID to `SoundId` type but not to `SPRITE_MAP` offsets or `EVENT_SOUND_MAP` | Update all 3: `SoundId` union, `SPRITE_MAP` with correct offset, `EVENT_SOUND_MAP` for the event type |
-| Drag-and-drop + optimistic reorder | Reordering in UI state but not calling `PUT /habits/reorder`, so refresh reverts | Send reorder API call on dragEnd; only update local state after API success (or optimistic with rollback) |
-| Vegeta roast + streak service | Adding a second gap-detection system for roasts when `check_zenkai_recovery()` already detects gaps | Reuse `zenkai_info["zenkai_activated"]` from check_habit() to determine if roast should trigger |
-| Archived habit restore + sort_order | Restoring with original sort_order that now conflicts with active habits | Assign `MAX(sort_order) + 1` on restore; let user drag to desired position |
-| Temporary habit + fetchToday | Frontend shows expired temp habit because `is_active` is still true | `fetchToday` must use the same `get_habits_due_on_date()` filtering logic (which checks end_date) |
+| Responsive + AnimationPlayer overlays | Applying responsive only to page content, forgetting overlay components | Include all 11 overlay components in responsive audit |
+| Habit detail view + existing HabitDetailSheet | Building a new component instead of expanding the existing one | Enhance `HabitDetailSheet.tsx` with additional sections (target time, weekly rate, etc.) |
+| Off-day analytics + daily_log | Deriving off-day status from current Settings config | Use snapshotted `is_off_day` from daily_log, not current Settings |
+| Clipboard copy + async data fetch | Fetching data after user click, breaking gesture chain | Pre-compute summary from Zustand store data, copy synchronously on click |
+| Uncheck feedback + animation queue | Adding negative events to the positive-only animation queue | Keep negative feedback inline (sound + visual pulse), not queued |
+| New analytics views + existing useAnalyticsData hook | Creating separate data-fetching hooks per new view | Extend the existing `useAnalyticsData` hook or create a single new endpoint |
+| Responsive BottomTabBar + safe area | Not accounting for iOS safe area (notch/home indicator) | Add `pb-safe` or `env(safe-area-inset-bottom)` to BottomTabBar |
+| MiniHero sticky + responsive | MiniHero content overflows on narrow screens | Ensure MiniHero uses truncation and responsive text sizing |
 
 ## Performance Traps
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Contribution graph (90 days x N habits) re-rendering on every habit check | Analytics page stutters when navigated to after a check | Memoize with `React.memo` + stable data reference via `useMemo` | When contribution graphs share a page with reactive components |
-| Unbounded capsule history query | Analytics page load time grows linearly | `LIMIT 50 OFFSET 0` with pagination in API | After ~200 capsule drops (3 months of use) |
-| Multiple achievement checks per habit check | Each check queries achievements table for each milestone type | Batch query: `SELECT achievement_key FROM achievements WHERE achievement_type = 'streak_milestone'` once, then compare in Python | Unlikely to be a real performance issue for single-user, but clean code practice |
-| Drag-and-drop with all HabitCards as Motion components | Drag causes all cards to re-render during position animation | Use `layoutId` on Motion components for smooth reorder; avoid animating non-moving cards | With 8+ habits in the list |
-| Calendar heatmap rendering 12 months eagerly | Analytics initial load takes 2+ seconds | Render only visible month; lazy-load adjacent months on navigation | After 6+ months of tracked data |
+| Re-rendering all HabitCards when one detail sheet opens | Dashboard stutters on detail open | Keep `showDetail` state local to each HabitCard (already correct in current code) | If detail state is lifted to parent or put in Zustand |
+| Contribution grid re-fetching on every sheet open | Network tab shows repeated API calls for same habit | Cache contribution data in a Map keyed by habitId with TTL | After user opens same habit detail 3+ times per session |
+| Analytics page computing aggregates on every period change | Visible delay when switching between week/month/all | Backend computes aggregates; frontend only displays | After 6+ months of data |
+| Responsive images/avatars not size-constrained | Layout shift when avatar loads on mobile | Use explicit `width` and `height` attributes; use Tailwind `w-` and `h-` classes | On slow connections where images load progressively |
+| Too many `matchMedia` listeners for responsive logic | Memory leaks, stale listeners | Use a single shared `useMediaQuery` hook; clean up listeners in useEffect return | If every component adds its own listener |
 
 ## UX Pitfalls
 
 | Pitfall | User Impact | Better Approach |
 |---------|-------------|-----------------|
-| Achievement popups for all past milestones on feature deploy | User closes 5+ dialogs before using the app | Seed achievements table with migration; only notify on NEW milestones earned after deploy |
-| Vegeta roast as first UI element after absence | User feels punished for returning; avoidance spiral | Show welcome_back Goku quote first; Vegeta appears as secondary quote bar text, not modal |
-| "You're close!" nudge banner that never goes away | Nag banner stays visible during active checking; feels pushy | Auto-dismiss when user checks the next habit; only show after 30+ seconds of inactivity with 1-2 habits remaining |
-| Daily summary toast blocks habit cards | Toast covers the area where user taps habits | Use non-blocking bottom toast with auto-dismiss in 3 seconds; position below the habit list |
-| Drag handle too small on mobile | User cannot grab the handle to initiate drag | Handle must be at least 44x44px touch target; use visible grip lines affordance |
-| Calendar popover with too much info | Information overload on a small popover surface | Show only: date, %, habit names with check/miss icon, total XP. No charts or graphs inside |
-| Capsule drop overlay interrupts habit-checking flow | User is in "rapid check" mode; overlay forces them to wait | Change capsule to notification badge; user opens capsule drawer when they choose to |
+| Hiding dopamine elements on mobile for "cleanliness" | User loses visual feedback that makes checking habits rewarding | Scale down (smaller avatar, compact stats row) instead of hiding |
+| Habit detail view blocks the dashboard | User cannot check other habits while viewing detail | Use a bottom sheet (current pattern) or slide-over that allows dismissal with swipe |
+| Off-day analytics showing "0% completion" prominently | User feels bad about off-days that were intentionally scheduled | Show off-day stats separately: "You rested 8 days this month" (positive framing) |
+| Share summary requiring multiple taps (format selection, confirm, copy) | User gives up before sharing | Single tap: copy pre-formatted summary, show success toast |
+| Streak-break overlay on uncheck | User regrets unchecking, stops correcting mistakes | Streak-break feedback should be subtle (inline text change), not dramatic |
+| Responsive chart text becoming unreadable | User cannot read axis labels on mobile charts | Use abbreviations for mobile axis labels; ensure minimum 10px font size |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Streak milestones:** Achievement row inserted in DB, not just animation fired -- `SELECT * FROM achievements WHERE achievement_type = 'streak_milestone'` has rows
-- [ ] **Drag-and-drop reorder:** `PUT /habits/reorder` called on dragEnd -- sort_order persists across page refresh
-- [ ] **Vegeta roasts:** Severity matches consecutive missed days accurately -- 1 missed = mild (not savage); 0 missed = no roast
-- [ ] **Temporary habits:** End date is inclusive (last active day) -- habit with `end_date = today` IS in today's list
-- [ ] **Audio sprite:** All 13+ sounds play the CORRECT sound for their event -- trigger each event type and verify the right audio plays
-- [ ] **Calendar popover:** Works on mobile touch -- tested on actual phone or device emulator, not just desktop Chrome
-- [ ] **Archived restore:** sort_order recalculated to MAX+1 -- restored habit appears at bottom, not overlapping existing habits
-- [ ] **Achievement dedup:** Same milestone cannot fire twice -- check habit, uncheck, re-check: milestone fires only once
-- [ ] **Animation queue cap:** Perfect day scenario does not produce 5+ sequential overlays -- test "last habit + capsule + streak milestone + dragon ball"
-- [ ] **recharts override:** Charts render after any package.json changes -- test all chart components with real data AND empty data
-- [ ] **Day picker mapping:** Sunday selection produces `custom_days: [7]` not `custom_days: [0]` -- verify habit is due on actual Sunday
-- [ ] **History pagination:** Capsule history returns max 50 items per page -- API returns `limit`/`offset` params, frontend shows "load more"
-- [ ] **Nudge banner dismissal:** Banner disappears when user checks a habit, does not persist after reaching 100%
+- [ ] **Responsive overlays:** All 11 animation overlay components tested on 375px width -- no horizontal scroll, dismiss button above tab bar
+- [ ] **Responsive fixed elements:** BottomTabBar, FAB, MiniHero, NudgeBanner all tested on iPhone SE viewport height (568px) -- content area has at least 350px usable space
+- [ ] **iOS safe areas:** `env(safe-area-inset-bottom)` applied to BottomTabBar and any fixed-bottom elements -- tested on iPhone with notch
+- [ ] **Clipboard fallback:** Copy works on HTTP (not just HTTPS) with textarea fallback -- tested on actual phone
+- [ ] **Off-day data:** `daily_log` records have snapshotted off-day status, not derived from current settings -- verified with SQL query after settings change
+- [ ] **Habit detail caching:** Opening the same habit detail twice does not fire two API calls -- verified in Network tab
+- [ ] **Analytics aggregates:** Completion rates use `daily_log.habits_due` denominator, not current habit count -- verified by adding a new habit and checking historical rates unchanged
+- [ ] **Share text format:** Summary pasted into WhatsApp and Discord renders correctly -- no broken lines, no emoji boxes
+- [ ] **Uncheck feedback:** Unchecking does NOT trigger animation queue events -- only inline sound and visual change
+- [ ] **Chart responsiveness:** All recharts components use `ResponsiveContainer` and render correctly at 375px -- no axis label clipping
+- [ ] **MiniHero sticky:** Works correctly on mobile -- no overlap with content, smooth transition, text fits
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Animation queue overload | MEDIUM | Add priority system and batching to AnimationPlayer + habitStore enqueue logic; 1-2 day refactor |
-| Retroactive milestone spam | LOW | Run migration to seed achievements table; add dedup check to achievement service; 2-4 hour fix |
-| Temporary habit % corruption | HIGH | Audit all daily_logs for days with active temp habits; if snapshots are wrong, must recalculate and UPDATE; 1+ day investigation |
-| Drag-tap conflict | LOW | Add dedicated drag handle; change from full-card drag to handle-only; 2-4 hour refactor |
-| Vegeta roast too punishing | LOW | Change from modal to inline quote bar; add Settings toggle; review quote tone; UI-only changes |
-| Audio sprite desync | LOW | Recompile sprite from source files; regenerate SPRITE_MAP from manifest; 1-2 hours with automation |
-| recharts breakage | LOW | Restore override in package.json; 30-second fix; document with inline comment |
-| sort_order collision | LOW | Run `UPDATE habits SET sort_order = (ROW_NUMBER()) WHERE is_active = true ORDER BY sort_order`; add MAX+1 logic to restore endpoint |
-| Day picker weekday mismatch | MEDIUM | Fix frontend mapping constant; audit all existing habits with custom_days; may need to convert stored values if wrong convention was used |
+| Broken mobile overlays | MEDIUM | Audit each overlay component, add responsive classes and viewport-aware sizing; 1-2 days |
+| Hidden dopamine elements | LOW | Restore visibility, switch from `hidden` to `scale-down` approach; UI-only changes |
+| Wrong analytics denominators | HIGH | Must audit all analytics queries, switch to daily_log snapshots, possibly backfill data; 1+ day |
+| Clipboard silent failure | LOW | Add textarea fallback and toast feedback; 1-2 hour fix |
+| Off-day retroactive recalculation | MEDIUM | Add `is_off_day` column to daily_log, backfill from settings, update queries; migration + query changes |
+| Negative events in animation queue | MEDIUM | Extract negative events from queue, create inline feedback path; refactor animation enqueue logic |
+| Share text formatting | LOW | Adjust format string, test in messaging apps; 30-minute fix |
+| Responsive scope creep | LOW | Revert to surgical-fix approach, list specific breakage points; planning change only |
 
 ## Pitfall-to-Phase Mapping
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| Animation queue overload | Phase 1: Animation queue refactor (MUST be first) | "Last habit of perfect day" test produces max 3 overlays |
-| recharts override | Phase 2: Tech debt (early, stabilizes charts) | All chart components render; override has inline comment |
-| Audio sprite desync | Phase 3: Audio sprite (after all new sounds defined) | Each sound ID plays correct sound; automated manifest |
-| Retroactive milestone spam | Phase 4: Achievement system | No retroactive notifications; migration seeds existing milestones |
-| Streak milestone in check_habit | Phase 4: Achievement system | Milestone fires only on the check that crosses the threshold |
-| Vegeta roast tone | Phase 5: Vegeta roast system | Settings toggle exists; welcome_back shows before roast |
-| Drag-tap conflict | Phase 6: Drag-and-drop reorder | Mobile test: tap checks, drag handle reorders, zero delay |
-| sort_order collision | Phase 7: Archived habits (after drag-and-drop) | Restore archived habit; verify it appears at list bottom |
-| Calendar popover mobile | Phase 8: Calendar popover | Works on iPhone Safari and Android Chrome |
-| Temporary habit % corruption | Phase 9: Temporary habits | End date boundary tests pass; % snapshot is correct |
-| Day picker weekday mismatch | Phase 10: Custom frequency picker | Mon/Wed/Fri habit is due on correct days; Sunday works |
-| History pagination | Phase 11: Analytics history views | API returns paginated results; frontend shows "load more" |
+| Animation overlay mobile breakage | Responsive design phase | All 11 overlays tested at 375px; no horizontal scroll |
+| Dashboard decluttering kills dopamine | Responsive design phase | Aura gauge and avatar visible without scrolling on mobile |
+| Fixed element overlap on short viewports | Responsive design phase | iPhone SE landscape has 350px+ usable content area |
+| iOS safe area gaps | Responsive design phase | BottomTabBar sits above home indicator on iPhone |
+| Tailwind responsive scope creep | Responsive design phase | PR touches specific breakage points, not every component |
+| Habit detail over-fetching | Habit detail view phase | Opening detail sheet fires max 1 API call per habit per session |
+| Wrong analytics denominators | Enhanced data views phase | Adding a new habit does not change historical rates |
+| Off-day retroactive recalculation | Off-day analytics phase | Changing settings does not change past analytics |
+| Clipboard silent failure | Shareable summary phase | Copy works on HTTP localhost AND actual mobile device |
+| Share text readability | Shareable summary phase | Pasted into WhatsApp/Discord without formatting issues |
+| Negative events in animation queue | Feedback gaps phase | Unchecking does not trigger animation queue |
+| Missing sound mappings | Feedback gaps phase | Every new event type has an EVENT_SOUND_MAP entry |
+| Client-side aggregate computation | Enhanced data views phase | Backend returns pre-computed aggregates |
 
 ## Sources
 
-- Direct codebase analysis: `uiStore.ts`, `AnimationPlayer.tsx`, `habitStore.ts`, `habit_service.py`, `streak_service.py`, `soundMap.ts`, `useSoundEffect.ts`, `HabitCard.tsx`, `constants.py`, `package.json`
-- [recharts react-is peer dependency discussion](https://github.com/recharts/recharts/discussions/5701) -- HIGH confidence
-- [recharts React 19 support issue #4558](https://github.com/recharts/recharts/issues/4558) -- HIGH confidence
-- [@hello-pangea/dnd GitHub](https://github.com/hello-pangea/dnd) -- recommended for vertical list reordering -- MEDIUM confidence
-- [Top drag-and-drop libraries for React 2026](https://puckeditor.com/blog/top-5-drag-and-drop-libraries-for-react) -- MEDIUM confidence
+- Direct codebase analysis: `AppShell.tsx`, `Dashboard.tsx`, `HabitCard.tsx`, `HabitDetailSheet.tsx`, `AnimationPlayer.tsx`, `uiStore.ts` (PRIORITY_TIERS, AnimationEvent union), `habitStore.ts` (checkHabit distribution logic), `index.css` (@theme tokens), `BottomTabBar.tsx`, `HeroSection.tsx`, `Analytics.tsx`, `MiniHero.tsx`
+- Tailwind v4 responsive design: uses standard breakpoint prefixes (`sm:`, `md:`, `lg:`) -- HIGH confidence (from @theme usage in codebase)
+- Clipboard API secure context requirement: [MDN Clipboard API](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard_API) -- HIGH confidence
+- iOS safe area insets: `env(safe-area-inset-bottom)` for fixed-position elements -- HIGH confidence
+- Dynamic viewport units (`dvh`): supported in all modern browsers for handling mobile browser chrome -- HIGH confidence
 
 ---
-*Pitfalls research for: Saiyan Tracker v1.2 — 19 new features integration*
-*Researched: 2026-03-06*
+*Pitfalls research for: Saiyan Tracker v1.3 -- QoL features (responsive, detail views, analytics, sharing, feedback gaps)*
+*Researched: 2026-03-08*
