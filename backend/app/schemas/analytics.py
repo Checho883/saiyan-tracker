@@ -39,3 +39,21 @@ class CalendarDay(BaseModel):
     completion_tier: str
     xp_earned: int
     is_off_day: bool
+
+
+class OffDaySummary(BaseModel):
+    total_off_days: int
+    xp_impact_estimate: int  # avg_daily_xp * total_off_days
+    streaks_preserved: int  # off-days that fell in active streak gaps
+    reason_breakdown: dict[str, int]  # {"rest": 2, "sick": 1}
+
+
+class CompletionTrend(BaseModel):
+    weekly_rate: float  # completion rate for last 7 days
+    weekly_delta: float  # current - previous week (percentage points)
+    weekly_habits_due: int  # raw count for last 7 days
+    weekly_habits_completed: int
+    monthly_rate: float  # completion rate for last 30 days
+    monthly_delta: float  # current - previous month (percentage points)
+    monthly_habits_due: int  # raw count for last 30 days
+    monthly_habits_completed: int
