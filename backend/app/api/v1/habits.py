@@ -596,8 +596,8 @@ def habit_stats(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Return per-habit statistics."""
-    _get_active_habit(db, habit_id, user.id)
+    """Return per-habit statistics with completion rates, attribute XP, and streaks."""
+    habit = _get_active_habit(db, habit_id, user.id)
 
     # Total completions
     total_completions = (
@@ -611,9 +611,22 @@ def habit_stats(
     current_streak = h_streak.current_streak if h_streak else 0
     best_streak = h_streak.best_streak if h_streak else 0
 
+    # 7-day completion rate
+    seven_days_ago = (date.today() - timedelta(days=7)).isoformat()
+    completions_7d = (
+        db.query(HabitLog)
+        .filter(
+            HabitLog.habit_id == habit_id,
+            HabitLog.log_date >= seven_days_ago,
+            HabitLog.completed == True,  # noqa: E712
+        )
+        .count()
+    )
+    completion_rate_7d = completions_7d / 7.0
+
     # 30-day completion rate
     thirty_days_ago = (date.today() - timedelta(days=30)).isoformat()
-    recent_completions = (
+    completions_30d = (
         db.query(HabitLog)
         .filter(
             HabitLog.habit_id == habit_id,
@@ -622,7 +635,7 @@ def habit_stats(
         )
         .count()
     )
-    completion_rate_30d = recent_completions / 30.0
+    completion_rate_30d = completions_30d / 30.0
 
     # Total XP earned
     total_xp = (
@@ -631,10 +644,15 @@ def habit_stats(
         .scalar()
     )
 
+    # Attribute XP map — habit has a single attribute, map to uppercase key
+    attribute_xp = {habit.attribute.upper(): total_xp}
+
     return HabitStatsResponse(
         total_completions=total_completions,
         current_streak=current_streak,
         best_streak=best_streak,
+        completion_rate_7d=round(completion_rate_7d, 4),
         completion_rate_30d=round(completion_rate_30d, 4),
         total_xp_earned=total_xp,
+        attribute_xp=attribute_xp,
     )

@@ -357,6 +357,106 @@ class TestPerHabitStats:
         assert resp.status_code == 404
 
 
+class TestHabitStatsEnhanced:
+    def test_stats_empty_habit(self, client, db, sample_user):
+        """New habit with no completions returns zeros."""
+        create_resp = client.post("/api/v1/habits/", json={
+            "title": "Empty Stats",
+            "attribute": "vit",
+            "start_date": "2026-01-01",
+        })
+        habit_id = create_resp.json()["id"]
+
+        resp = client.get(f"/api/v1/habits/{habit_id}/stats")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total_completions"] == 0
+        assert data["completion_rate_7d"] == 0.0
+        assert data["completion_rate_30d"] == 0.0
+        assert data["total_xp_earned"] == 0
+        assert data["attribute_xp"] == {"VIT": 0}
+        assert data["current_streak"] == 0
+        assert data["best_streak"] == 0
+
+    def test_stats_with_completions(self, client, db, sample_user):
+        """Check habit and verify enhanced stats fields."""
+        today = date.today().isoformat()
+        create_resp = client.post("/api/v1/habits/", json={
+            "title": "Enhanced Stats",
+            "attribute": "str",
+            "start_date": "2026-01-01",
+        })
+        habit_id = create_resp.json()["id"]
+
+        # Check habit
+        client.post(f"/api/v1/habits/{habit_id}/check", json={"local_date": today})
+
+        resp = client.get(f"/api/v1/habits/{habit_id}/stats")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total_completions"] == 1
+        assert data["completion_rate_7d"] > 0  # 1/7 = ~0.1429
+        assert data["completion_rate_30d"] > 0  # 1/30 = ~0.0333
+        assert data["total_xp_earned"] > 0
+        assert "STR" in data["attribute_xp"]
+        assert data["attribute_xp"]["STR"] > 0
+        assert data["current_streak"] == 1
+        assert data["best_streak"] == 1
+
+    def test_stats_attribute_xp_maps_to_uppercase(self, client, db, sample_user):
+        """Attribute XP key should be uppercase version of habit attribute."""
+        today = date.today().isoformat()
+        create_resp = client.post("/api/v1/habits/", json={
+            "title": "KI Habit",
+            "attribute": "ki",
+            "start_date": "2026-01-01",
+        })
+        habit_id = create_resp.json()["id"]
+        client.post(f"/api/v1/habits/{habit_id}/check", json={"local_date": today})
+
+        resp = client.get(f"/api/v1/habits/{habit_id}/stats")
+        data = resp.json()
+        assert "KI" in data["attribute_xp"]
+        assert data["attribute_xp"]["KI"] > 0
+
+
+class TestHabitCalendar:
+    def test_calendar_returns_per_day_data(self, client, db, sample_user):
+        """Calendar endpoint returns correct per-day completion and XP data."""
+        today = date.today()
+        today_str = today.isoformat()
+
+        create_resp = client.post("/api/v1/habits/", json={
+            "title": "Calendar Verify",
+            "attribute": "str",
+            "start_date": "2026-01-01",
+        })
+        habit_id = create_resp.json()["id"]
+
+        # Check habit for today
+        client.post(f"/api/v1/habits/{habit_id}/check", json={"local_date": today_str})
+
+        # Get calendar including today
+        start = (today - timedelta(days=3)).isoformat()
+        end = today_str
+        resp = client.get(f"/api/v1/habits/{habit_id}/calendar?start_date={start}&end_date={end}")
+        assert resp.status_code == 200
+        days = resp.json()
+        assert len(days) == 4  # 3 days ago through today
+
+        # Today should be completed with XP
+        today_entry = [d for d in days if d["date"] == today_str]
+        assert len(today_entry) == 1
+        assert today_entry[0]["completed"] is True
+        assert today_entry[0]["attribute_xp_awarded"] > 0
+
+        # Other days should be incomplete
+        other_days = [d for d in days if d["date"] != today_str]
+        for d in other_days:
+            assert d["completed"] is False
+            assert d["attribute_xp_awarded"] == 0
+
+
 class TestReorder:
     def test_reorder_assigns_sort_order(self, client, db, sample_user):
         # Create 3 habits

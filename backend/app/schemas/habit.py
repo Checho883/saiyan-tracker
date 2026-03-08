@@ -71,8 +71,10 @@ class HabitStatsResponse(BaseModel):
     total_completions: int
     current_streak: int
     best_streak: int
+    completion_rate_7d: float
     completion_rate_30d: float
     total_xp_earned: int
+    attribute_xp: dict[str, int]  # {"STR": 120, "VIT": 80}
 
 
 class DayDetailHabit(BaseModel):
