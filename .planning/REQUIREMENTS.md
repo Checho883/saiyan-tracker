@@ -73,30 +73,30 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RESP-01 | — | Pending |
-| RESP-02 | — | Pending |
-| RESP-03 | — | Pending |
-| RESP-04 | — | Pending |
-| RESP-05 | — | Pending |
-| RESP-06 | — | Pending |
-| FDBK-01 | — | Pending |
-| FDBK-02 | — | Pending |
-| FDBK-03 | — | Pending |
-| FDBK-04 | — | Pending |
-| DTAIL-01 | — | Pending |
-| DTAIL-02 | — | Pending |
-| DTAIL-03 | — | Pending |
-| ANLYT-01 | — | Pending |
-| ANLYT-02 | — | Pending |
-| ANLYT-03 | — | Pending |
-| ANLYT-04 | — | Pending |
-| SHAR-01 | — | Pending |
+| RESP-01 | Phase 18 | Pending |
+| RESP-02 | Phase 18 | Pending |
+| RESP-03 | Phase 18 | Pending |
+| RESP-04 | Phase 18 | Pending |
+| RESP-05 | Phase 18 | Pending |
+| RESP-06 | Phase 18 | Pending |
+| FDBK-01 | Phase 22 | Pending |
+| FDBK-02 | Phase 22 | Pending |
+| FDBK-03 | Phase 22 | Pending |
+| FDBK-04 | Phase 22 | Pending |
+| DTAIL-01 | Phase 20 | Pending |
+| DTAIL-02 | Phase 20 | Pending |
+| DTAIL-03 | Phase 20 | Pending |
+| ANLYT-01 | Phase 21 | Pending |
+| ANLYT-02 | Phase 21 | Pending |
+| ANLYT-03 | Phase 21 | Pending |
+| ANLYT-04 | Phase 21 | Pending |
+| SHAR-01 | Phase 22 | Pending |
 
 **Coverage:**
 - v1.3 requirements: 18 total
-- Mapped to phases: 0
-- Unmapped: 18
+- Mapped to phases: 18
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-08*
-*Last updated: 2026-03-08 after initial definition*
+*Last updated: 2026-03-08 after roadmap creation*

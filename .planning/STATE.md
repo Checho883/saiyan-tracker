@@ -5,7 +5,7 @@ milestone_name: The Polish Pass
 status: active
 last_updated: "2026-03-08"
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -18,14 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-08)
 
 **Core value:** Every habit check must feel like something happened -- a sound, a visual pulse, a number going up. If the app is silent and still, it has failed.
-**Current focus:** v1.3 The Polish Pass — defining requirements
+**Current focus:** Phase 18 - Dashboard Polish + Responsive Design
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-08 — Milestone v1.3 started
+Phase: 18 of 22 (Dashboard Polish + Responsive Design) — 1 of 5 in v1.3
+Plan: 0 of ? in current phase
+Status: Ready to plan
+Last activity: 2026-03-08 — v1.3 roadmap created (5 phases, 18 requirements mapped)
+
+Progress: [░░░░░░░░░░] 0% (v1.3: 0/5 phases)
 
 ## Performance Metrics
 
@@ -61,10 +63,12 @@ None.
 
 ### Blockers/Concerns
 
-None.
+- [v1.3 research]: 11 animation overlays built desktop-first — need audit during responsive pass (Phase 18)
+- [v1.3 research]: 2 orphaned backend endpoints (GET /habits/{id}/calendar, GET /habits/{id}/stats) — verify data shape in Phase 19
+- [v1.3 research]: Off-day model may need migration for habits_reversed/xp_clawed_back columns — historical rows get default 0
 
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Milestone v1.3 started, defining requirements
+Stopped at: v1.3 roadmap created, ready to plan Phase 18
 Resume file: None
