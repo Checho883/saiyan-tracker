@@ -44,7 +44,7 @@ This roadmap delivers a Dragon Ball Z-themed habit tracker optimized for ADHD do
 - [x] **Phase 14: Animation Overlays + Roast UI** - Zenkai recovery, attribute level-up, and achievement overlays plus Vegeta escalation roast display (completed 2026-03-06)
 - [x] **Phase 15: Drag-and-Drop + Calendar Popover** - Habit reordering with dnd-kit and calendar day detail popover with floating-ui (completed 2026-03-06, 172 tests passing)
 - [x] **Phase 16: Settings, Forms & Audio Polish** - Archived habits, temporary habit support, day picker UX, and real audio sprite files (completed 2026-03-06)
-- [ ] **Phase 17: Audio Sound Mapping + Verification Sweep** - Wire 4 missing sound mappings, create VERIFICATION.md for Phases 13-16, fix REQUIREMENTS.md traceability
+- [x] **Phase 17: Audio Sound Mapping + Verification Sweep** - Wire 4 missing sound mappings, create VERIFICATION.md for Phases 13-16, fix REQUIREMENTS.md traceability (completed 2026-03-08)
 
 ## Phase Details
 
@@ -181,4 +181,4 @@ Note: Phase 13 depends only on Phase 11 and can execute in parallel with Phase 1
 | 14. Animation Overlays + Roast UI | 3/3 | Complete    | 2026-03-06 | - |
 | 15. Drag-and-Drop + Calendar Popover | v1.2 | 0/2 | Not started | - |
 | 16. Settings, Forms & Audio Polish | 3/3 | Complete    | 2026-03-06 | - |
-| 17. Audio Sound Mapping + Verification Sweep | v1.2 | 0/1 | Not started | - |
+| 17. Audio Sound Mapping + Verification Sweep | 2/2 | Complete   | 2026-03-08 | - |
