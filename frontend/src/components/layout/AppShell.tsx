@@ -35,7 +35,9 @@ export function AppShell() {
     <SoundProvider>
       <MotionConfig reducedMotion="user">
         <div className="min-h-screen bg-space-900 pb-16">
-          <Outlet />
+          <div className="mx-auto max-w-3xl">
+            <Outlet />
+          </div>
           <AnimationPlayer />
           <BottomTabBar />
         </div>

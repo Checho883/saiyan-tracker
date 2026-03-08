@@ -96,13 +96,9 @@ export default function Dashboard() {
       {/* Hero Section */}
       <HeroSection />
 
-      {/* Stats Panel */}
-      <div className="px-4 mt-4">
+      {/* Content with consistent spacing */}
+      <div className="px-4 space-y-4 mt-4">
         <StatsPanel />
-      </div>
-
-      {/* Habit List or Empty State */}
-      <div className="px-4 mt-4">
         {todayHabits.length === 0 ? (
           <EmptyState onCreateClick={() => openModal('habit-create')} />
         ) : (
