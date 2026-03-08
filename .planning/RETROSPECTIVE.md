@@ -95,6 +95,55 @@
 
 ---
 
+## Milestone: v1.2 — PRD Complete
+
+**Shipped:** 2026-03-08
+**Phases:** 7 | **Plans:** 18 | **Sessions:** ~6
+
+### What Was Built
+- Priority-tiered animation queue with combo batching for simultaneous game events
+- Achievement service with streak milestones (7 tiers), attribute level-ups, transformation recording
+- Roast detection service with Vegeta escalation (mild/medium/savage) + Goku welcome-back
+- Frontend features: capsule/wish history, contribution graphs, nudge banner, daily summary toast, power milestones
+- Animation overlays: level-up, Zenkai recovery, streak milestone, plus roast/welcome cards and achievements grid
+- Drag-and-drop habit reordering with @dnd-kit, calendar day-detail popover with floating-ui
+- Settings polish: archived habits, temporary habits, circular day picker, 13 real synthesized audio sounds
+- Complete EVENT_SOUND_MAP for all 11 animation event types
+- VERIFICATION.md for all 7 phases, 456 tests passing
+
+### What Worked
+- Milestone audit (v1.2-MILESTONE-AUDIT) caught 4 missing sound mappings and missing VERIFICATION.md files — Phase 17 closed all gaps cleanly
+- Phase ordering: animation queue first → backend detections → frontend features → overlays → polish ensured each layer had foundations
+- recharts react-is fix resolved cleanly with explicit react-is@19 install (removed overrides hack)
+- ffmpeg-synthesized sounds: 13 sounds generated locally without external downloads, consistent quality
+- Gap closure phase pattern (Phase 17) is effective for catching cross-phase wiring issues
+
+### What Was Inefficient
+- SUMMARY.md frontmatter missing requirements_completed field across Phases 12-16 — required VERIFICATION.md cross-reference instead
+- 2 orphaned API endpoints (GET /habits/{id}/calendar, GET /habits/{id}/stats) — frontend chose different data paths than planned
+- Phase details in ROADMAP.md showed stale plan counts (some showed "0/3" when all plans were complete)
+
+### Patterns Established
+- Gap closure phase: dedicated phase to close audit findings before milestone completion
+- EVENT_SOUND_MAP pattern: Record<AnimationEvent, SoundId> for centralized audio wiring
+- Reuse existing SoundIds for similar events (no audio proliferation)
+- VERIFICATION.md as formal cross-phase integration verification document
+- 3-source requirement cross-reference: VERIFICATION + SUMMARY + REQUIREMENTS traceability
+
+### Key Lessons
+1. Gap closure phases work well — creating Phase 17 from audit findings was clean and focused
+2. Orphaned endpoints happen when frontend finds better data paths — not a problem, just tech debt
+3. SUMMARY.md frontmatter should include requirements_completed during execution, not retroactively
+4. 18 plans across 7 phases in 3 days is sustainable with GSD workflow
+5. Audio last is correct — sprite must include all sound IDs from completed features
+
+### Cost Observations
+- Model mix: ~55% opus, ~45% sonnet
+- Sessions: ~6
+- Notable: 52 commits, 24 requirements shipped in 3 days, full PRD coverage achieved
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -103,6 +152,7 @@
 |-----------|----------|--------|------------|
 | v1.0 | ~3 | 3 | Established TDD-first, bottom-up build pattern |
 | v1.1 | ~5 | 7 | Added milestone audit as gate, verification docs as standard |
+| v1.2 | ~6 | 7 | Added gap closure phase pattern, 3-source requirement verification |
 
 ### Cumulative Quality
 
@@ -110,10 +160,12 @@
 |-----------|-------|----------|-------------------|
 | v1.0 | 222 | ~95% | 0 |
 | v1.1 | 222 (backend) + frontend tests | N/A | 0 |
+| v1.2 | 280 (backend) + 176 (frontend) = 456 | N/A | 0 |
 
 ### Top Lessons (Verified Across Milestones)
 
 1. TDD-first with well-defined requirements enables ~6 min/plan velocity
 2. Bottom-up dependency chains prevent rework cascades
 3. Milestone audit before shipping catches integration gaps that phase-level verification misses
-4. Detailed PRD → GSD phases → execution delivers full milestones in 1-2 days
+4. Detailed PRD → GSD phases → execution delivers full milestones in 1-3 days
+5. Gap closure phases cleanly address cross-phase wiring issues found by audit

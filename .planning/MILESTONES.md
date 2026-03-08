@@ -1,5 +1,28 @@
 # Milestones
 
+## v1.2 PRD Complete (Shipped: 2026-03-08)
+
+**Phases completed:** 7 phases, 18 plans
+**Requirements:** 24/24 complete
+
+**Key accomplishments:**
+- Priority-tiered animation queue with combo batching — prevents overload from simultaneous game events
+- Backend detection services: achievement recording, streak milestones (3/7/21/30/60/90/365), attribute level-ups, Vegeta roast escalation with welcome-back quotes
+- Pure frontend features: capsule/wish history lists, per-habit contribution graphs, nudge banner, daily summary toast, power milestone celebrations
+- Animation overlays: level-up, Zenkai recovery, streak milestone overlays plus roast/welcome cards and achievements grid
+- Drag-and-drop habit reordering with @dnd-kit and calendar day-detail popover with floating-ui
+- Settings polish: archived habits view/restore, temporary habits with date ranges, circular day-of-week picker, 13 real synthesized audio sprite sounds
+- Full audio mapping: all 11 AnimationEvent types wired to SoundIds, 176 frontend + 280 backend tests passing
+
+**Stats:**
+- Commits: 52
+- Timeline: 3 days (2026-03-06 → 2026-03-08)
+- Git range: feat(11-01) → feat(17-01)
+- Tests: 176 frontend + 280 backend = 456 total
+- Tech debt: 3 non-blocking items (2 orphaned API endpoints, missing SUMMARY frontmatter fields)
+
+---
+
 ## v1.1 The Dopamine Layer (Shipped: 2026-03-06)
 
 **Phases completed:** 7 phases, 16 plans
