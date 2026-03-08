@@ -52,9 +52,33 @@ describe('Sound Triggers - Event to Sound Mapping', () => {
       description: 'Transformation plays power-up sequence',
       requirement: 'AUDIO-08',
     },
+    {
+      eventType: 'power_milestone',
+      soundId: 'explosion',
+      description: 'Power milestone plays explosion',
+      requirement: 'FEED-02',
+    },
+    {
+      eventType: 'level_up',
+      soundId: 'reveal_chime',
+      description: 'Level-up plays reveal chime',
+      requirement: 'FEED-01',
+    },
+    {
+      eventType: 'zenkai_recovery',
+      soundId: 'power_up',
+      description: 'Zenkai recovery plays power-up',
+      requirement: 'FEED-03',
+    },
+    {
+      eventType: 'streak_milestone',
+      soundId: 'reveal_chime',
+      description: 'Streak milestone plays reveal chime',
+      requirement: 'ACHV-02',
+    },
   ];
 
-  it('EVENT_SOUND_MAP covers all 7 required animation event types', async () => {
+  it('EVENT_SOUND_MAP covers all 11 required animation event types', async () => {
     const { useSoundEffect } = await import('../audio/useSoundEffect');
     expect(useSoundEffect).toBeDefined();
   });
@@ -98,7 +122,7 @@ describe('Sound Triggers - Event to Sound Mapping', () => {
     expect(useUiStore.getState().inlineEvents).toHaveLength(1);
   });
 
-  it('all 7 animation event types can be enqueued without errors', () => {
+  it('all 11 animation event types can be enqueued without errors', () => {
     const { enqueueAnimation } = useUiStore.getState();
 
     act(() => {
@@ -117,10 +141,14 @@ describe('Sound Triggers - Event to Sound Mapping', () => {
         form: 'ssj',
         name: 'Super Saiyan',
       });
+      enqueueAnimation({ type: 'power_milestone', milestone: 10000 });
+      enqueueAnimation({ type: 'level_up', attribute: 'str', oldLevel: 4, newLevel: 5, title: 'Warrior' });
+      enqueueAnimation({ type: 'zenkai_recovery' });
+      enqueueAnimation({ type: 'streak_milestone', tier: 3, streak: 21, scope: 'overall', badgeName: 'Streak Warrior' });
     });
 
-    // 5 overlay events (tiers 1-2) in animationQueue, 2 inline events (tier 3) in inlineEvents
-    expect(useUiStore.getState().animationQueue).toHaveLength(5);
+    // 9 overlay events (tiers 1-2) in animationQueue, 2 inline events (tier 3) in inlineEvents
+    expect(useUiStore.getState().animationQueue).toHaveLength(9);
     expect(useUiStore.getState().inlineEvents).toHaveLength(2);
   });
 });
