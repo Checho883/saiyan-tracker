@@ -36,7 +36,7 @@ export function DeleteConfirmDialog({
                 onArchive();
                 onClose();
               }}
-              className="w-full py-2.5 rounded-lg bg-space-700 text-text-primary font-medium text-sm hover:bg-space-600 transition-colors"
+              className="w-full py-3 rounded-lg bg-space-700 text-text-primary font-medium text-sm hover:bg-space-600 transition-colors"
             >
               Archive Instead
             </button>
@@ -46,13 +46,13 @@ export function DeleteConfirmDialog({
               onConfirm();
               onClose();
             }}
-            className="w-full py-2.5 rounded-lg bg-danger text-white font-medium text-sm hover:bg-danger/80 transition-colors"
+            className="w-full py-3 rounded-lg bg-danger text-white font-medium text-sm hover:bg-danger/80 transition-colors"
           >
             Delete Permanently
           </button>
           <button
             onClick={onClose}
-            className="w-full py-2 text-text-muted text-sm hover:text-text-secondary transition-colors"
+            className="w-full py-3 text-text-muted text-sm hover:text-text-secondary transition-colors"
           >
             Cancel
           </button>

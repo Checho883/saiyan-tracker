@@ -69,6 +69,7 @@ export function AttributeChart({ calendarDays }: AttributeChartProps) {
               width={40}
             />
             <Tooltip
+              trigger="click"
               contentStyle={{
                 backgroundColor: '#1F2937',
                 border: '1px solid #374151',

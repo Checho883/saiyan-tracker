@@ -37,10 +37,10 @@ export function WishFormSheet({ open, onClose, wish }: WishFormSheetProps) {
   };
 
   return (
-    <Drawer.Root open={open} onOpenChange={(o) => !o && onClose()}>
+    <Drawer.Root open={open} onOpenChange={(o) => !o && onClose()} snapPoints={[0.9]}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 bg-black/50 z-40" />
-        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-space-800 rounded-t-2xl max-h-[85vh] overflow-y-auto outline-none">
+        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-space-800 rounded-t-2xl max-h-[90vh] overflow-y-auto outline-none">
           <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-space-600" />
           <Drawer.Title className="px-4 pt-4 text-lg font-bold text-text-primary">
             {wish ? 'Edit Wish' : 'New Wish'}

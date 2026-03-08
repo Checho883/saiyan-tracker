@@ -58,7 +58,7 @@ export function HabitDetailSheet({
 
       {/* Sheet */}
       <motion.div
-        className="fixed bottom-0 left-0 right-0 bg-space-800 rounded-t-2xl p-5 z-50 max-h-[70vh] overflow-y-auto"
+        className="fixed bottom-0 left-0 right-0 bg-space-800 rounded-t-2xl p-5 z-50 max-h-[85vh] overflow-y-auto"
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
@@ -80,7 +80,7 @@ export function HabitDetailSheet({
         </div>
 
         {/* Stats row */}
-        <div className="flex items-center gap-4 mb-5">
+        <div className="flex flex-wrap items-center gap-4 mb-5">
           <div className="bg-space-700 rounded-lg px-3 py-2 flex-1 text-center">
             <p className="text-text-muted text-xs">Current Streak</p>
             <p className="text-text-primary font-bold text-lg">{streakCurrent}</p>

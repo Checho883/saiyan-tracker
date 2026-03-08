@@ -115,7 +115,7 @@ export function CalendarHeatmap({ days, month, onPrev, onNext }: CalendarHeatmap
   const dayMap = new Map(days.map((d) => [Number(d.date.slice(8, 10)), d]));
 
   const emptyCells = Array.from({ length: firstDayOfWeek }, (_, i) => (
-    <div key={`empty-${i}`} className="w-9 h-9" />
+    <div key={`empty-${i}`} className="w-7 h-7 md:w-9 md:h-9" />
   ));
 
   const dayCells = Array.from({ length: daysInMonth }, (_, i) => {
@@ -130,7 +130,7 @@ export function CalendarHeatmap({ days, month, onPrev, onNext }: CalendarHeatmap
         ref={(el) => { if (el) dayButtonRefs.current.set(dayNum, el); }}
         data-calendar-day={dayNum}
         onClick={() => handleDayClick(day, dayNum)}
-        className={`w-9 h-9 rounded-md flex items-center justify-center text-xs font-medium transition-colors
+        className={`w-7 h-7 md:w-9 md:h-9 rounded-md flex items-center justify-center text-xs font-medium transition-colors
           ${day ? colorForTier(tier) : 'bg-space-700'}
           ${isOffDay ? 'ring-2 ring-blue-500' : ''}
           ${day ? 'text-white' : 'text-text-muted'}
@@ -171,7 +171,7 @@ export function CalendarHeatmap({ days, month, onPrev, onNext }: CalendarHeatmap
       {/* Weekday labels */}
       <div className="grid grid-cols-7 gap-1 mb-1">
         {WEEKDAY_LABELS.map((label) => (
-          <div key={label} className="w-9 h-6 flex items-center justify-center text-xs text-text-muted">
+          <div key={label} className="w-7 h-6 md:w-9 md:h-6 flex items-center justify-center text-xs text-text-muted">
             {label}
           </div>
         ))}
@@ -211,7 +211,7 @@ export function CalendarHeatmap({ days, month, onPrev, onNext }: CalendarHeatmap
       )}
 
       {/* Legend */}
-      <div className="flex items-center gap-3 mt-3 text-xs text-text-muted">
+      <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-3 text-xs text-text-muted">
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded-sm bg-yellow-500" />
           <span>100%</span>

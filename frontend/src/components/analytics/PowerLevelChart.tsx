@@ -55,9 +55,10 @@ export function PowerLevelChart({ calendarDays }: PowerLevelChartProps) {
               tick={{ fill: '#9CA3AF', fontSize: 11 }}
               axisLine={{ stroke: '#374151' }}
               tickLine={false}
-              width={50}
+              width={40}
             />
             <Tooltip
+              trigger="click"
               contentStyle={{
                 backgroundColor: '#1F2937',
                 border: '1px solid #374151',

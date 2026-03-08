@@ -17,7 +17,13 @@ export function CollapsibleSection({
   count,
   children,
 }: CollapsibleSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [isOpen, setIsOpen] = useState(() => {
+    // On mobile (< 768px), override to collapsed unless explicitly opened
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      return false;
+    }
+    return defaultOpen;
+  });
 
   return (
     <div className="border border-space-600 rounded-lg overflow-hidden">
