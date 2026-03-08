@@ -25,9 +25,9 @@ Requirements for The Polish Pass. Each maps to roadmap phases.
 
 ### Habit Detail
 
-- [ ] **DTAIL-01**: User can tap a habit to see weekly and monthly completion rates
-- [ ] **DTAIL-02**: User can see total attribute XP earned for a specific habit
-- [ ] **DTAIL-03**: User can see target time, creation date, category badge, and importance/attribute tags in the detail view
+- [x] **DTAIL-01**: User can tap a habit to see weekly and monthly completion rates
+- [x] **DTAIL-02**: User can see total attribute XP earned for a specific habit
+- [x] **DTAIL-03**: User can see target time, creation date, category badge, and importance/attribute tags in the detail view
 
 ### Analytics
 
@@ -83,9 +83,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FDBK-02 | Phase 22 | Pending |
 | FDBK-03 | Phase 22 | Pending |
 | FDBK-04 | Phase 22 | Pending |
-| DTAIL-01 | Phase 20 | Pending |
-| DTAIL-02 | Phase 20 | Pending |
-| DTAIL-03 | Phase 20 | Pending |
+| DTAIL-01 | Phase 20 | Complete |
+| DTAIL-02 | Phase 20 | Complete |
+| DTAIL-03 | Phase 20 | Complete |
 | ANLYT-01 | Phase 21 | Pending |
 | ANLYT-02 | Phase 21 | Pending |
 | ANLYT-03 | Phase 21 | Pending |
