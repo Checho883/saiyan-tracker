@@ -117,11 +117,11 @@ Plans:
   2. User can see weekly and monthly completion rate cards with arrows showing period-over-period improvement or decline
   3. User can see habits ranked by current streak length in a "power rankings" leaderboard style list
   4. User can see their best and worst performing days highlighted in the analytics view (highest/lowest completion rate days)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 21-01: TBD
-- [ ] 21-02: TBD
+- [ ] 21-01-PLAN.md — Types, API methods, hook, OffDayAnalyticsCard, CompletionTrendCards
+- [ ] 21-02-PLAN.md — StreakRankings, BestWorstDays, wire into Analytics page
 
 ### Phase 22: Feedback Gaps + Shareable Summary
 **Goal**: User gets clear feedback on negative events (uncheck, streak break) and can share their daily progress with one tap
@@ -166,5 +166,5 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22
 | 18. Dashboard Polish + Responsive Design | 3/3 | Complete    | 2026-03-08 | - |
 | 19. Backend Analytics Endpoints | 2/2 | Complete    | 2026-03-08 | - |
 | 20. Habit Detail View | 2/2 | Complete    | 2026-03-08 | - |
-| 21. Enhanced Analytics Views | v1.3 | 0/? | Not started | - |
+| 21. Enhanced Analytics Views | v1.3 | 0/2 | Not started | - |
 | 22. Feedback Gaps + Shareable Summary | v1.3 | 0/? | Not started | - |
