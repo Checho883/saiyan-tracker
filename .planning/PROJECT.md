@@ -53,7 +53,18 @@ Every habit check must feel like something happened — a sound, a visual pulse,
 
 ### Active
 
-(None yet — define with `/gsd:new-milestone`)
+#### Current Milestone: v1.3 The Polish Pass
+
+**Goal:** Make the existing app feel great on every device, fill feedback gaps, and add the most-wanted views (habit detail, off-day analytics, shareable summary).
+
+**Target features:**
+- Habit detail view (full history, streaks, contribution graph, target time)
+- Off-day analytics (impact on streaks, XP, power level)
+- Shareable daily summary (copy-to-clipboard recap)
+- Full responsive/mobile design (daily phone use)
+- Dashboard decluttering and spacing/alignment polish
+- Uncheck feedback, streak-break acknowledgment, milestone celebrations
+- Weekly/monthly completion rates, streak leaderboard, best/worst day patterns
 
 ### Out of Scope
 
@@ -115,4 +126,4 @@ Known tech debt: 2 orphaned backend endpoints (GET /habits/{id}/calendar, GET /h
 | @dnd-kit for drag-and-drop | Dedicated handle prevents accidental check trigger, restrictToVerticalAxis modifier — v1.2 | ✓ Good |
 
 ---
-*Last updated: 2026-03-08 after v1.2 milestone*
+*Last updated: 2026-03-08 after v1.3 milestone started*

@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: PRD Complete
-status: complete
+milestone: v1.3
+milestone_name: The Polish Pass
+status: active
 last_updated: "2026-03-08"
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 18
-  completed_plans: 18
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -18,16 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-08)
 
 **Core value:** Every habit check must feel like something happened -- a sound, a visual pulse, a number going up. If the app is silent and still, it has failed.
-**Current focus:** v1.2 PRD Complete shipped — all 24 requirements verified
+**Current focus:** v1.3 The Polish Pass — defining requirements
 
 ## Current Position
 
-Phase: 17 of 17 (Audio Sound Mapping + Verification Sweep) -- COMPLETE
-Plan: 2 of 2 in current phase
-Status: Milestone v1.2 complete and archived
-Last activity: 2026-03-08 -- Milestone v1.2 archived
-
-Progress: [████████████████████████████] 100% (28/28 total plans across all milestones)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-08 — Milestone v1.3 started
 
 ## Performance Metrics
 
@@ -63,10 +61,10 @@ None.
 
 ### Blockers/Concerns
 
-None — all v1.2 blockers resolved.
+None.
 
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Milestone v1.2 archived, ready for next milestone
+Stopped at: Milestone v1.3 started, defining requirements
 Resume file: None
