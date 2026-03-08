@@ -44,6 +44,7 @@ This roadmap delivers a Dragon Ball Z-themed habit tracker optimized for ADHD do
 - [x] **Phase 14: Animation Overlays + Roast UI** - Zenkai recovery, attribute level-up, and achievement overlays plus Vegeta escalation roast display (completed 2026-03-06)
 - [x] **Phase 15: Drag-and-Drop + Calendar Popover** - Habit reordering with dnd-kit and calendar day detail popover with floating-ui (completed 2026-03-06, 172 tests passing)
 - [x] **Phase 16: Settings, Forms & Audio Polish** - Archived habits, temporary habit support, day picker UX, and real audio sprite files (completed 2026-03-06)
+- [ ] **Phase 17: Audio Sound Mapping + Verification Sweep** - Wire 4 missing sound mappings, create VERIFICATION.md for Phases 13-16, fix REQUIREMENTS.md traceability
 
 ## Phase Details
 
@@ -140,6 +141,21 @@ Plans:
 - [ ] 16-01: TBD
 - [ ] 16-02: TBD
 
+### Phase 17: Audio Sound Mapping + Verification Sweep
+**Goal:** Close all remaining v1.2 gaps: wire missing sound mappings so overlay animations play audio, create formal verification for Phases 13-16, and fix REQUIREMENTS.md traceability
+**Depends on**: Phase 16
+**Requirements**: FEED-01, FEED-02, FEED-03, TECH-02, FEED-04, FEED-05, ACHV-03, ANLT-01, ANLT-02, ANLT-03, ANLT-04, HMGT-01, HMGT-03, HMGT-04, HMGT-05, CHAR-01, CHAR-02, ACHV-01, ACHV-02, ACHV-04, ANLT-05, HMGT-02
+**Gap Closure:** Closes all gaps from v1.2 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. EVENT_SOUND_MAP in useSoundEffect.ts maps all 11 AnimationEvent types to SoundIds (4 new: power_milestone, level_up, zenkai_recovery, streak_milestone)
+  2. VERIFICATION.md exists for Phases 13, 14, 15, and 16 confirming integration-checked features pass
+  3. REQUIREMENTS.md traceability table shows all 24 requirements as Complete with checkboxes checked
+  4. All 9 E2E flows complete (overlay audio flow no longer broken)
+**Plans**: TBD
+
+Plans:
+- [ ] 17-01: TBD
+
 ## Progress
 
 **Execution Order:**
@@ -164,3 +180,4 @@ Note: Phase 13 depends only on Phase 11 and can execute in parallel with Phase 1
 | 14. Animation Overlays + Roast UI | 3/3 | Complete    | 2026-03-06 | - |
 | 15. Drag-and-Drop + Calendar Popover | v1.2 | 0/2 | Not started | - |
 | 16. Settings, Forms & Audio Polish | 3/3 | Complete    | 2026-03-06 | - |
+| 17. Audio Sound Mapping + Verification Sweep | v1.2 | 0/1 | Not started | - |

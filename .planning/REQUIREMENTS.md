@@ -16,15 +16,15 @@
 
 ### Character & Roasts
 
-- [ ] **CHAR-01**: App detects consecutive missed days and triggers Vegeta roast quotes with escalating severity (mild/medium/savage)
-- [ ] **CHAR-02**: Vegeta roast appears as secondary element (never modal), with a welcome_back Goku quote shown first
+- [x] **CHAR-01**: App detects consecutive missed days and triggers Vegeta roast quotes with escalating severity (mild/medium/savage)
+- [x] **CHAR-02**: Vegeta roast appears as secondary element (never modal), with a welcome_back Goku quote shown first
 
 ### Achievements & Streaks
 
-- [ ] **ACHV-01**: Achievement service records transformation unlocks and streak milestones in the achievements table
-- [ ] **ACHV-02**: Streak milestone detection fires at 3/7/21/30/60/90/365 day thresholds with badge and character quote
+- [x] **ACHV-01**: Achievement service records transformation unlocks and streak milestones in the achievements table
+- [x] **ACHV-02**: Streak milestone detection fires at 3/7/21/30/60/90/365 day thresholds with badge and character quote
 - [x] **ACHV-03**: User can view earned achievements and badges in the UI
-- [ ] **ACHV-04**: Achievements only fire inside check_habit() flow, never retroactively on app load
+- [x] **ACHV-04**: Achievements only fire inside check_habit() flow, never retroactively on app load
 
 ### Analytics & History
 
@@ -32,12 +32,12 @@
 - [x] **ANLT-02**: User can view wish grant history in Analytics page
 - [x] **ANLT-03**: User can view per-habit contribution graph (GitHub-style 90-day grid)
 - [x] **ANLT-04**: User can click any calendar day to see popover with per-habit breakdown and XP earned
-- [ ] **ANLT-05**: Per-habit calendar and stats API endpoints exist (GET /habits/{id}/calendar, GET /habits/{id}/stats)
+- [x] **ANLT-05**: Per-habit calendar and stats API endpoints exist (GET /habits/{id}/calendar, GET /habits/{id}/stats)
 
 ### Habit Management
 
 - [x] **HMGT-01**: User can drag-and-drop to reorder habits (with dedicated drag handle, not conflicting with tap-to-check)
-- [ ] **HMGT-02**: PUT /habits/reorder API endpoint accepts batch sort_order updates
+- [x] **HMGT-02**: PUT /habits/reorder API endpoint accepts batch sort_order updates
 - [x] **HMGT-03**: User can view archived habits and restore them
 - [x] **HMGT-04**: User can create temporary habits with start and end dates via the habit form
 - [x] **HMGT-05**: User can select custom frequency days via tappable day-of-week buttons (not raw number input)
@@ -78,19 +78,19 @@
 | FEED-04 | Phase 13 | Complete |
 | FEED-05 | Phase 13 | Complete |
 | FEED-06 | Phase 11 | Complete |
-| CHAR-01 | Phase 12 | Pending |
-| CHAR-02 | Phase 12 | Pending |
-| ACHV-01 | Phase 12 | Pending |
-| ACHV-02 | Phase 12 | Pending |
+| CHAR-01 | Phase 12 | Complete |
+| CHAR-02 | Phase 12 | Complete |
+| ACHV-01 | Phase 12 | Complete |
+| ACHV-02 | Phase 12 | Complete |
 | ACHV-03 | Phase 14 | Complete |
-| ACHV-04 | Phase 12 | Pending |
+| ACHV-04 | Phase 12 | Complete |
 | ANLT-01 | Phase 13 | Complete |
 | ANLT-02 | Phase 13 | Complete |
 | ANLT-03 | Phase 13 | Complete |
 | ANLT-04 | Phase 15 | Complete |
-| ANLT-05 | Phase 12 | Pending |
+| ANLT-05 | Phase 12 | Complete |
 | HMGT-01 | Phase 15 | Complete |
-| HMGT-02 | Phase 12 | Pending |
+| HMGT-02 | Phase 12 | Complete |
 | HMGT-03 | Phase 16 | Complete |
 | HMGT-04 | Phase 16 | Complete |
 | HMGT-05 | Phase 16 | Complete |
@@ -104,4 +104,4 @@
 
 ---
 *Requirements defined: 2026-03-06*
-*Last updated: 2026-03-07 after Phase 16 completion*
+*Last updated: 2026-03-08 after gap closure phase creation (Phase 17)*
