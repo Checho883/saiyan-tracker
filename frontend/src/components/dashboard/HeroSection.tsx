@@ -4,10 +4,18 @@ import { usePowerStore } from '../../store/powerStore';
 import { useRewardStore } from '../../store/rewardStore';
 import { useUiStore } from '../../store/uiStore';
 import { useAuraProgress } from '../../hooks/useAuraProgress';
+import type { AuraTier } from '../../hooks/useAuraProgress';
 import { SaiyanAvatar } from './SaiyanAvatar';
 import { AuraGauge } from './AuraGauge';
 import { ScouterHUD } from './ScouterHUD';
 import { TierChangeBanner } from '../animations/TierChangeBanner';
+
+const progressColorMap: Record<AuraTier, string> = {
+  base: 'var(--color-saiyan-500)',
+  kaioken_x3: 'var(--color-saiyan-500)',
+  kaioken_x10: 'var(--color-aura-500)',
+  kaioken_x20: 'var(--color-success)',
+};
 
 export function HeroSection() {
   const { powerLevel, transformation, transformationName, nextTransformation, nextThreshold } =
@@ -38,34 +46,84 @@ export function HeroSection() {
   }, [tierEvent, dequeueAnimation]);
 
   return (
-    <div className="flex flex-col items-center gap-4 px-4 py-6 bg-gradient-to-b from-space-800 to-transparent">
-      {/* Avatar with aura gauge overlaid */}
-      <div className="relative">
-        <AuraGauge percent={percent} tier={tier} size={160} />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <SaiyanAvatar transformation={transformation} className="w-20 h-20" />
+    <>
+      {/* === COMPACT HERO (mobile < 768px) === */}
+      <div className="md:hidden flex items-center gap-3 px-4 py-3 bg-gradient-to-b from-space-800 to-transparent">
+        {/* Small avatar + gauge */}
+        <div className="relative flex-shrink-0">
+          <AuraGauge percent={percent} tier={tier} size={48} hideText />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <SaiyanAvatar transformation={transformation} className="w-6 h-6" />
+          </div>
         </div>
 
-        {/* Inline tier change banner (ANIM-02) */}
-        {tierEvent && tierEvent.type === 'tier_change' && (
-          <TierChangeBanner tier={tierEvent.tier} onDismiss={handleTierDismiss} />
+        {/* Power info inline */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2">
+            <span className="text-lg font-mono font-bold text-saiyan-500">
+              {powerLevel.toLocaleString()}
+            </span>
+            <span className="text-xs text-text-secondary truncate">
+              {transformationName}
+            </span>
+          </div>
+          {/* Inline aura progress bar */}
+          <div className="h-1.5 bg-space-700 rounded-full mt-1 overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${percent}%`,
+                backgroundColor: progressColorMap[tier],
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Display name (if set) */}
+        {displayName && (
+          <span className="text-sm font-bold text-text-primary truncate max-w-[80px]">
+            {displayName}
+          </span>
         )}
       </div>
 
-      {/* Display name plate */}
-      {displayName && (
-        <div className="bg-space-700/50 rounded-lg px-3 py-1">
-          <span className="text-lg font-bold text-text-primary">{displayName}</span>
+      {/* === FULL HERO (desktop md+) === */}
+      <div className="hidden md:flex flex-col items-center gap-4 px-4 py-6 bg-gradient-to-b from-space-800 to-transparent">
+        {/* Avatar with aura gauge overlaid */}
+        <div className="relative">
+          <AuraGauge percent={percent} tier={tier} size={160} />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <SaiyanAvatar transformation={transformation} className="w-20 h-20" />
+          </div>
+
+          {/* Inline tier change banner (ANIM-02) */}
+          {tierEvent && tierEvent.type === 'tier_change' && (
+            <TierChangeBanner tier={tierEvent.tier} onDismiss={handleTierDismiss} />
+          )}
+        </div>
+
+        {/* Display name plate */}
+        {displayName && (
+          <div className="bg-space-700/50 rounded-lg px-3 py-1">
+            <span className="text-lg font-bold text-text-primary">{displayName}</span>
+          </div>
+        )}
+
+        {/* Scouter HUD below */}
+        <ScouterHUD
+          powerLevel={powerLevel}
+          transformationName={transformationName}
+          nextTransformation={nextTransformation}
+          nextThreshold={nextThreshold}
+        />
+      </div>
+
+      {/* Tier change banner for mobile — render below compact hero */}
+      {tierEvent && tierEvent.type === 'tier_change' && (
+        <div className="md:hidden">
+          <TierChangeBanner tier={tierEvent.tier} onDismiss={handleTierDismiss} />
         </div>
       )}
-
-      {/* Scouter HUD below */}
-      <ScouterHUD
-        powerLevel={powerLevel}
-        transformationName={transformationName}
-        nextTransformation={nextTransformation}
-        nextThreshold={nextThreshold}
-      />
-    </div>
+    </>
   );
 }

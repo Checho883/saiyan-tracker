@@ -18,9 +18,10 @@ interface AuraGaugeProps {
   percent: number;
   tier: AuraTier;
   size?: number;
+  hideText?: boolean;
 }
 
-export function AuraGauge({ percent, tier, size = 140 }: AuraGaugeProps) {
+export function AuraGauge({ percent, tier, size = 140, hideText = false }: AuraGaugeProps) {
   const strokeWidth = 4;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -61,30 +62,34 @@ export function AuraGauge({ percent, tier, size = 140 }: AuraGaugeProps) {
           transformOrigin: `${center}px ${center}px`,
         }}
       />
-      {/* Center text */}
-      <text
-        x={center}
-        y={center - 4}
-        textAnchor="middle"
-        dominantBaseline="central"
-        fill="var(--color-text-primary)"
-        fontSize="22"
-        fontWeight="bold"
-      >
-        {percent}%
-      </text>
-      {tierLabelMap[tier] && (
-        <text
-          x={center}
-          y={center + 18}
-          textAnchor="middle"
-          dominantBaseline="central"
-          fill={strokeColorMap[tier]}
-          fontSize="10"
-          fontWeight="600"
-        >
-          {tierLabelMap[tier]}
-        </text>
+      {/* Center text (hidden when used as compact gauge) */}
+      {!hideText && (
+        <>
+          <text
+            x={center}
+            y={center - 4}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fill="var(--color-text-primary)"
+            fontSize="22"
+            fontWeight="bold"
+          >
+            {percent}%
+          </text>
+          {tierLabelMap[tier] && (
+            <text
+              x={center}
+              y={center + 18}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fill={strokeColorMap[tier]}
+              fontSize="10"
+              fontWeight="600"
+            >
+              {tierLabelMap[tier]}
+            </text>
+          )}
+        </>
       )}
     </svg>
   );

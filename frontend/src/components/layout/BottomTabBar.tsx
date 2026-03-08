@@ -22,12 +22,12 @@ export function BottomTabBar() {
               to={to}
               end={end}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-1 py-2 px-3 transition-colors ${
+                `flex flex-col items-center gap-1 py-3 px-4 transition-colors ${
                   isActive ? 'text-saiyan-500' : 'text-text-muted'
                 }`
               }
             >
-              <Icon size={20} />
+              <Icon size={24} />
               <span className="text-xs">{label}</span>
             </NavLink>
           ))}
@@ -35,9 +35,9 @@ export function BottomTabBar() {
         <button
           onClick={toggleMute}
           aria-label={isMuted ? 'Enable sound' : 'Disable sound'}
-          className="flex flex-col items-center gap-1 py-2 px-3 mr-2 text-text-muted hover:text-saiyan-500 transition-colors"
+          className="flex flex-col items-center gap-1 py-3 px-4 mr-2 text-text-muted hover:text-saiyan-500 transition-colors"
         >
-          <SoundIcon size={20} />
+          <SoundIcon size={24} />
           <span className="text-xs">Sound</span>
         </button>
       </div>
