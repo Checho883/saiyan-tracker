@@ -305,6 +305,23 @@ export interface ContributionDay {
   completed: boolean;
 }
 
+// -- Habit Detail Stats --
+export interface HabitCalendarDay {
+  date: string;
+  completed: boolean;
+  attribute_xp_awarded: number;
+}
+
+export interface HabitStatsResponse {
+  total_completions: number;
+  current_streak: number;
+  best_streak: number;
+  completion_rate_7d: number;
+  completion_rate_30d: number;
+  total_xp_earned: number;
+  attribute_xp: Record<string, number>; // e.g. {"STR": 1240}
+}
+
 // -- Calendar Day Detail --
 export interface DayDetailHabit {
   id: string;

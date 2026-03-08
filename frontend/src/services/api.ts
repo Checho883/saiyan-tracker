@@ -31,6 +31,8 @@ import type {
   CalendarDay,
   CalendarDayDetail,
   ContributionDay,
+  HabitCalendarDay,
+  HabitStatsResponse,
   AchievementResponse,
   StatusResponse,
 } from '../types';
@@ -66,6 +68,15 @@ export const habitsApi = {
     api.get(`habits/${id}/contribution-graph`, { searchParams: days ? { days } : {} }).json<ContributionDay[]>(),
   reorder: (habitIds: string[]) =>
     api.put('habits/reorder', { json: { habit_ids: habitIds } }).json<HabitResponse[]>(),
+  stats: (id: string) =>
+    api.get(`habits/${id}/stats`).json<HabitStatsResponse>(),
+  calendar: (id: string, startDate?: string, endDate?: string) =>
+    api.get(`habits/${id}/calendar`, {
+      searchParams: {
+        ...(startDate ? { start_date: startDate } : {}),
+        ...(endDate ? { end_date: endDate } : {}),
+      },
+    }).json<HabitCalendarDay[]>(),
   calendarDayDetail: (date: string) =>
     api.get('habits/calendar/day-detail', { searchParams: { date } }).json<CalendarDayDetail>(),
   listArchived: () => api.get('habits/archived').json<HabitResponse[]>(),
