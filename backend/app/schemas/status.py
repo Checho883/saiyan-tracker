@@ -16,6 +16,14 @@ class RoastInfo(BaseModel):
     gap_days: int
 
 
+class StreakBreak(BaseModel):
+    habit_id: str
+    habit_title: str
+    old_streak: int
+    halved_value: int
+
+
 class StatusResponse(BaseModel):
     welcome_back: StatusQuote | None = None
     roast: RoastInfo | None = None
+    streak_breaks: list[StreakBreak] = []
