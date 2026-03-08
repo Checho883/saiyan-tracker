@@ -270,6 +270,24 @@ export interface SettingsUpdate {
 }
 
 // -- Analytics --
+export interface OffDaySummary {
+  total_off_days: number;
+  xp_impact_estimate: number;
+  streaks_preserved: number;
+  reason_breakdown: Record<string, number>;
+}
+
+export interface CompletionTrend {
+  weekly_rate: number;
+  weekly_delta: number;
+  weekly_habits_due: number;
+  weekly_habits_completed: number;
+  monthly_rate: number;
+  monthly_delta: number;
+  monthly_habits_due: number;
+  monthly_habits_completed: number;
+}
+
 export interface AnalyticsSummary {
   perfect_days: number;
   avg_completion: number;

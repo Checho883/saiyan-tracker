@@ -26,6 +26,8 @@ import type {
   SettingsResponse,
   SettingsUpdate,
   AnalyticsSummary,
+  OffDaySummary,
+  CompletionTrend,
   CapsuleHistoryItem,
   WishHistoryItem,
   CalendarDay,
@@ -131,6 +133,10 @@ export const quotesApi = {
 export const analyticsApi = {
   summary: (period?: 'week' | 'month' | 'all') =>
     api.get('analytics/summary', { searchParams: period ? { period } : {} }).json<AnalyticsSummary>(),
+  offDaySummary: (period?: 'week' | 'month' | 'all') =>
+    api.get('analytics/off-day-summary', { searchParams: period ? { period } : {} }).json<OffDaySummary>(),
+  completionTrend: () =>
+    api.get('analytics/completion-trend').json<CompletionTrend>(),
   capsuleHistory: () => api.get('analytics/capsule-history').json<CapsuleHistoryItem[]>(),
   wishHistory: () => api.get('analytics/wish-history').json<WishHistoryItem[]>(),
 };
