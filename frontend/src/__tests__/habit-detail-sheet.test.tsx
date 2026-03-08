@@ -24,32 +24,29 @@ vi.mock('motion/react', () => {
   };
 });
 
-// Mock API
-const mockStats = {
-  total_completions: 42,
-  current_streak: 5,
-  best_streak: 12,
-  completion_rate_7d: 0.8571,
-  completion_rate_30d: 0.7333,
-  total_xp_earned: 1240,
-  attribute_xp: { STR: 1240 },
-};
-
-const mockCalendarDays = [
-  { date: '2026-03-01', completed: true, attribute_xp_awarded: 30 },
-  { date: '2026-03-02', completed: false, attribute_xp_awarded: 0 },
-  { date: '2026-03-03', completed: true, attribute_xp_awarded: 30 },
-];
-
+// Mock API — data inlined in factory to avoid hoisting issues
 vi.mock('../services/api', () => ({
   habitsApi: {
     contributionGraph: vi.fn().mockResolvedValue([]),
-    stats: vi.fn().mockResolvedValue(mockStats),
-    calendar: vi.fn().mockResolvedValue(mockCalendarDays),
+    stats: vi.fn().mockResolvedValue({
+      total_completions: 42,
+      current_streak: 5,
+      best_streak: 12,
+      completion_rate_7d: 0.8571,
+      completion_rate_30d: 0.7333,
+      total_xp_earned: 1240,
+      attribute_xp: { STR: 1240 },
+    }),
+    calendar: vi.fn().mockResolvedValue([
+      { date: '2026-03-01', completed: true, attribute_xp_awarded: 30 },
+      { date: '2026-03-02', completed: false, attribute_xp_awarded: 0 },
+      { date: '2026-03-03', completed: true, attribute_xp_awarded: 30 },
+    ]),
   },
 }));
 
 import { HabitDetailSheet } from '../components/dashboard/HabitDetailSheet';
+import { habitsApi } from '../services/api';
 import type { HabitTodayResponse } from '../types';
 
 const mockHabit: HabitTodayResponse = {
@@ -74,8 +71,26 @@ const mockHabit: HabitTodayResponse = {
   streak_best: 12,
 };
 
+const mockedHabitsApi = vi.mocked(habitsApi);
+
 beforeEach(() => {
   vi.clearAllMocks();
+  // Restore mock resolved values since clearAllMocks removes them
+  mockedHabitsApi.contributionGraph.mockResolvedValue([]);
+  (mockedHabitsApi as any).stats.mockResolvedValue({
+    total_completions: 42,
+    current_streak: 5,
+    best_streak: 12,
+    completion_rate_7d: 0.8571,
+    completion_rate_30d: 0.7333,
+    total_xp_earned: 1240,
+    attribute_xp: { STR: 1240 },
+  });
+  (mockedHabitsApi as any).calendar.mockResolvedValue([
+    { date: '2026-03-01', completed: true, attribute_xp_awarded: 30 },
+    { date: '2026-03-02', completed: false, attribute_xp_awarded: 0 },
+    { date: '2026-03-03', completed: true, attribute_xp_awarded: 30 },
+  ]);
 });
 
 describe('completion rates', () => {
@@ -98,7 +113,8 @@ describe('attribute XP', () => {
   it('displays total XP earned with attribute label', async () => {
     render(<HabitDetailSheet habit={mockHabit} onClose={vi.fn()} />);
     await waitFor(() => {
-      expect(screen.getByText('1,240')).toBeInTheDocument();
+      // toLocaleString formatting varies by locale in jsdom (may use comma, dot, or nothing)
+      expect(screen.getByText(/1[,.]?240/)).toBeInTheDocument();
       expect(screen.getByText('STR XP')).toBeInTheDocument();
     });
   });

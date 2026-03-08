@@ -234,11 +234,7 @@ export function HabitCard({ habit }: HabitCardProps) {
       <AnimatePresence>
         {showDetail && (
           <HabitDetailSheet
-            habitId={habit.id}
-            habitTitle={habit.title}
-            habitEmoji={habit.icon_emoji}
-            streakCurrent={habit.streak_current}
-            streakBest={habit.streak_best}
+            habit={habit}
             onClose={() => setShowDetail(false)}
           />
         )}
