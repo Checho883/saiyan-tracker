@@ -1,259 +1,240 @@
 # Feature Research
 
-**Domain:** Habit tracker QoL polish (v1.3) -- detail views, analytics, responsive, shareable
-**Researched:** 2026-03-08
-**Confidence:** HIGH
+**Domain:** Deployment & visual asset integration for a DBZ-themed React habit tracker (v2.0)
+**Researched:** 2026-03-11
+**Confidence:** HIGH (deployment patterns), MEDIUM (anime art integration specifics)
+
+---
 
 ## Feature Landscape
 
-This analysis covers v1.3 "The Polish Pass" features for an already-complete app (v1.2 shipped with 24/24 requirements, 456 tests). The goal is not new game mechanics but making what exists feel great on every device, filling feedback gaps, and adding the most-wanted views. The existing codebase has a full animation queue, 13 audio sounds, Recharts analytics, Zustand stores, and Tailwind CSS v4 theming.
-
 ### Table Stakes (Users Expect These)
 
-Features that Sergio will expect to work correctly in v1.3. Missing any of these makes the app feel broken on mobile or leaves obvious interaction gaps.
+Features required for the app to function in real use. Missing any of these = the app is still a dev-only toy.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| **Responsive mobile layout** | Sergio uses this daily on his phone. Desktop-only layout is unusable on mobile. Every modern web app is mobile-first. This is the PRIMARY goal of v1.3 per PROJECT.md ("daily phone use"). | HIGH | Touches every page and component. Must adapt HeroSection, HabitList, StatsPanel, Analytics charts, Settings forms. Tailwind breakpoints (sm/md/lg) plus container queries for card grids. Bottom tab bar for mobile nav. Touch targets minimum 44px. Recharts needs explicit ResponsiveContainer widths. |
-| **Habit detail view (expanded)** | Existing `HabitDetailSheet` shows streak + 90-day contribution grid but no completion rate, no target time, no attribute XP total, no history list. Users expect to drill into any habit and see everything about it. | MEDIUM | Bottom sheet pattern already exists and works. Extend with: weekly/monthly completion rates, total attribute XP earned, target time display, creation date, category badge, importance/attribute tags. Backend has orphaned `/habits/{id}/stats` and `/habits/{id}/calendar` endpoints -- wire these up instead of building new ones. |
-| **Uncheck feedback** | Checking a habit gives sound + XP popup + aura change. Unchecking is completely silent -- feels broken. Symmetrical feedback is a baseline interaction expectation. | LOW | Play a "power down" sound (reuse existing deflate-style sound or add one), show negative XP popup ("-15 STR XP"), animate aura shrinking. Wire into existing AnimationQueue. The check_habit API already handles unchecking and returns the delta. |
-| **Streak-break acknowledgment** | When a streak breaks, nothing happens. The user discovers it silently next time they check. Habit trackers like Streaks and Habitify show explicit "streak broken" notices. The Zenkai recovery mechanic exists but is invisible if the user does not notice the halved number. | LOW | Show a toast or card on first dashboard load after a break: "Streak broke at X days. Zenkai halved to Y. Come back stronger." Ties into existing Vegeta roast system and StatusResponse (roast/welcome_back). May already partially work via RoastWelcomeCard but needs explicit streak-break callout. |
-| **Dashboard spacing/alignment polish** | Current layout has inconsistent spacing between sections, cards don't visually align, and the hero section dominates too much screen real estate on smaller viewports. Standard QoL expectation for a "polish pass." | MEDIUM | Audit all gap/padding/margin values across dashboard components. Standardize card widths and border radii. Ensure MiniHero collapse via IntersectionObserver works smoothly on mobile. This work is prerequisite to responsive -- fix desktop first, then adapt breakpoints. |
+| `vercel.json` with SPA rewrite | Without `rewrites`, every non-root URL returns a 404 on direct load or refresh. React Router handles routing in-browser, but Vercel must serve `index.html` for all paths first. | LOW | `{ "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }`. Confirmed pattern from Vercel community and official docs. |
+| `VITE_API_URL` env var consumed in `api.ts` | The frontend currently hits `localhost:8000` via the Vite dev proxy (`vite.config.ts`). That proxy does not exist in a Vercel static build — all `ky` calls must target the VPS URL directly. | LOW | `VITE_` prefix makes vars available as `import.meta.env.VITE_API_URL`. Statically inlined at build time. Set in Vercel dashboard under Environment Variables, not in a committed `.env.production` file. |
+| FastAPI `CORSMiddleware` with Vercel origin | Without explicit CORS allow-list, every browser request from `app.vercel.app` to the VPS API fails with a CORS error. The browser enforces this; it cannot be worked around client-side. | LOW | `allow_origins=["https://your-app.vercel.app"]` in FastAPI's `CORSMiddleware`. For a single-user personal app, `allow_origins=["*"]` is acceptable and simpler. |
+| Systemd unit file for FastAPI auto-start | Without systemd, the backend process dies on VPS reboot, requiring SSH to restart manually. Not viable for a personal-use app. | LOW | `uvicorn app.main:app --host 127.0.0.1 --port 8000` in a `.service` file with `Restart=always` and `WantedBy=multi-user.target`. |
+| Nginx reverse proxy on VPS | Uvicorn should not be publicly exposed on port 8000. Nginx handles HTTPS termination (Let's Encrypt), routes requests to uvicorn on `127.0.0.1:8000`, and serves proper response headers. | MEDIUM | Standard: `proxy_pass http://127.0.0.1:8000;` for all API paths. A single `server` block suffices for this single-service VPS. |
+| HTTPS / SSL on VPS | Vercel serves the frontend over HTTPS. If the VPS API is plain HTTP, browsers block those requests as mixed content and all API calls fail silently. | LOW | Certbot + Let's Encrypt via `certbot --nginx`. Free, auto-renews every 90 days. Hostinger VPS supports this directly. |
+| SQLite database path via env variable | The backend `DATABASE_URL` defaults to a relative path that works in dev. On a VPS, the database must live in a stable absolute path (e.g., `/home/user/saiyan-tracker/data/`) that survives deployments and is outside any git-managed directory. | LOW | `DATABASE_URL=sqlite:////home/user/saiyan-tracker/data/saiyan_tracker.db` in a `.env` on the VPS, read by `python-dotenv`. Do not commit this file. |
+| SaiyanAvatar images at expected paths | `SaiyanAvatar` requests `/assets/avatars/{transformation}.webp`. Without the files, the component falls back to a `User` icon. The hero section — the most prominent visual in the app — shows a generic placeholder instead of a DBZ character. | MEDIUM | 7 files needed: `base.webp`, `ssj.webp`, `ssj2.webp`, `ssj3.webp`, `ssg.webp`, `ssb.webp`, `ui.webp`. Place in `frontend/public/assets/avatars/`. |
+| Character portrait images for quote toasts and roast card | `CharacterQuote` (toast) and `RoastWelcomeCard` both load `quote.avatar_path` returned by the API. The fallback is a `User` icon or an orange/blue circle emoji. Quote events are a core mechanic — showing a character face makes them land. | MEDIUM | Minimum 2 portraits: Goku (`/assets/portraits/goku.webp`) and Vegeta (`/assets/portraits/vegeta.webp`). Backend `avatar_path` values in the seeded quotes DB must match the actual file paths. This is a data + file coordination step. |
 
 ### Differentiators (Competitive Advantage)
 
-Features that go beyond what typical habit trackers offer. These leverage the existing DBZ theme and game systems to create unique value.
+Features that elevate the visual experience from "functional" to "feels like the show."
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **Off-day analytics panel** | No habit tracker shows the *impact* of off-days on streaks, XP, and power level. Most just mark them as skipped. Showing "You took 3 off-days this month, preserving a 14-day streak and costing ~600 XP" turns rest into a conscious strategic decision rather than a guilt-laden gap. Research shows users who frame breaks as strategic maintain continuity 3.7x longer. | MEDIUM | New analytics section. Query OffDay table + correlate with DailyLog gaps. Metrics: total off-days per period, off-days by reason (pie/donut chart), estimated XP missed (avg daily XP * off-day count), streak-saves (off-days that fell mid-streak), off-day frequency trend. Needs new backend endpoint `/analytics/off-day-impact` or extend `/analytics/summary`. |
-| **Shareable daily summary (copy-to-clipboard)** | No mainstream habit tracker offers a one-tap "share my day" as a styled text block. For ADHD users, external accountability (posting to Discord, texting a friend) is a proven retention lever. The DBZ theme makes the summary fun to share -- not clinical. | LOW | Generate text template with date, completion %, habits done, XP earned, streak, transformation form, Dragon Balls collected. Copy via `navigator.clipboard.writeText()`. Button on dashboard visible when >= 1 habit checked. Text-only (no image generation). See format template below. |
-| **Weekly/monthly completion rate cards** | Existing StatCards show all-time aggregate stats only. Period-filtered rates ("This week: 85% vs Last week: 72%") let Sergio spot trends and feel week-over-week progress. Habitify's line graph and Streaks' percentage display both offer this -- it is becoming a standard analytics view. | LOW | Backend `/analytics/summary` already accepts `period=week|month|all`. Frontend needs to call it with multiple periods and display comparison cards: "This Week: 85% | Last Week: 72% | +13%". Could also show a simple sparkline. Minimal new code -- mostly layout work in StatCards component. |
-| **Streak leaderboard (personal power rankings)** | Rank habits by current streak length. Gamifies which habits are "strongest" vs "weakest." No external competition (solo user), just internal ranking. The DBZ framing ("Power Rankings" or "Warrior Ranking") makes it thematic. The Streaks app deliberately avoids social leaderboards but personal ranking of one's own habits is a different, positive pattern. | LOW | Sort `todayHabits` by `streak_current` descending. Display as a ranked list with position numbers, flame icons scaled by streak length, and habit emoji/title. Pure frontend -- data already available in `HabitTodayResponse.streak_current`. Could be a new section in Analytics or a tab in the dashboard. |
-| **Day-of-week pattern analysis** | Show which days Sergio is most/least consistent. "You complete 95% on Mondays but only 60% on Saturdays." Actionable insight that Habitify puts behind premium tiers. Helps ADHD users identify their natural rhythm rather than fighting it. | MEDIUM | Query DailyLog grouped by day-of-week (extract weekday from log_date), compute avg completion_rate per day. New backend endpoint or compute frontend-side from calendar data (calendar/all returns daily rates for the visible month -- could aggregate multiple months client-side). Visualize as a bar chart or radar chart using Recharts. |
-| **Best/worst day highlights** | Call out the single best and worst days in a period. "Best: March 2 (100%, 340 XP). Worst: March 5 (33%, 34 XP)." Creates narrative around the data. | LOW | Derive from existing calendar data on frontend. Find max/min completion_rate from CalendarDay array. Display as highlight cards above or below the heatmap in Analytics. Zero backend changes. |
+| Transformation-accurate avatar art | Each of the 7 avatar slugs uses art faithful to that form's hair color and energy signature. The existing `glowColorMap` already sets the correct glow per transformation — a matching image grounds the glow in recognizable source material. | MEDIUM | WebP at 192×192px (rendered at 96px on desktop, 24px on mobile compact hero). 2x resolution handles retina displays without any `srcset` complexity. Source: Vecteezy anime-inspired vectors (personal-use license) or similar. |
+| Shenron illustration replacing the dragon emoji | `ShenronCeremony` currently renders `🐉` at `text-6xl`. A properly drawn eternal dragon illustration scales infinitely, fills the dark ceremony background with visual weight, and creates the ceremonial drama the wish-granting mechanic deserves. | MEDIUM | SVG is preferred over WebP for this element: scales to any size without pixelation, can have individual paths animated by Motion, and stays sharp on all displays. An 800×800 WebP fallback is acceptable if SVG is not available. |
+| Dragon Ball sphere orb images | `DragonBallTracker` renders 7 styled divs with star text. Replacing these with proper orange star-crystal orbs makes the collection loop feel authentic. The glow effect (`boxShadow: '0 0 8px var(--color-warning)'`) already exists — it just needs a real orb behind it. | LOW | Option A: 7 individual WebP orbs at 64×64px (`ball-1.webp` through `ball-7.webp`). Option B: a single sprite sheet with CSS `background-position`. Option A is simpler to implement and maintain. |
+| Capsule Corp capsule illustration on flip card | `CapsuleDropOverlay` front face shows a large `?` on a dark gradient. A rendered Capsule Corp capsule (the classic white pill with the black half) transforms the reveal mechanic from abstract to a recognizable DBZ item. | LOW | Static WebP or inline SVG on the front face of the 3D flip card. The component already has `backfaceVisibility: hidden` — drop in an `<img>` replacing the `?` text. |
+| Space/nebula background art in hero section | `HeroSection` uses `bg-gradient-to-b from-space-800 to-transparent`. A dark starfield / nebula overlay at 10-20% opacity adds visual depth while preserving text readability and the existing Tailwind color tokens. | LOW | One WebP at 1920×1080 source resolution. Applied as `background-image` with `background-size: cover` and low opacity overlay in `AppShell` or `HeroSection`. Does not require component logic changes. |
+| Full character portrait set (4-6 characters) | Piccolo, Gohan, Krillin, and Beerus quotes exist in the 118-quote seed. Each character should have a consistent portrait that appears in `CharacterQuote` toasts throughout the day. Consistency builds character identity — users learn to recognize Piccolo's tone vs Vegeta's. | LOW | 4-6 WebP portraits at 80×80px. Zero component changes required: `avatar_path` drives the image source. Only requires file placement + correct `avatar_path` values in the DB. |
+| `loading="lazy"` on below-fold images | Character portraits in `RoastWelcomeCard` and capsule history images are not in the initial viewport. Lazy loading prevents them from competing with the avatar image for initial render bandwidth. | LOW | Add `loading="lazy"` to any `<img>` not rendered in the hero section. Native browser support is universal in 2025. Zero dependency change — a one-line attribute addition per image. |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| **Image/screenshot shareable summary** | "Share a pretty image of my day" | Canvas/image generation (html2canvas or server-side rendering) adds significant complexity. Maintenance burden for a solo-user app. Images get stale, text is more versatile across platforms (Discord, iMessage, WhatsApp). | Text-only clipboard copy. Clean formatting with emoji and Unicode box-drawing characters makes it visually appealing in any chat app. |
-| **Social leaderboard / friend comparison** | "Compare my habits with friends" | PROJECT.md explicitly scopes this out. Solo tracker. Adding social creates auth requirements, privacy concerns, and competitive pressure that harms ADHD motivation. Research shows the Streaks app deliberately avoids social features to maintain focus on personal progress. | Personal streak leaderboard (rank your own habits against each other). |
-| **Push/browser notifications** | "Remind me to do habits" | PROJECT.md explicitly lists this as hostile UX for ADHD users. Nagging notifications create anxiety and are ignored after a week. ACSM research shows 31% of users skip healthy rest days to avoid "breaking their streak" -- notifications amplify this pathology. | The existing nudge banner (1-2 habits remaining) is the right level of prompting -- visible when you open the app, not interrupting your day. |
-| **Detailed time-of-day tracking** | "Track when I complete each habit throughout the day" | Over-instrumentation. `completed_at` timestamp exists in HabitLog but surfacing hourly patterns adds complexity without clear value for a binary check tracker. Leads to self-surveillance anxiety. | Show `target_time` on habit detail view (already in schema). Let the user set intent, don't analyze actual times. |
-| **Exportable CSV/PDF reports** | "Export my data for analysis" | Scope creep for a v1.3 polish pass. Useful but not aligned with "feel great on every device" goal. Requires file generation, download UX, format decisions. | Defer to v2. The shareable summary covers the "show someone my progress" use case. The existing analytics page covers the "analyze my data" use case. |
-| **Undo streak break / manual streak editing** | "Let me fix my streak when I forgot to check" | PROJECT.md explicitly forbids this. Undermines the Zenkai recovery mechanic which is core to the game design. Two forgiveness mechanisms exist (off-days for planned, Zenkai for unplanned). | Zenkai recovery (halve, don't reset) + streak-break acknowledgment toast provide the psychological cushion. |
-| **Complex per-habit trend line charts** | "Show me a line graph for each habit over time" | Scope creep into an analytics platform. The contribution grid (90-day binary grid) and per-habit calendar already cover the "how consistent am I" question. Line charts for binary data are misleading -- you need a rolling average, which adds math complexity and is hard to interpret. | Contribution grid + completion rate numbers in the expanded habit detail sheet. Clear, honest, no interpretation needed. |
+| Serve static frontend from VPS (same origin as API) | Eliminates CORS entirely — frontend and API share a domain. | Loses Vercel's CDN edge caching, zero-downtime preview deployments, and the "git push = live" DX. Adds Nginx static file config complexity. The VPS has one CPU — serving both static files and the API from the same process wastes a perfectly good edge network. | Keep split deployment. Configure `CORSMiddleware` correctly on FastAPI (5 lines). |
+| CDN image hosting (Cloudinary, Imgix, or similar) | Automatic format conversion, responsive srcset, real-time transforms. | Significant over-engineering for a personal app with ~20 static images that change once. External dependency, potential costs, additional CORS surface to configure. | Place images in `frontend/public/assets/`. Vercel already serves all static files from its global CDN — the images get edge-cached automatically with no additional config. |
+| Docker on the VPS | Reproducible environments, easy rollbacks. | For a single-process FastAPI + SQLite app serving one user, Docker adds image storage overhead (~500MB for Python base), more complex `systemd` unit (or `docker-compose` as a separate concern), and more failure modes to debug over SSH on a fresh VPS. | Systemd + uvicorn + nginx is 3 config files and is directly debuggable with `journalctl -f`. Appropriate for the complexity level. |
+| SVG sprite sheet for character portraits | Bundles all icons into one HTTP request, allows CSS `fill` overrides. | Character portraits are detailed raster art, not monochrome icons. SVG sprites only make sense for UI icons (outlines). Encoding raster art as SVG (base64 embedded) defeats the purpose and bloats the HTML. | Individual WebP files. HTTP/2 on both Vercel and the VPS handles parallel requests efficiently — the sprite optimization is irrelevant at this scale. |
+| Build-time automatic WebP conversion via `vite-plugin-image-optimizer` | Source PNGs/JPEGs in git, convert at build time, no manual work. | Adds Sharp as a native dependency (platform-specific binary), extends Vite build time by 30-60 seconds in CI, and introduces potential build failures on different Node versions. For ~20 images that don't change frequently, the build-time tax is not worth it. | Pre-convert source art to WebP once using Sharp CLI (`npx sharp input.png -o output.webp`) or Squoosh before placement in `public/`. Only reconsider if the image count exceeds ~50 and builds become a bottleneck. |
+| `<picture>` with responsive `srcset` for different viewport widths | Serve 96px images to mobile, 192px to desktop — "true responsive images." | The avatar renders at a fixed CSS size (`w-20 h-20` on desktop, `w-6 h-6` on mobile). There is no viewport-dependent layout shift that would justify multiple source resolutions beyond the standard 2x (retina) vs 1x split. Adding `srcset` sizes here creates complexity for zero visual benefit. | Provide 2x WebP files (192×192px). The browser downsamples to 96px at 1x DPR and serves 192px at 2x DPR with a simple `srcset="image.webp 2x"` if needed. Not necessary unless profiling shows LCP from avatar images on real usage. |
+| AVIF format with `<picture>` fallback | AVIF is ~50% smaller than WebP at equivalent quality — meaningful bandwidth savings. | Worth evaluating after real usage data exists. For 20 static images at ~10-30KB each, the difference is negligible on a modern connection. Also requires providing both formats (doubles the file count) or a build plugin. | Start with WebP. If LCP profiling after deployment reveals image loading as a bottleneck, add AVIF then. Defer — this is a P3 optimization. |
+
+---
 
 ## Feature Dependencies
 
 ```
-[Dashboard spacing/alignment polish]
-    |
-    +-- required-by --> [Responsive mobile layout]
-    |                   (fix desktop first, then adapt breakpoints)
-    |
-    +-- required-by --> [All other v1.3 features]
-        (everything must look right on the polished layout)
+[HTTPS/SSL on VPS]
+    └──required-by──> [Nginx reverse proxy]
+        └──required-by──> [FastAPI publicly accessible from internet]
+            └──required-by──> [VITE_API_URL wired to production VPS URL]
+                └──required-by──> [Vercel frontend calling VPS API without mixed-content block]
+                    └──required-by──> [App usable at production URL]
 
-[Responsive mobile layout]
-    |
-    +-- required-by --> [Shareable daily summary]
-    |                   (share button must be accessible on mobile)
-    |
-    +-- required-by --> [Habit detail view]
-    |                   (bottom sheet must work on mobile viewports)
-    |
-    +-- required-by --> [Off-day analytics panel]
-    |                   (charts must be readable on mobile)
-    |
-    +-- required-by --> [Day-of-week patterns]
-        (bar/radar chart must work on narrow screens)
+[SaiyanAvatar images in public/assets/avatars/]
+    └──enhances──> [Hero section visual identity]
+    └──enhances──> [TransformationOverlay animation (shows new form)]
 
-[Habit detail view (expanded)]
-    +-- depends-on --> [Existing HabitDetailSheet + ContributionGrid]
-    +-- depends-on --> [Backend /habits/{id}/stats endpoint] (orphaned, needs frontend wiring)
-    +-- enhanced-by --> [Day-of-week patterns] (could show per-habit day patterns later)
+[Backend avatar_path values matching actual file paths]
+    └──required-by──> [CharacterQuote toasts showing character portrait]
+    └──required-by──> [RoastWelcomeCard avatar images]
+    └──requires──> [Portrait files exist in public/assets/portraits/]
+    └──requires──> [DB seeded with correct paths OR backend updated to return correct paths]
 
-[Off-day analytics]
-    +-- depends-on --> [Existing OffDay model + off-days API]
-    +-- depends-on --> [New backend endpoint for off-day impact calculation]
-    +-- enhanced-by --> [Weekly/monthly rate cards] (rates should account for off-days)
+[Shenron illustration in public/assets/]
+    └──enhances──> [ShenronCeremony phase 2 (dragon appear)]
 
-[Weekly/monthly completion rates]
-    +-- depends-on --> [Existing /analytics/summary?period= backend endpoint]
-    +-- no new backend needed, just multiple frontend calls
+[Dragon Ball orb images in public/assets/]
+    └──enhances──> [DragonBallTracker slots]
+    └──enhances──> [ShenronCeremony phase 5 (scatter animation)]
 
-[Streak leaderboard]
-    +-- depends-on --> [Existing HabitTodayResponse.streak_current]
-    +-- no backend changes needed
-
-[Uncheck feedback]
-    +-- depends-on --> [Existing animation queue + sound system]
-    +-- no backend changes needed (check_habit handles unchecking)
-
-[Streak-break acknowledgment]
-    +-- depends-on --> [Existing StatusResponse with roast/welcome_back]
-    +-- enhanced-by --> [Existing Vegeta roast system + RoastWelcomeCard]
-
-[Best/worst day highlights]
-    +-- depends-on --> [Existing CalendarDay data from calendar/all API]
-    +-- no backend changes needed
-
-[Day-of-week patterns]
-    +-- depends-on --> [New backend endpoint OR heavy frontend aggregation]
-    +-- enhanced-by --> [Weekly/monthly rates] (both are analytics additions)
+[Capsule illustration in public/assets/]
+    └──enhances──> [CapsuleDropOverlay front face]
 ```
 
 ### Dependency Notes
 
-- **Dashboard polish BEFORE responsive:** Fix spacing/alignment on desktop first, then adapt breakpoints. Polishing after responsive creates double work (adjust values, then re-adjust for each breakpoint).
-- **Responsive is the foundation for everything else:** Every v1.3 feature must work on mobile. Responsive work should happen early or in parallel with feature development.
-- **Off-day analytics is the only feature requiring a new backend endpoint:** Everything else either uses existing APIs, derives from existing data, or wires up orphaned endpoints.
-- **Habit detail view can reuse orphaned endpoints:** `GET /habits/{id}/calendar` and `GET /habits/{id}/stats` exist in the backend but the frontend uses different data paths. Wire these up rather than creating new APIs.
-- **6 features need zero backend changes:** Streak leaderboard, uncheck feedback, best/worst day highlights, weekly/monthly rates (existing API), streak-break acknowledgment (existing StatusResponse), and shareable summary are all pure frontend work.
+- **HTTPS must come before Vercel wiring:** Vercel frontend is HTTPS-only. Plain HTTP backend triggers a mixed-content block in all modern browsers. SSL is not optional — it is the blocker for the entire deployment being usable.
+- **`avatar_path` is a data + file coordination step:** `CharacterQuote` and `RoastWelcomeCard` get `avatar_path` from API responses. The values are stored in the SQLite database when quotes are seeded. The DB on the VPS may have the old default paths (empty string or a dev-time path). Either the seeder must be re-run with correct production paths, or the FastAPI quote endpoints must be updated to prepend the correct base URL/path.
+- **Visual assets are independently addable:** `SaiyanAvatar` has a two-tier fallback (base → User icon). `CharacterQuote` hides the image on error. `DragonBallTracker` renders CSS divs without any `<img>` tag. No asset is a hard dependency — the app remains functional without any of them. This means assets can be dropped in progressively after initial deployment.
+- **Deployment wiring and visual assets are independent tracks:** All the infrastructure work (Vercel config, env vars, CORS, VPS setup) can be completed and verified without any image assets. Then assets can be added as a second pass.
+
+---
 
 ## MVP Definition
 
-### Must Ship (v1.3 Core)
+### Launch With (v1 — Deployed and Functional)
 
-These features define the milestone. Without them, v1.3 has not achieved its goal.
+Minimum viable deployment: the app works at a real URL with real data.
 
-- [ ] **Responsive mobile layout** -- the primary goal ("daily phone use")
-- [ ] **Dashboard spacing/alignment polish** -- prerequisite for responsive
-- [ ] **Uncheck feedback** (sound + negative XP popup) -- closes obvious interaction symmetry gap
-- [ ] **Streak-break acknowledgment** -- closes feedback gap, surfaces Zenkai mechanic
-- [ ] **Habit detail view** with completion rates, target time, attribute XP -- most-wanted view per PROJECT.md
+- [ ] `vercel.json` with SPA rewrite — without this, direct URLs 404
+- [ ] `VITE_API_URL` consumed in `api.ts` — backend call wiring, blocks all data loading
+- [ ] FastAPI `CORSMiddleware` with Vercel origin — browser calls fail without it
+- [ ] Systemd unit file for auto-restart — operational requirement for a VPS
+- [ ] Nginx reverse proxy config — required for port routing and header management
+- [ ] HTTPS via Let's Encrypt — required to avoid mixed-content blocks from Vercel
+- [ ] SaiyanAvatar images (7 transformations) — hero section identity, highest visual impact per user experience
+- [ ] Goku + Vegeta portrait images (2 minimum) — quote toasts and roast card are core daily mechanics
 
-### Should Ship (v1.3 Enhanced)
+### Add After Validation (v1.x — Visual Completeness)
 
-High-value, low-to-medium effort features that round out the polish pass.
+After confirming the app works end-to-end at the production URL:
 
-- [ ] **Weekly/monthly completion rate cards** -- low effort, high insight value, existing API
-- [ ] **Streak leaderboard** (personal power rankings) -- pure frontend, thematic, fun
-- [ ] **Shareable daily summary** (copy-to-clipboard) -- low effort, unique differentiator
-- [ ] **Off-day analytics panel** -- medium effort, unique differentiator, strategic value
-- [ ] **Best/worst day highlights** -- low effort, derived from existing calendar data
+- [ ] Shenron illustration — wish ceremony deserves visual weight; adds ceremony drama
+- [ ] Dragon Ball orb images (7 spheres) — collection loop visual authenticity
+- [ ] Capsule Corp capsule illustration — flip card front face recognition
+- [ ] Remaining character portraits (Piccolo, Gohan, etc.) — completes the quote system visually
+- [ ] Background/space art overlay — atmospheric depth, purely aesthetic
 
-### Defer (v1.4+)
+### Future Consideration (v2+)
 
-- [ ] **Day-of-week pattern analysis** -- medium effort, needs new backend query or heavy frontend compute. Good candidate for next milestone.
-- [ ] **Image-based shareable summary** -- high effort, low relative value vs text
-- [ ] **CSV/PDF export** -- scope creep for a polish pass
-- [ ] **Time-of-day completion patterns** -- over-instrumentation
+- [ ] AVIF format with `<picture>` fallback — defer until LCP profiling shows image loading as bottleneck
+- [ ] Per-transformation background art (different nebula color per SSJ tier) — high artistic effort, low functional impact
+- [ ] `loading="lazy"` audit across all non-hero images — straightforward but low priority until usage pattern is established
+
+---
 
 ## Feature Prioritization Matrix
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Responsive mobile layout | HIGH | HIGH | P1 |
-| Dashboard spacing/alignment polish | HIGH | MEDIUM | P1 |
-| Uncheck feedback | HIGH | LOW | P1 |
-| Streak-break acknowledgment | MEDIUM | LOW | P1 |
-| Habit detail view (expanded) | HIGH | MEDIUM | P1 |
-| Weekly/monthly completion rates | MEDIUM | LOW | P2 |
-| Streak leaderboard | MEDIUM | LOW | P2 |
-| Shareable daily summary | MEDIUM | LOW | P2 |
-| Off-day analytics panel | MEDIUM | MEDIUM | P2 |
-| Best/worst day highlights | LOW | LOW | P2 |
-| Day-of-week pattern analysis | MEDIUM | MEDIUM | P3 |
+| `vercel.json` SPA rewrite | HIGH | LOW | P1 |
+| `VITE_API_URL` env var wiring in `api.ts` | HIGH | LOW | P1 |
+| FastAPI CORS allow-list | HIGH | LOW | P1 |
+| Systemd unit + Nginx + SSL on VPS | HIGH | MEDIUM | P1 |
+| SQLite absolute path via env var | HIGH | LOW | P1 |
+| SaiyanAvatar images (7 forms, WebP) | HIGH | MEDIUM | P1 |
+| Goku + Vegeta portrait images | HIGH | LOW | P1 |
+| Shenron illustration (SVG preferred) | MEDIUM | LOW | P2 |
+| Dragon Ball orb images (7 spheres) | MEDIUM | LOW | P2 |
+| Capsule Corp capsule illustration | MEDIUM | LOW | P2 |
+| Remaining character portraits (4-6 total) | MEDIUM | LOW | P2 |
+| Background/space art overlay | LOW | LOW | P2 |
+| `loading="lazy"` on below-fold images | LOW | LOW | P2 |
+| AVIF + `<picture>` format upgrade | LOW | MEDIUM | P3 |
 
 **Priority key:**
-- P1: Must have -- closes gaps, enables daily phone use, defines the milestone
-- P2: Should have -- adds insight and delight, low-to-medium effort
-- P3: Nice to have -- defer if time is tight
+- P1: Must have for launch — app is broken, data-less, or visually dead without it
+- P2: Should have — completes the visual overhaul goal; add after core deployment verified
+- P3: Nice to have — defer until performance profiling justifies the complexity
 
-## Competitor Feature Analysis
+---
 
-| Feature | Habitify | Streaks (iOS) | Loop Habit Tracker | Our Approach |
-|---------|----------|---------------|-------------------|--------------|
-| Habit detail view | Full stats page with charts, completion rate, best streak, trend line | Minimal -- just streak count and calendar ring | Detailed stats: frequency histograms, calendar, streaks, score | Bottom sheet (exists) expanded with completion rates, contribution grid (exists), target time, attribute XP total. Faster access than a full page -- one tap from dashboard. |
-| Off-day handling | Skip day, no analytics about impact | Freeze streak, no analytics | No explicit off-day concept | Off-day with reason tagging (exists). ADD: impact analytics showing XP cost, streak saves, and reason breakdown. Unique in the market. |
-| Shareable summary | No built-in share | No share feature | Export to CSV only | Copy-to-clipboard DBZ-themed text summary. No competitor does themed text sharing. |
-| Mobile responsive | Native iOS/Android apps | Native iOS only | Native Android | Web app with Tailwind responsive breakpoints. Must match native feel -- bottom tab bar, 44px touch targets, swipe gestures for bottom sheets. |
-| Completion rate trends | Avg completion rate line graph (weekly/monthly/yearly) behind premium | Basic percentage per habit | Detailed frequency charts and histograms | Period-filtered stat cards with week-over-week comparison. Simple, clear, no premium gate. |
-| Streak ranking | No habit-vs-habit ranking | No ranking (all habits equal) | Habits sortable by various metrics | "Power Rankings" -- habits sorted by streak with DBZ theming (flame icons, position numbers). Personal, not social. |
-| Day-of-week analysis | Mentioned in blog, appears behind premium | No | Yes -- bar chart showing day-of-week patterns | Bar or radar chart in analytics. Available to all (no premium tier in a solo app). |
+## Reference: Component-to-Asset Mapping
 
-## Implementation Notes
+All existing components already implement graceful fallbacks. This table maps each component to what it expects and what happens without the asset.
 
-### Responsive Mobile Layout Strategy
+| Component | Expected Asset Path | Current Fallback | Impact Without Asset |
+|-----------|--------------------|--------------------|----------------------|
+| `SaiyanAvatar` | `/assets/avatars/{transformation}.webp` (7 slugs) | `User` lucide icon in a rounded div | Hero section shows generic user icon — primary visual identity is lost |
+| `CharacterQuote` toast | `quote.avatar_path` (from API response) | Image hidden, `User` icon shown | Quote toasts lose character attribution; mechanics still work |
+| `RoastWelcomeCard` | `quote.avatar_path` (from API response) | `🟠` for Goku, `🔵` for Vegeta | Roast/welcome card renders but with emoji placeholders |
+| `ShenronCeremony` | None — currently renders `🐉` inline | N/A (emoji IS the current state) | Ceremony functions but lacks visual drama |
+| `DragonBallTracker` | None — currently renders styled divs | N/A (CSS divs ARE the current state) | Collection tracker functional, not visually authentic |
+| `CapsuleDropOverlay` front face | None — currently renders `?` text | N/A (text IS the current state) | Flip card reveal works, no Capsule Corp visual identity |
+| `DragonBallTrajectory` | None — currently renders CSS circles | N/A (circles ARE the current state) | Trajectory animation works, circles instead of orbs |
 
-The existing app uses Tailwind CSS v4 with `@theme` tokens (28 color tokens). Key responsive challenges:
+---
 
-1. **Navigation:** Current top nav bar should become a fixed bottom tab bar on mobile (< 768px). Icons for Dashboard, Analytics, Settings. Standard mobile pattern used by Instagram, YouTube, etc.
-2. **HeroSection/MiniHero:** Already uses IntersectionObserver for collapse. On mobile, start with MiniHero (compact) as the default. Hero takes too much viewport on < 640px.
-3. **HabitCard:** Drag handle + checkbox + title + attribute + streak + importance all need to fit in ~375px width. Stack attribute/streak below title on mobile. Ensure drag handle and checkbox are 44px minimum.
-4. **Analytics charts:** All Recharts components wrapped in `<ResponsiveContainer width="100%" height={...}>`. On mobile, charts go full-width with larger touch-friendly tooltips. Reduce chart height on mobile to avoid excessive scrolling.
-5. **Bottom sheets:** `HabitDetailSheet` and `HabitFormSheet` already use bottom sheet pattern -- good for mobile. Ensure max-height respects mobile viewport (use `dvh` units).
-6. **Settings forms:** Stack form fields vertically on mobile. Ensure all inputs have adequate spacing for thumb interaction.
+## Image Specification Summary
 
-### Shareable Daily Summary Format
+Pre-converting source art to WebP before placement in `public/` is recommended. No build plugin required.
+
+| Asset Group | Count | Rendered Size | Format | Source Resolution | Path |
+|-------------|-------|---------------|--------|-------------------|------|
+| Saiyan avatars | 7 | 96×96px (desktop), 24×24px (mobile compact) | WebP | 192×192px (2x) | `public/assets/avatars/` |
+| Character portraits | 4–6 | 40×40px | WebP | 80×80px (2x) | `public/assets/portraits/` |
+| Dragon Ball orbs | 7 | 32×32px | WebP or inline SVG | 64×64px | `public/assets/dragonballs/` |
+| Shenron | 1 | Full-screen overlay, scales to viewport | SVG (preferred) or WebP | Scalable / 800×800px | `public/assets/` |
+| Capsule Corp capsule | 1 | 128×160px (flip card front) | WebP or SVG | 256×320px | `public/assets/` |
+| Background/space art | 1 | Covers viewport | WebP | 1920×1080px | `public/assets/` |
+
+---
+
+## How Anime-Themed Web Apps Handle Character Art
+
+Findings from community patterns and DBZ fan project conventions (MEDIUM confidence — web research + forum patterns):
+
+1. **Fan projects use image-per-character WebP files at fixed pixel dimensions.** Sprite sheets are reserved for animation frames in pixel art games, not for still portrait art in web UIs. Each character gets its own file, named by character slug.
+
+2. **Art placement convention is `public/assets/` (Vite) or `public/images/` (Next.js).** Static files in `public/` are not processed by the module bundler. Images must not be imported as JS modules — they are served as-is from the static directory. The path in `src` attributes must match the file path relative to `public/`.
+
+3. **Copyright risk for single-user private apps stays low under specific conditions:** (a) the Vercel URL is not shared publicly or indexed by search engines, (b) no revenue is generated, (c) art used is anime-inspired vector art (Vecteezy or similar) with a proper license, not direct screenshots or officially published artwork. Using "inspired by" vectors rather than exact character reproductions reduces infringement risk. The PROJECT.md decision to source from Vecteezy + Pinterest for personal use only is the correct risk posture.
+
+4. **Shenron as SVG offers the best tradeoff for the ceremony use case.** An SVG illustration of a serpentine dragon can have individual body segment paths that Motion animates (undulation, scale, opacity). WebP at a fixed resolution cannot be animated per-element. For the centerpiece of the wish ceremony, SVG is worth the additional sourcing effort.
+
+---
+
+## Vercel + VPS Split Deployment: How It Works
+
+Confirmed pattern (HIGH confidence — Vercel docs + FastAPI official deployment docs):
 
 ```
-SAIYAN TRACKER | March 8, 2026
-================================
-Power Level: 3,247 (Super Saiyan 2)
-Today: 5/6 habits (83%) -- Kaio-ken x10
-Streak: 14 days (+70% XP bonus)
-Dragon Balls: 5/7
+Browser
+  └── HTTPS → Vercel CDN (static files: index.html, JS bundles, assets)
+                  index.html bootstraps React → imports.meta.env.VITE_API_URL
+                  all API calls → HTTPS → VPS domain
 
-Completed:
-  Workout (STR) | Read 20 pages (INT)
-  Drink Water (VIT) | Meditate (KI)
-  Family time (KI)
-
-XP Earned: 125
-================================
+VPS (Hostinger)
+  └── Port 443 → Nginx
+                   └── proxy_pass 127.0.0.1:8000 → uvicorn
+                                                       └── FastAPI app
+                                                               └── SQLite DB (absolute path)
 ```
 
-Copy via `navigator.clipboard.writeText()`. Button appears on dashboard when >= 1 habit is checked. Show a brief toast confirmation ("Copied to clipboard!") after tap.
+Key coordination points:
+- **`VITE_API_URL`** is set in Vercel's env var dashboard (not committed). Value is the VPS API domain (e.g., `https://api.yourdomain.com`).
+- **`CORS` allow-list** on FastAPI includes the Vercel deployment URL. If using a custom Vercel domain, add that domain, not the generic `*.vercel.app` wildcard.
+- **Nginx on VPS** terminates SSL and proxies all requests to uvicorn on localhost. The uvicorn process is bound to `127.0.0.1` only (not `0.0.0.0`) to prevent direct port exposure.
+- **Systemd** restarts uvicorn on reboot and on process crash. Log output goes to `journalctl -u saiyan-tracker.service`.
 
-### Off-Day Analytics Data Model
-
-| Metric | Data Source | Computation |
-|--------|------------|-------------|
-| Total off-days (period) | OffDay table | COUNT where off_date in period range |
-| Off-days by reason | OffDay table | GROUP BY reason, COUNT each |
-| Estimated XP missed | DailyLog + OffDay | avg(xp_earned from DailyLog) * off-day count in period |
-| Streaks preserved | OffDay + Streak history | Count off-days where the day before and after both had >= 80% completion (streak continued through the off-day) |
-| Off-day frequency | OffDay + DailyLog | off-day count / total days in period |
-
-Backend option: new endpoint `GET /analytics/off-day-impact?period=week|month|all` returning these metrics. Alternatively, extend the existing `/analytics/summary` response to include off-day fields.
-
-### Habit Detail View Expansion
-
-Current `HabitDetailSheet` shows: emoji, title, current streak, best streak, total completions (90 days), contribution grid (90-day binary SVG).
-
-Expand with:
-- **Completion rate** (all-time, this week, this month) -- wire up orphaned `/habits/{id}/stats` endpoint
-- **Total attribute XP earned** -- sum from HabitLog.attribute_xp_awarded for this habit
-- **Target time display** -- from `habit.target_time` (already in schema, never surfaced in UI)
-- **Created date** -- from `habit.created_at` (already in HabitResponse)
-- **Category badge** -- resolve category name/color from `habit.category_id`
-- **Importance and attribute tags** -- already in HabitTodayResponse, just not rendered in the detail sheet
-
-### Streak Leaderboard Layout
-
-Simple ranked list, no new data needed:
-1. Sort `todayHabits` by `streak_current` descending
-2. Display as numbered list: `#1 Workout (14 days) | #2 Drink Water (12 days) | ...`
-3. Flame icon size scales with streak length (small < 7, medium 7-30, large 30+)
-4. Habits with 0 streak shown dimmed at bottom
-5. Placement: new section in Analytics page OR a collapsible panel on Dashboard
+---
 
 ## Sources
 
-- [Habitify -- Let Data Tell Your Story (Analytics Features)](https://habitify.me/blog/let-data-tell-your-story) -- analytics views, completion rate trends, progress dimensions
-- [RapidNative -- Habit Tracker Calendar UX Best Practices](https://www.rapidnative.com/blogs/habit-tracker-calendar) -- calendar grid design, state indicators, streak counters
-- [Trophy -- Streaks Gamification Case Study 2025](https://trophy.so/blog/streaks-gamification-case-study) -- streak psychology, loss aversion, personal vs social leaderboards
-- [Plotline -- Streaks for Gamification in Mobile Apps](https://www.plotline.so/blog/streaks-for-gamification-in-mobile-apps) -- streak milestone design, gamification patterns
-- [Writing Analytics -- Habit Tracker and Streaks](https://support.writinganalytics.co/guides/habit-tracker-and-streaks) -- off-day handling, streak freeze patterns
-- [James Clear -- The Ultimate Habit Tracker Guide](https://jamesclear.com/habit-tracker) -- fundamental habit tracking principles
-- [Reclaim AI -- Best Habit Tracker Apps 2026](https://reclaim.ai/blog/habit-tracker-apps) -- market feature expectations
-- [GetNerdify -- 10 Mobile App Design Best Practices 2025](https://getnerdify.com/blog/mobile-app-design-best-practices/) -- responsive design, bottom navigation, touch targets
-- [Chop Dawg -- UI/UX Design Trends 2025](https://www.chopdawg.com/ui-ux-design-trends-in-mobile-apps-for-2025/) -- mobile-first design patterns
+- [Vercel rewrites documentation](https://vercel.com/docs/rewrites)
+- [Vercel CORS configuration — Vercel KB](https://vercel.com/kb/guide/how-to-enable-cors)
+- [Vite environment variables — official Vite docs](https://vite.dev/guide/env-and-mode)
+- [FastAPI deployment with Nginx + Gunicorn + systemd (2026) — Zestminds](https://www.zestminds.com/blog/fastapi-deployment-guide/)
+- [FastAPI async deployment on Hostinger VPS with Nginx + uvicorn — GeekyShows](https://geekyshows.com/blog/post/deploy-fas/)
+- [Deploy FastAPI with Gunicorn and Nginx on Ubuntu 24.04 — Vultr Docs](https://docs.vultr.com/how-to-deploy-a-fastapi-application-with-gunicorn-and-nginx-on-ubuntu-2404)
+- [vite-plugin-image-optimizer — GitHub](https://github.com/FatehAK/vite-plugin-image-optimizer)
+- [Image optimization 2025 — FrontendTools](https://www.frontendtools.tech/blog/modern-image-optimization-techniques-2025)
+- [SVG sprite vs inline SVG performance — Cloud Four](https://cloudfour.com/thinks/svg-icon-stress-test/)
+- [React SVG integration and optimization — Strapi blog](https://strapi.io/blog/mastering-react-svg-integration-animation-optimization)
+- [DBZ copyright and fan use — Kanzenshuu](https://kanzenshuu.com/forum/viewtopic.php?t=38853)
 
 ---
-*Feature research for: Saiyan Tracker v1.3 QoL Polish*
-*Researched: 2026-03-08*
+*Feature research for: Saiyan Tracker v2.0 — Deploy & Visual Overhaul*
+*Researched: 2026-03-11*

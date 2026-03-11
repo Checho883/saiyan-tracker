@@ -1,165 +1,185 @@
 # Project Research Summary
 
-**Project:** Saiyan Tracker v1.3 -- The Polish Pass
-**Domain:** QoL features for existing gamified DBZ habit tracker (responsive design, habit detail, analytics, sharing, feedback)
-**Researched:** 2026-03-08
+**Project:** Saiyan Tracker v2.0 — Deploy & Visual Overhaul
+**Domain:** Production deployment (Vercel + Hostinger VPS) with DBZ visual asset integration
+**Researched:** 2026-03-11
 **Confidence:** HIGH
 
 ## Executive Summary
 
-Saiyan Tracker v1.3 is a polish milestone for an already-complete habit tracker (v1.2 shipped 24/24 requirements, 456 tests). The goal is making the existing app feel great on every device, closing feedback gaps in the interaction model, and adding the most-wanted data views. This is NOT a new-feature milestone -- it is a refinement pass. The existing stack (React 19 + Vite + Zustand + Motion 12 + Tailwind v4 + Recharts + FastAPI + SQLite) handles everything v1.3 needs with zero new npm dependencies and zero additional bundle size.
+Saiyan Tracker v2.0 is a split-deployment upgrade: the existing Vite 7 + React 19 frontend ships to Vercel's CDN while the FastAPI + SQLite backend runs on a Hostinger VPS behind Nginx + Let's Encrypt TLS. The app's component layer is already production-ready — `SaiyanAvatar`, `CharacterQuote`, and the rest of the dashboard all have graceful fallbacks coded in. The deployment phase is purely infrastructure and configuration: add `CORSMiddleware` to `main.py`, wire `VITE_API_BASE` in Vercel's dashboard, create a `vercel.json` SPA rewrite, set up Nginx + systemd on the VPS, and fix the SQLite path to an absolute env-var-driven value. None of these touch existing component or API logic.
 
-The recommended approach is to treat responsive mobile design as the foundation -- it is the primary goal per PROJECT.md ("daily phone use") and every other feature must work on mobile. Backend analytics endpoints should be built second to unblock all frontend data views. The remaining features (habit detail expansion, analytics charts, shareable summary, feedback gaps) are independent of each other and can be built in any order once responsive and backend work are complete. The architecture is surgical: 6 new components, ~10 modified components, 4 new backend endpoints, and 1 small database migration. No new stores, no new routing patterns, no structural changes.
+The visual overhaul is an independent track that can run in parallel or after deployment. Seven Saiyan avatar WebP images, Goku and Vegeta portrait images, and optionally Shenron/Dragon Ball art drop into `frontend/public/assets/` with zero component changes required. The key constraint is that all game art must live in `public/` (not `src/assets/`) because existing components reference images via dynamic URL strings, not ES module imports. Pre-optimize all images to WebP at 80-90% quality before committing — the size budget is under 50KB per avatar and under 5MB total for all assets.
 
-The key risks are: (1) responsive retrofit breaking the 11 animation overlays that assume desktop viewports, (2) "decluttering" the mobile dashboard by hiding dopamine feedback elements that are core to the product, (3) computing analytics aggregates client-side with wrong denominators instead of using backend snapshots, and (4) clipboard copy silently failing on mobile browsers outside secure contexts. All four risks have clear prevention strategies documented in the pitfalls research.
+The top risks are all deployment-config mistakes rather than code problems: `VITE_API_BASE` baking the localhost fallback into the Vercel build silently breaks all API calls; missing `CORSMiddleware` blocks every browser request from Vercel; and a relative SQLite path creates a phantom database when systemd changes the working directory. All three are easy to prevent if addressed in the correct order — backend CORS and database config first, then Vercel wiring, then VPS infrastructure, then visual assets.
 
 ## Key Findings
 
 ### Recommended Stack
 
-No new dependencies required. The existing stack at current versions handles every v1.3 feature through browser-native APIs and existing library capabilities. Tailwind v4 provides built-in container queries and responsive breakpoints. The Clipboard API (browser-native) handles sharing. Recharts 3.7 handles all new chart types. Motion 12 handles all new animation events. This is the correct outcome for a polish milestone.
+The existing stack requires only 5 new dependencies across the entire v2.0 scope. On the frontend: `vite-plugin-svgr` (for SVG-as-React-component imports, needed only if Shenron is SVG), `vite-plugin-image-optimizer` + `sharp` (build-time image compression — treat as optional given the recommendation to pre-optimize manually). On the backend: `gunicorn` for production process management with crash recovery, and `python-dotenv` to load `.env` on the VPS. The ARCHITECTURE research confirmed that `frontend/src/services/api.ts` already reads `VITE_API_BASE`, so frontend code needs no changes — only the env var set in Vercel's dashboard. For game art, pre-converting images to WebP with `cwebp` or `ffmpeg` before committing is preferred over build-time plugins for a personal app with ~20 static images.
 
-**Core technologies (all existing):**
-- **Tailwind CSS v4.2**: Responsive design -- built-in mobile-first breakpoints, native container queries, no plugins needed
-- **Recharts 3.7**: Enhanced analytics views -- ResponsiveContainer for mobile charts, BarChart/LineChart for new views
-- **Motion 12**: New animation events (uncheck, streak-break) -- extends existing priority-tiered queue
-- **Browser Clipboard API**: Shareable summary -- `navigator.clipboard.writeText()`, no npm wrapper needed
-- **React Router 7.13**: Habit detail routing (if needed) -- dynamic segments already supported
-- **vaul 1.1**: Bottom sheets already mobile-friendly -- correct pattern for habit detail view
+**Core technologies:**
+- `gunicorn` 25.1.0 + uvicorn workers: production process management with crash recovery — bare `uvicorn` lacks worker restart on crash
+- `python-dotenv` 1.2.2: loads `.env` on VPS for `DATABASE_URL` and `CORS_ORIGINS` — supports Python 3.14
+- `vite-plugin-svgr` 4.5.0: enables `?react` SVG imports — needed only if Shenron illustration is sourced as SVG
+- Nginx + Let's Encrypt certbot: TLS termination on VPS — mandatory; Vercel is HTTPS-only and browsers hard-block mixed content
+- systemd service unit: auto-start and crash-restart for FastAPI — `Restart=on-failure`, `EnvironmentFile=` for secrets
 
 ### Expected Features
 
-**Must have (table stakes):**
-- **Responsive mobile layout** -- PRIMARY goal; the app is used daily on phone; touches every page/component
-- **Dashboard spacing/alignment polish** -- prerequisite for responsive; fix desktop first, then adapt breakpoints
-- **Uncheck feedback** (sound + negative XP popup) -- closes obvious interaction symmetry gap; checking has feedback, unchecking is silent
-- **Streak-break acknowledgment** -- surfaces the Zenkai recovery mechanic; currently invisible when streaks break
-- **Habit detail view expansion** -- completion rate, target time, attribute XP; wires up orphaned backend endpoints
+**Must have (table stakes — launch blockers):**
+- `vercel.json` with SPA rewrite rule — every non-root URL returns 404 on direct load or refresh without it
+- `VITE_API_BASE` set in Vercel env vars before first deploy — bakes into JS bundle at build time; missing = localhost shipped to production
+- `CORSMiddleware` in `main.py` with Vercel origin — browser blocks all API calls without it; Vite proxy hides this in dev
+- HTTPS via Nginx + Let's Encrypt on VPS — mixed content hard-block from Vercel's HTTPS frontend; non-negotiable
+- systemd unit file for FastAPI auto-start — process dies on VPS reboot without it
+- SQLite absolute path via `DATABASE_URL` env var — relative path creates phantom database under systemd
+- SaiyanAvatar images (7 transformation WebPs) — hero section shows generic User icon without them; highest visual impact
+- Goku + Vegeta portrait images — quote toasts and roast card lose character identity
 
-**Should have (competitive advantage):**
-- **Weekly/monthly completion rate cards** -- period-filtered comparison; low effort, existing API
-- **Streak leaderboard** (personal power rankings) -- pure frontend sort, thematic, fun
-- **Shareable daily summary** (copy-to-clipboard) -- unique differentiator; text-only, one tap
-- **Off-day analytics panel** -- no competitor shows off-day impact; strategic rest framing
-- **Best/worst day highlights** -- derived from existing calendar data; zero backend changes
+**Should have (visual completeness — add after deployment is verified):**
+- Shenron illustration (SVG preferred for per-path Motion animation) — wish ceremony visual drama
+- Dragon Ball orb images (7 spheres) — collection loop authenticity
+- Capsule Corp capsule illustration — flip card front face identity
+- Remaining character portraits (Piccolo, Gohan, etc.) — completes the quote system visually
+- Background space/nebula art overlay — atmospheric depth, purely aesthetic
 
-**Defer (v1.4+):**
-- Day-of-week pattern analysis -- medium effort, needs new backend query
-- Image-based shareable summary -- html2canvas complexity not justified
-- CSV/PDF export -- scope creep for a polish pass
-- Push/browser notifications -- explicitly hostile to ADHD users per PROJECT.md
+**Defer (v2+):**
+- AVIF + `<picture>` format upgrade — defer until LCP profiling identifies image loading as bottleneck
+- Per-transformation background art — high artistic effort, low functional impact
+- CDN image hosting (Cloudinary, Imgix) — overkill for ~20 static images already served by Vercel's edge CDN
 
 ### Architecture Approach
 
-The architecture is additive: 6 new frontend components, 4 new backend endpoints, and modifications to ~10 existing components. No new Zustand stores (read-only view data stays in local component state). No new routing patterns (habit detail stays as bottom sheet, not a new route). The animation queue remains exclusively for positive/celebratory events; negative feedback (uncheck, streak-break) uses inline rendering paths. All analytics aggregates are computed server-side via SQL against snapshotted daily_log data.
+The production architecture is a strict separation: Vercel CDN serves all static assets, and all API calls cross origins via HTTPS XHR to the VPS. The Vite dev proxy that hides CORS in development does not exist in production — this is the single most important mental model shift for this deployment. The VPS stack is Nginx (port 443, TLS) → uvicorn (127.0.0.1:8000, never public) → FastAPI → SQLite (absolute path, WAL mode). No component code changes are required for deployment; only two backend files (`config.py`, `main.py`) and two new frontend config items (`vercel.json`, `public/assets/**`) are needed. The optional Phase 4 Dragon Ball tracker component is the only item that requires touching component code.
 
 **Major components:**
-1. **Responsive layout layer** -- CSS-only changes across ~10 components + safe area utilities; no functional changes
-2. **Backend analytics endpoints** (4 new) -- completion-trend, streak-leaderboard, day-patterns, off-day-summary; all query existing models
-3. **Habit detail expansion** -- extends existing HabitDetailSheet with stats, target time, streak timeline; wires orphaned endpoints
-4. **Analytics page additions** (4 new components) -- OffDayAnalyticsCard, CompletionTrendChart, StreakLeaderboard, DayPatternChart
-5. **Shareable summary** -- ShareButton + formatDailySummary utility; reads from existing stores, copies to clipboard
-6. **Feedback gap closures** -- inline uncheck feedback + streak-break toast; does NOT use animation queue
+1. Vercel CDN — serves `index.html` + all static files; SPA routing via `vercel.json` rewrite rule
+2. Nginx reverse proxy — TLS termination, `proxy_pass 127.0.0.1:8000`, never serves static files
+3. uvicorn (systemd-managed) — FastAPI ASGI app, bound to loopback only, `Restart=on-failure`
+4. SQLite at absolute path — WAL mode + `busy_timeout=5000` to handle parallel startup requests from the frontend
+5. `frontend/public/assets/` — all game art as static WebP files served by Vercel CDN; Vite copies verbatim, no processing
 
 ### Critical Pitfalls
 
-1. **Responsive retrofit breaks animation overlays** -- All 11 overlay components assume desktop viewport. Must audit overlays during responsive pass, not after. Ensure dismiss buttons sit above BottomTabBar, no horizontal scroll on 375px.
-2. **Dashboard decluttering removes dopamine touchpoints** -- Mobile design instinct says "reduce noise," but the aura gauge, avatar, and dragon ball tracker ARE the core feedback loop. Scale down, never hide. If it changes when a habit is checked, it must stay visible.
-3. **Analytics computed client-side with wrong denominators** -- Historical completion rates must use snapshotted `daily_log.habits_due`, not current habit count. All aggregates must be backend-computed SQL queries.
-4. **Clipboard copy silently fails on mobile** -- Pre-compute summary from Zustand stores (no async fetch at copy time). Add textarea fallback for non-secure contexts. Show explicit success/failure toast.
-5. **Negative events corrupt animation queue** -- Uncheck and streak-break feedback must NOT enter the positive-only animation queue. Keep negative feedback inline: sound + visual pulse + toast. No full-screen overlays for negative events.
+1. **VITE_API_BASE bakes localhost into the Vercel build** — set the env var in Vercel dashboard BEFORE first deploy; any env var change requires a new build trigger; verify by searching the built JS bundle in DevTools for the expected VPS URL
+2. **CORS not configured on FastAPI** — add `CORSMiddleware` to `main.py` before deployment; test with `curl -X OPTIONS` from the Vercel origin; `curl GET` does not simulate CORS and will give a false positive
+3. **Relative SQLite path silently creates phantom database under systemd** — change `config.py` to read `DATABASE_URL` from env with absolute path using 4-slash SQLite format (`sqlite:////absolute/path/db`); verify via `journalctl` on first service start
+4. **Images placed in `src/assets/` instead of `public/`** — existing components use dynamic URL strings (`/assets/avatars/${transformation}.webp`); `src/assets/` imports get content-hash filenames that break the string-path fallback chain at runtime
+5. **Image filename mismatch with backend transformation values** — backend sends exact strings `base`, `ssj`, `ssj2`, `ssj3`, `ssg`, `ssb`, `ui`; WebP filenames must match exactly; verify via Network tab after deploy (all 200s, no silent 404 fallbacks)
 
 ## Implications for Roadmap
 
-Based on research, suggested phase structure:
+The project has a clear three-phase dependency chain: deployment config must come before VPS infrastructure setup (CORS config must be committed before the VPS can be tested end-to-end), and VPS setup should come before final visual asset verification (though assets can be added and tested locally at any time). The two tracks — infrastructure and visual art — are largely independent and can proceed in parallel.
 
-### Phase 1: Dashboard Polish + Responsive Design
-**Rationale:** Responsive mobile layout is the PRIMARY v1.3 goal and foundation for all other features. Dashboard spacing must be fixed before breakpoints are applied. These are coupled -- do them together.
-**Delivers:** App works well on mobile (375px-1024px); all pages responsive; overlays mobile-safe; safe area support
-**Addresses:** Responsive mobile layout, dashboard spacing/alignment polish (P1 features)
-**Avoids:** Pitfalls 1 (overlay breakage), 2 (hidden dopamine elements), 7 (responsive scope creep)
+### Phase 1: Deployment Configuration
 
-### Phase 2: Backend Analytics Endpoints
-**Rationale:** All frontend data views in Phases 3-4 depend on backend endpoints. Building backend first eliminates blocking. Only 1 small migration (2 columns on OffDay model).
-**Delivers:** 4 new analytics endpoints + verified orphaned habit endpoints + OffDay model migration
-**Addresses:** Backend prerequisites for off-day analytics, completion trends, streak leaderboard, day patterns
-**Avoids:** Pitfalls 6 (off-day partial data), 8 (wrong analytics denominators)
+**Rationale:** CORS, `VITE_API_BASE`, `vercel.json`, and the SQLite env-var fix are all hard blocking dependencies — the app cannot function at a production URL without any of them. These are pure configuration changes with no risk of breaking existing functionality. They must be done and verified before VPS infrastructure work begins.
 
-### Phase 3: Habit Detail View Expansion
-**Rationale:** Self-contained change touching only HabitDetailSheet and HabitCard. Depends on Phase 2 (stats endpoint). Provides immediate visible value as a drill-down from the now-responsive dashboard.
-**Delivers:** Expanded bottom sheet with completion rate, target time, attribute XP, streak timeline
-**Addresses:** Habit detail view (P1 feature)
-**Avoids:** Pitfall 3 (over-fetching); keep bottom sheet pattern, do not create new route
+**Delivers:** A committed codebase where backend is CORS-enabled, database path is env-driven, and the Vercel config is ready for deployment.
 
-### Phase 4: Enhanced Analytics Views
-**Rationale:** 4 independent chart/list components on Analytics page. All depend on Phase 2 endpoints. Can be built as parallel sub-tasks. All follow the same pattern: fetch + render.
-**Delivers:** CompletionTrendChart, StreakLeaderboard, DayPatternChart, OffDayAnalyticsCard
-**Addresses:** Weekly/monthly rates, streak leaderboard, off-day analytics, best/worst day highlights (P2 features)
-**Avoids:** Pitfall 8 (client-side computation); all data pre-aggregated by backend
+**Addresses:** `vercel.json` SPA rewrite, `VITE_API_BASE` env var wiring in `api.ts`, `CORSMiddleware` addition to `main.py`, `DATABASE_URL` env var in `config.py`
 
-### Phase 5: Shareable Summary + Feedback Gaps + Final Polish
-**Rationale:** Smallest scope, lowest risk, no blocking dependencies. Polish layer on top of everything else. Groups three small independent features.
-**Delivers:** Copy-to-clipboard summary, uncheck feedback, streak-break acknowledgment, final spacing
-**Addresses:** Shareable summary, uncheck feedback, streak-break acknowledgment (P1/P2 features)
-**Avoids:** Pitfalls 4 (clipboard failure), 5 (missing sound mappings), 9 (negative events in queue), 10 (bad share text)
+**Avoids:** VITE_API_BASE-bakes-localhost pitfall, CORS blocking pitfall, relative SQLite path pitfall, Vercel output directory misconfiguration pitfall
+
+**Research flag:** Standard patterns — no deeper research needed; all steps are documented with exact code in STACK.md, ARCHITECTURE.md, and PITFALLS.md
+
+### Phase 2: VPS Infrastructure Setup
+
+**Rationale:** VPS setup (systemd, Nginx, SSL, database path verification, WAL mode, env file, log rotation) depends on Phase 1's config changes being committed. Infrastructure work is independent of visual assets and can be parallelized with art sourcing.
+
+**Delivers:** A live, HTTPS-accessible FastAPI backend that auto-restarts on reboot, reads config from an env file, uses SQLite WAL mode, and has log rotation configured.
+
+**Implements:** systemd service unit, Nginx reverse proxy config, Let's Encrypt TLS cert via certbot, `EnvironmentFile=` for `DATABASE_URL` and `CORS_ORIGINS`, WAL mode pragma in `session.py`, journald size limits
+
+**Avoids:** Mixed content block pitfall, SQLite relative path pitfall, SQLite WAL locking pitfall, systemd env file missing pitfall, log rotation disk-fill pitfall
+
+**Research flag:** Standard patterns — systemd + Nginx + certbot is well-documented on Ubuntu; WAL mode is a one-liner; exact config templates are provided in ARCHITECTURE.md
+
+### Phase 3: Visual Asset Integration (Core)
+
+**Rationale:** The app is fully functional after Phase 2 (all components fall back gracefully to icons). The core visual assets — 7 avatar transformation WebPs and 2 character portraits — are the highest-impact visual change and should be delivered as a coherent unit. Asset naming conventions must be established before any art is sourced.
+
+**Delivers:** SaiyanAvatar showing accurate DBZ transformation art on the hero section; CharacterQuote toasts and RoastWelcomeCard showing character portraits. `seed.py` updated with correct `avatar_path` values.
+
+**Addresses:** Avatar images (`base`, `ssj`, `ssj2`, `ssj3`, `ssg`, `ssb`, `ui` in `public/assets/avatars/`), character portraits (Goku + Vegeta minimum in `public/assets/characters/`)
+
+**Avoids:** `public/` vs `src/assets/` path confusion, image filename/transformation value mismatch, oversized images bloating git (budget: ≤50KB per avatar, ≤5MB total), SVG XSS from inline unsanitized sourced assets
+
+**Research flag:** Art sourcing is MEDIUM confidence — file conventions and path patterns are fully specified, but the actual sourcing step (Vecteezy or equivalent) requires manual evaluation of available art
+
+### Phase 4: Visual Polish (Optional Art)
+
+**Rationale:** After deployment is verified and core avatar art is working, lower-priority visual enhancements complete the DBZ aesthetic. The Dragon Ball tracker is the only item that requires touching a component (changing CSS circles to `<img>` tags).
+
+**Delivers:** Shenron SVG illustration with Motion animation potential, Dragon Ball orb images, Capsule Corp capsule illustration on flip card front face, background space art overlay, `loading="lazy"` audit on non-hero images.
+
+**Note:** DragonBallTracker requires a component modification (CSS circles → `<img>` tags) — this is the only component code change in the entire v2.0 scope.
+
+**Research flag:** Standard patterns — no deeper research needed. Dragon Ball component change is low risk with existing fallback pattern.
 
 ### Phase Ordering Rationale
 
-- **Responsive first** because it is the milestone's primary goal and every subsequent feature must work on mobile. Doing responsive later means reworking features twice.
-- **Backend second** because it has zero frontend dependencies and unblocks all data-dependent frontend phases. Building it early prevents blocking.
-- **Habit detail before analytics** because it is a P1 feature with higher user value and touches fewer components (lower risk to validate the responsive work).
-- **Analytics fourth** because it is the largest batch of new components but all are independent read-only displays -- low integration risk.
-- **Polish last** because feedback gaps and sharing are small, self-contained additions that benefit from all prior work being stable.
+- Phase 1 before Phase 2: CORS and env-var config must be in committed code before VPS can be tested end-to-end; the backend `.env` file on the VPS references these env var names
+- Phase 2 before Phase 3 final verification: avatar images can be added locally and tested with Vite dev server any time, but full verification (including `avatar_path` from the seeded DB matching file paths) requires the live VPS
+- Phase 3 before Phase 4: deliver highest-impact visual assets (avatar forms, character portraits) before lower-impact optional art
+- Phases 2 and 3 are parallelizable: infrastructure work and art sourcing/optimization can proceed simultaneously; coordination point is only at the `avatar_path` seed data update step
 
 ### Research Flags
 
-Phases likely needing deeper research during planning:
-- **Phase 1 (Responsive):** Needs investigation of each animation overlay's current layout to determine specific responsive fixes. The 11 overlays are the highest-risk area.
-- **Phase 2 (Backend):** Needs verification of orphaned `/habits/{id}/stats` and `/habits/{id}/calendar` endpoints -- they exist but may not return the exact data needed.
+Phases needing no additional research (exact specs documented in research files):
+- **Phase 1:** All config changes have exact code snippets in ARCHITECTURE.md; Vercel dashboard steps are in STACK.md; pitfall prevention steps are in PITFALLS.md
+- **Phase 2:** systemd + Nginx + certbot templates are fully documented; WAL mode is a single pragma; env file format and permissions are specified
+- **Phase 4:** Standard `<img>` component change, `loading="lazy"` is a one-line attribute; no new patterns required
 
-Phases with standard patterns (skip research-phase):
-- **Phase 3 (Habit Detail):** Extends an existing component with existing data. Well-understood pattern.
-- **Phase 4 (Analytics Views):** Standard Recharts chart components. Existing codebase has 3 chart components to reference.
-- **Phase 5 (Polish):** Clipboard API is well-documented. Animation event pattern is established with 11 existing types.
+Phases with open items requiring judgment during execution:
+- **Phase 3 (art sourcing):** Finding anime-inspired art at the correct dimensions from Vecteezy or equivalent requires manual evaluation; the patterns and licensing approach are confirmed but specific files must be found
+- **Phase 3 (seed data):** Current state of `avatar_path` fields in the seeded SQLite quotes table is unknown; requires inspecting the database before finalizing the seed update approach
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Zero new dependencies; all existing packages verified at current versions; official docs consulted |
-| Features | HIGH | Feature landscape based on competitor analysis (Habitify, Streaks, Loop) + direct PRD requirements; clear P1/P2/P3 prioritization |
-| Architecture | HIGH | Based on direct codebase analysis of all touchpoints; component boundaries, data flows, and file lists are specific and verified |
-| Pitfalls | HIGH | Based on direct codebase analysis of AnimationPlayer, uiStore, HabitDetailSheet, and existing responsive patterns; specific line numbers referenced |
+| Stack | HIGH | All new dependencies confirmed against official PyPI/npm docs; version compatibility verified against existing stack; gunicorn UvicornWorker package split noted as a verification step |
+| Features | HIGH (deployment) / MEDIUM (art specifics) | Deployment features from official Vercel + FastAPI docs; art integration patterns from community conventions and direct component analysis |
+| Architecture | HIGH | Based on direct codebase analysis (`SaiyanAvatar.tsx`, `api.ts`, `config.py`, `main.py`, `session.py`, `vite.config.ts`) plus official docs for each integration point |
+| Pitfalls | HIGH | 12 pitfalls identified from direct code analysis + official documentation; all have specific, actionable prevention steps and recovery strategies |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Off-day `is_off_day` snapshot on daily_log:** Need to verify whether this field exists or needs migration. If it does not exist, historical backfill is approximate only.
-- **Orphaned endpoint data shape:** The `/habits/{id}/stats` and `/habits/{id}/calendar` endpoints exist but their exact response schemas need verification before frontend types are finalized.
-- **Animation overlay audit specifics:** Each of the 11 overlays needs individual inspection during Phase 1 planning to determine which ones actually break on mobile vs. which already use responsive patterns.
-- **Off-day analytics XP impact accuracy:** If the OffDay model migration (adding `habits_reversed`, `xp_clawed_back` columns) is applied, existing rows get default 0. Historical XP impact data is lost. This is acceptable but should be documented.
+- **Current `avatar_path` values in seeded quotes DB:** Unknown without inspecting the database. Resolution: early in Phase 3, run `sqlite3 saiyan_tracker.db "SELECT DISTINCT avatar_path FROM quotes LIMIT 20;"` to determine whether a re-seed or targeted UPDATE is needed.
+- **Vercel project configuration state:** The repo has `package.json` and `package-lock.json` at the root alongside `frontend/`. Vercel auto-detection may target the wrong root. Resolution: explicitly set Root Directory to `frontend` in Vercel project settings on first login — do not rely on auto-detection.
+- **gunicorn UvicornWorker package split:** As of gunicorn 21+, `UvicornWorker` may have moved to the separate `uvicorn-worker` package. Resolution: after `pip install gunicorn`, run `gunicorn -k uvicorn.workers.UvicornWorker --version` to verify; if it fails, `pip install uvicorn-worker` and update the systemd `ExecStart` command.
+- **Root-level package.json in git status:** There are untracked `package.json` and `package-lock.json` at the repo root. These may interfere with Vercel's build detection. Resolution: decide before Phase 1 whether these should be committed, gitignored, or removed.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [Tailwind CSS v4 responsive design docs](https://tailwindcss.com/docs/responsive-design) -- breakpoints, mobile-first, container queries
-- [Clipboard API: writeText (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/writeText) -- browser support, secure context
-- [Clipboard API (Can I Use)](https://caniuse.com/mdn-api_clipboard_writetext) -- Baseline Newly Available March 2025
-- [Recharts ResponsiveContainer docs](https://recharts.github.io/en-US/api/ResponsiveContainer/) -- chart responsiveness
-- [Motion for React docs](https://motion.dev/docs/react) -- animation capabilities
-- Direct codebase analysis of all source files (AppShell, Dashboard, HabitCard, HabitDetailSheet, AnimationPlayer, uiStore, habitStore, index.css, BottomTabBar, Analytics, MiniHero)
+- [Vercel: Vite on Vercel](https://vercel.com/docs/frameworks/frontend/vite) — SPA rewrite rule, VITE_ env var prefix, zero-config deployment
+- [Vite: Env Variables and Modes](https://vite.dev/guide/env-and-mode) — VITE_ prefix, import.meta.env, build-time evaluation
+- [Vite: Static Asset Handling](https://vite.dev/guide/assets) — public/ vs src/assets/ behavior, hashing rules, inline limit
+- [FastAPI: CORS Middleware](https://fastapi.tiangolo.com/tutorial/cors/) — CORSMiddleware params, credentials constraint
+- [SQLite WAL Documentation](https://sqlite.org/wal.html) — WAL mode semantics, -wal/-shm file permissions
+- [Vercel Environment Variables](https://vercel.com/docs/environment-variables) — build-time injection, dashboard configuration, redeploy requirement
+- [vite-plugin-svgr npm (v4.5.0)](https://www.npmjs.com/package/vite-plugin-svgr) — Vite >=2.6.0 peer dep confirmed
+- [gunicorn PyPI (v25.1.0)](https://pypi.org/project/gunicorn/) — latest version, uvicorn workers
+- [python-dotenv PyPI (v1.2.2)](https://pypi.org/project/python-dotenv/) — Python 3.14 support confirmed
+- Direct codebase analysis: `SaiyanAvatar.tsx`, `api.ts`, `config.py`, `main.py`, `session.py`, `vite.config.ts`
 
 ### Secondary (MEDIUM confidence)
-- [Tailwind CSS v4 container queries (SitePoint)](https://www.sitepoint.com/tailwind-css-v4-container-queries-modern-layouts/) -- native container query support
-- [Recharts v3 ResponsiveContainer issue #6716](https://github.com/recharts/recharts/issues/6716) -- console warning, non-blocking
-- [Habitify analytics features](https://habitify.me/blog/let-data-tell-your-story) -- competitor analysis
-- [Trophy streaks gamification case study](https://trophy.so/blog/streaks-gamification-case-study) -- streak psychology
-- [RapidNative habit tracker calendar UX](https://www.rapidnative.com/blogs/habit-tracker-calendar) -- calendar grid patterns
+- [Deploy FastAPI with Gunicorn and Nginx on Ubuntu 24.04 — Vultr Docs](https://docs.vultr.com/how-to-deploy-a-fastapi-application-with-gunicorn-and-nginx-on-ubuntu-2404) — unit file structure, nginx proxy pattern
+- [FastAPI async deployment on Hostinger VPS — GeekyShows](https://geekyshows.com/blog/post/deploy-fas/) — Hostinger-specific notes
+- [SVG XSS via Roundcube CVE-2025-68461](https://cyberwarzone.com/2026/01/04/roundcube-cve-2025-68461-svg-xss-vulnerability-enables-silent-email-account-takeover-through-malicious-animate-tags/) — SVG inline risk confirmation
+- [AVIF Browser Support 2026](https://orquitool.com/en/blog/avif-browser-support-2026-compatibility-webp-switch/) — WebP vs AVIF status
+- [DBZ copyright and fan use — Kanzenshuu](https://kanzenshuu.com/forum/viewtopic.php?t=38853) — personal-use risk posture for sourced art
 
-### Tertiary (LOW confidence)
-- Day-of-week pattern analysis complexity estimate -- based on similar SQLAlchemy GROUP BY patterns, not verified against this schema
+### Tertiary (LOW confidence — confirm during execution)
+- Fan project conventions for WebP-per-character file organization — inferred from community patterns, not a single authoritative source
+- Vecteezy availability of anime-inspired art at required dimensions for each transformation form — needs manual sourcing validation
 
 ---
-*Research completed: 2026-03-08*
+*Research completed: 2026-03-11*
 *Ready for roadmap: yes*

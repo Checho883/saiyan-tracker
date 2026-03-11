@@ -1,7 +1,7 @@
-# Stack Research: v1.3 Additions
+# Stack Research: v2.0 Deploy & Visual Overhaul
 
-**Domain:** QoL features for existing habit tracker (responsive design, sharing, analytics, animation feedback)
-**Researched:** 2026-03-08
+**Domain:** Deploying Vite+FastAPI app to Vercel+VPS with SVG/PNG/WebP asset integration
+**Researched:** 2026-03-11
 **Confidence:** HIGH
 
 ---
@@ -10,316 +10,423 @@
 
 React 19.2 + Vite 7.3 + TypeScript 5.9 + Zustand 5 + Motion 12 + Tailwind CSS v4.2 + Recharts 3.7 + Howler.js 2.2.4 + ky + react-hot-toast + vaul 1.1 + lucide-react + react-router 7.13 + @floating-ui/react 0.27 + @dnd-kit 6.3 + Vitest 4
 
----
-
-## New Libraries Required
-
-### NONE
-
-v1.3 requires **zero new npm dependencies**. Every feature is achievable with the existing stack plus browser-native APIs. This is the correct outcome for a polish milestone -- the stack is mature and the features are refinements, not new capability domains.
+Python 3.14 + FastAPI (standard) + SQLAlchemy 2.0 + SQLite + uvicorn[standard]
 
 ---
 
-## Feature-by-Stack Mapping
+## New Additions Required for v2.0
 
-### 1. Responsive/Mobile Design: Tailwind CSS v4 (existing)
+### Frontend (npm)
 
-| Property | Value |
-|----------|-------|
-| Package | `tailwindcss` (already installed, v4.2.1) |
-| What's needed | Mobile-first responsive classes, container queries |
-| Confidence | HIGH |
+| Package | Version | Purpose | Why |
+|---------|---------|---------|-----|
+| `vite-plugin-svgr` | 4.5.0 | Import SVG files as React components via `?react` suffix | Standard Vite approach for SVG-as-component. Required to colorize/animate SVG assets (Shenron, Dragon Balls, character portraits) with Tailwind class props. Peer dep: Vite >=2.6.0, satisfies Vite 7. |
+| `vite-plugin-image-optimizer` | 2.0.3 | Compress PNG/WebP/AVIF at build time via Sharp and SVGO | Peer dep: Vite >=5, Sharp >=0.34.0, svgo >=4. DBZ art from Vecteezy is typically 500KB-2MB per file; compression to WebP keeps LCP under 2.5s on mobile. |
+| `sharp` | 0.34.5 | Node image processing engine (required by vite-plugin-image-optimizer) | Libvips-based, fastest Node image processor. Converts PNG→WebP, resizes, compresses. Must be explicitly installed (not auto-pulled as a dep). |
 
-**Why no new library is needed:**
+### Backend (pip)
 
-Tailwind CSS v4 has everything required for responsive mobile design:
+| Package | Version | Purpose | Why |
+|---------|---------|---------|-----|
+| `gunicorn` | 25.1.0 | Production process manager wrapping uvicorn workers | Bare uvicorn has no worker restart on crash. `gunicorn -k uvicorn.workers.UvicornWorker` gives multi-process restart, graceful reload, signal handling. Required for VPS systemd deployment. |
+| `python-dotenv` | 1.2.2 | Load `.env` file in backend for DATABASE_URL, CORS_ORIGINS | Supports Python 3.14. `fastapi[standard]` does NOT auto-load `.env`; python-dotenv is the standard approach. Pydantic BaseSettings can use it. |
 
-- **Mobile-first breakpoints** are built-in: `sm:` (640px), `md:` (768px), `lg:` (1024px), `xl:` (1280px). Unprefixed styles apply to all screen sizes (mobile-first by default).
-- **Container queries** are built-in to v4 (no plugin needed): add `@container` to a parent, use `@sm:`, `@md:` etc. on children. This is useful for the dashboard cards which live inside varying-width containers.
-- **Custom breakpoints** can be added via `@theme { --breakpoint-xs: 24rem; }` in `index.css` if the defaults don't suffice.
-- **Range modifiers** like `md:max-lg:hidden` enable targeting specific ranges without custom media queries.
+### Dev Tools (optional, npm)
 
-**Current state of responsiveness:** The app has only 27 responsive class usages across 10 files. This is a desktop-first build that needs systematic mobile-first conversion. The work is pure CSS/class changes on existing components, not library additions.
+| Tool | Version | Purpose | Why |
+|------|---------|---------|-----|
+| `vercel` CLI | 50.x (global) | Deploy frontend via `vercel --prod` from CI or terminal | Zero-config Vite detection. Handles build, CDN deploy, env var injection in one command. Install globally: `npm i -g vercel`. |
+| `svgo` | 4.0.1 (global) | Pre-process SVG files before adding to `src/assets/` | Strip Vecteezy metadata, editor artifacts, and invisible layers. SVGO reduces SVG size 30-70% and removes `id` clashes that break CSS scoping. Use online GUI at svgomg.net for one-off files. |
 
-**Integration approach:**
-- Audit all pages (Dashboard, Analytics, Settings) at 375px, 768px, and 1024px
-- Convert fixed layouts to responsive grids: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`
-- Use `@container` queries on dashboard card sections so child components respond to their container width, not viewport
-- vaul drawers (already used for forms) are inherently mobile-friendly -- they slide up from bottom
-- Recharts already provides `<ResponsiveContainer>` for chart resizing
+---
 
-**What NOT to add:**
-- No CSS-in-JS libraries (styled-components, emotion) -- Tailwind v4 handles everything
-- No responsive utility libraries (react-responsive, use-media-query) -- Tailwind breakpoint prefixes are declarative and simpler
-- No mobile UI framework (Ionic, Framework7) -- this is a web app with responsive design, not a hybrid mobile app
+## Configuration Required (Not Libraries)
 
-### 2. Shareable Daily Summary: Clipboard API (browser-native)
+### 1. Vite Environment Variables
 
-| Property | Value |
-|----------|-------|
-| Package | None -- `navigator.clipboard.writeText()` is a browser API |
-| What's needed | Copy formatted text summary to clipboard |
-| Confidence | HIGH |
+Vite exposes only `VITE_`-prefixed variables to the client via `import.meta.env`. No additional library needed.
 
-**Why no library is needed:**
+**Files to create:**
 
-The Clipboard API (`navigator.clipboard.writeText()`) reached Baseline Newly Available status in March 2025 and is supported in all modern browsers (Chrome, Edge, Firefox, Safari). It requires:
-- Secure context (HTTPS or localhost) -- the dev server runs on localhost, production would need HTTPS
-- User gesture (button click) -- the "Share" button click satisfies this
-- Tab focus -- not an issue since the user is actively clicking
-
-**Implementation approach:**
-```typescript
-// Build a plain-text summary string from today's data
-const summary = buildDailySummary(todayHabits, dailyLog, streak);
-// e.g. "SAIYAN TRACKER -- Mar 8, 2026\n4/6 habits (67%) | Kaio-ken x10\nStreak: 14 days | +70% XP bonus\n..."
-
-await navigator.clipboard.writeText(summary);
-toast.success('Summary copied to clipboard!');
+```
+frontend/.env.development   # VITE_API_URL=http://localhost:8000
+frontend/.env.production    # VITE_API_URL=https://api.yourdomain.com
+frontend/.env.local         # gitignored overrides (personal dev only)
 ```
 
-**Why plain text, not image:**
-- `navigator.clipboard.write()` with `ClipboardItem` for images has spottier browser support and requires canvas rendering
-- A text summary is instantly pasteable into any chat app (WhatsApp, Discord, iMessage)
-- Text is more useful for sharing than a screenshot -- the user can paste it anywhere
-- If image sharing is wanted later, `html2canvas` could be added, but that is scope creep for v1.3
+**Usage in code:**
 
-**What NOT to add:**
-- No `clipboard-copy` or `copy-to-clipboard` npm packages -- they are thin wrappers around the same browser API, adding dependencies for 3 lines of code
-- No `html2canvas` or `dom-to-image` for screenshot sharing -- text clipboard is the v1.3 scope
-- No Web Share API (`navigator.share()`) -- it launches the OS share sheet which is mobile-only and overkill for "copy to clipboard"
+```typescript
+// Replace hardcoded localhost URLs with:
+const API_BASE = import.meta.env.VITE_API_URL;
+```
 
-### 3. Enhanced Analytics Views: Recharts 3.7 + Custom Components (existing)
+**Vercel env var injection:** Set `VITE_API_URL` in Vercel project dashboard under Settings > Environment Variables. Vercel injects them at build time — no runtime `.env` file needed on Vercel.
 
-| Property | Value |
-|----------|-------|
-| Package | `recharts` (already installed, v3.7.0) |
-| What's needed | Weekly/monthly completion rate charts, streak leaderboard, best/worst day patterns |
-| Confidence | HIGH |
+### 2. vercel.json (SPA routing)
 
-**Why no new charting library:**
+The app uses React Router (`react-router` 7.13). Without this file, direct URL navigation (e.g. `https://yourapp.vercel.app/analytics`) returns 404 from Vercel's CDN.
 
-Recharts 3.7 already handles all the new chart types needed:
+**Create `frontend/vercel.json`:**
 
-- **Weekly/monthly completion rates:** `<BarChart>` or `<AreaChart>` with `<ResponsiveContainer>`. Data from the existing `/analytics/summary?period=week|month` endpoint (may need enhancement to return per-day breakdown).
-- **Best/worst day patterns:** `<BarChart>` grouped by day-of-week (Mon-Sun). Aggregate completion rates by weekday from daily_logs table.
-- **Streak leaderboard:** This is a sorted list, not a chart. A simple table/list component with per-habit streak data, sorted by `current_streak` descending. No charting library needed.
+```json
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
+```
 
-**Backend additions needed (not stack, but flagged):**
-- New endpoint or enhanced `/analytics/summary` to return daily breakdown by weekday
-- New endpoint for per-habit streak ranking (or compute from existing `/habits/today/list` data which includes streaks)
-- Enhanced off-day analytics: count off-days by reason, impact on streaks/XP
+This tells Vercel: serve `index.html` for any path that isn't a static file. React Router then handles client-side routing.
 
-**Integration approach:**
-- New chart components in `components/analytics/` using existing Recharts imports
-- All charts wrapped in `<ResponsiveContainer width="100%" height={300}>` for mobile responsiveness
-- Use existing Tailwind theme tokens for chart colors (attribute colors are already defined)
-- Streak leaderboard is a styled list component, not a chart
+**No `vercel.json` at repo root** — Vercel must be configured to use `frontend/` as the root directory in project settings (or pass `--root frontend` in CLI).
 
-**What NOT to add:**
-- No `victory` or `nivo` or `chart.js` -- Recharts is already integrated and sufficient
-- No `d3` directly -- Recharts abstracts d3 internals; adding raw d3 would create two charting paradigms
+### 3. FastAPI CORS Middleware
 
-### 4. Habit Detail View: Existing Components + React Router (existing)
+The frontend (Vercel URL, e.g. `https://saiyan-tracker.vercel.app`) will make cross-origin requests to the VPS backend. Without CORS headers the browser blocks all API calls.
 
-| Property | Value |
-|----------|-------|
-| Package | `react-router` (already installed, v7.13.1) |
-| What's needed | New route `/habits/:id` with full history, streaks, contribution graph |
-| Confidence | HIGH |
+**Add to `backend/app/main.py`:**
 
-**Implementation approach:**
-- Add route `/habits/:id` in App.tsx router config
-- Compose from existing components: `ContributionGraph` (built in v1.2), streak display, calendar
-- New: full completion history list (paginated or virtualized if >100 entries)
-- Data from existing endpoints: `GET /habits/{id}/contribution-graph`, `GET /habits/{id}/stats`, `GET /habits/{id}/calendar`
+```python
+import os
+from fastapi.middleware.cors import CORSMiddleware
 
-**Virtualization consideration:** If habit history grows long (365+ entries), a virtualized list improves performance. However, adding `@tanstack/react-virtual` or `react-window` is premature -- the app is single-user with at most a year of data (~365 rows per habit). A simple paginated list with "Load more" is sufficient. Flag for v2 if performance becomes an issue.
+# Load from environment — never hardcode in source
+allowed_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
 
-**What NOT to add:**
-- No `@tanstack/react-virtual` or `react-window` -- premature for single-user data volumes
-- No separate detail page framework -- React Router dynamic segments handle this cleanly
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=False,   # No auth cookies, so False is correct
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Content-Type", "Accept"],
+)
+```
 
-### 5. Additional Animation/Feedback Events: Motion 12 + uiStore (existing)
+**`.env` on VPS:**
 
-| Property | Value |
-|----------|-------|
-| Package | `motion` (already installed, v12.35.0) |
-| What's needed | Uncheck feedback, streak-break acknowledgment, milestone celebrations |
-| Confidence | HIGH |
+```
+CORS_ORIGINS=https://saiyan-tracker.vercel.app
+```
 
-**New animation events to add to `AnimationEvent` union type in `uiStore.ts`:**
+**Development `.env`:**
 
-| Event | Type | Tier | Description |
-|-------|------|------|-------------|
-| Habit uncheck | `uncheck` | 3 (Inline) | Brief "undo" visual feedback when unchecking a habit |
-| Streak break | `streak_break` | 2 (Banner) | Acknowledgment overlay with Vegeta quote when streak breaks |
+```
+CORS_ORIGINS=http://localhost:5173
+```
 
-**Why these fit the existing architecture:**
+Do NOT use `allow_origins=["*"]` in production. Even without credentials, wildcards bypass referer-based abuse protection.
 
-The priority-tiered animation queue in `uiStore.ts` already handles 11 event types across 3 tiers. Adding 2 more event types is a pattern extension, not an architecture change:
-- Add new types to the `AnimationEvent` union
-- Add tier mappings to `PRIORITY_TIERS`
-- Add new overlay/inline components in `components/animations/`
-- Wire sound IDs in `EVENT_SOUND_MAP`
+### 4. systemd Service Unit File
 
-**Uncheck feedback specifics:**
-- Tier 3 (inline) so it fires immediately without queuing
-- Brief visual: red flash on the habit card, XP floats down (reverse of check)
-- Sound: a short "power down" effect (reverse of scouter beep) -- reuse existing `power_down` SoundId or add a reversed audio sample
-- Motion: `animate={{ scale: [1, 0.95, 1] }}` with red border flash
+The VPS runs FastAPI as a persistent service. No library required — this is OS configuration.
 
-**Streak break acknowledgment:**
-- Tier 2 (banner) so it shows as an overlay
-- Triggers when the backend returns a streak break event (new field in check response or detected on daily load)
-- Shows Vegeta roast quote with streak halving info: "Streak: 14 -> 7 (Zenkai halved)"
-- Motion: dramatic entrance with red/purple color scheme
+**Create `/etc/systemd/system/saiyan-tracker.service`:**
 
-**What NOT to add:**
-- No `react-confetti` or `canvas-confetti` -- Motion handles all particle/celebration effects
-- No `lottie-react` or `@lottiefiles/react` -- Lottie animations are overkill; Motion keyframes + CSS gradients create the DBZ aesthetic
-- No `react-spring` -- Motion is already the animation library; mixing two animation libraries creates confusion
+```ini
+[Unit]
+Description=Saiyan Tracker FastAPI backend
+After=network.target
 
-### 6. Off-Day Analytics: Backend Enhancement + Existing Frontend (no new deps)
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/saiyan-tracker/backend
+ExecStart=/home/ubuntu/saiyan-tracker/backend/.venv/bin/gunicorn \
+    app.main:app \
+    --workers 2 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 127.0.0.1:8000 \
+    --access-logfile /var/log/saiyan-tracker/access.log \
+    --error-logfile /var/log/saiyan-tracker/error.log
+Restart=on-failure
+RestartSec=5
+EnvironmentFile=/home/ubuntu/saiyan-tracker/backend/.env
 
-| Property | Value |
-|----------|-------|
-| Package | None |
-| What's needed | Impact analysis of off-days on streaks, XP, power level |
-| Confidence | HIGH |
+[Install]
+WantedBy=multi-user.target
+```
 
-**Backend work needed:**
-- New endpoint `GET /analytics/off-days` or enhanced existing `/off-days/` endpoint
-- Return: total off-days by reason, off-day frequency by month, impact metrics (XP lost to off-days, streak pauses)
-- Query the existing `off_days` table joined with `daily_logs` and `streaks`
+**Activate:**
 
-**Frontend:** New section in Analytics page using existing Recharts components for visualization.
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable saiyan-tracker
+sudo systemctl start saiyan-tracker
+sudo systemctl status saiyan-tracker
+```
 
-### 7. Dashboard Decluttering: Tailwind + Motion (existing)
+**Logs:**
 
-| Property | Value |
-|----------|-------|
-| Package | None |
-| What's needed | Spacing/alignment polish, collapsible sections, mobile layout |
-| Confidence | HIGH |
+```bash
+journalctl -u saiyan-tracker -f
+```
 
-**Approach:**
-- Use Tailwind responsive classes to stack sections vertically on mobile, grid on desktop
-- Collapsible sections with Motion `animate={{ height: "auto" }}` for Saiyan Stats, Transformations
-- vaul drawer (already used) for habit detail sheets on mobile tap
+Workers = 2 is appropriate for a single-user SQLite app on a small VPS. SQLite has serialized writes; more workers don't help and add overhead.
+
+### 5. Nginx Reverse Proxy (VPS)
+
+Nginx sits in front of gunicorn to handle TLS termination and expose port 443. No Python library needed.
+
+**Create `/etc/nginx/sites-available/saiyan-tracker`:**
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name api.yourdomain.com;
+
+    ssl_certificate /etc/letsencrypt/live/api.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.yourdomain.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 80;
+    server_name api.yourdomain.com;
+    return 301 https://$host$request_uri;
+}
+```
+
+**TLS cert (free, auto-renews):**
+
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d api.yourdomain.com
+```
 
 ---
 
-## Libraries Explicitly NOT Needed for v1.3
+## Asset Integration Strategy
 
-| Feature | Library Considered | Why Rejected | What to Use Instead |
-|---------|-------------------|-------------|---------------------|
-| Responsive design | `react-responsive` | Tailwind breakpoint prefixes are declarative and simpler | Tailwind `sm:` `md:` `lg:` prefixes |
-| Responsive design | CSS-in-JS (emotion, styled-components) | Already using Tailwind v4; mixing paradigms adds complexity | Tailwind v4 utility classes |
-| Container queries | `@container-queries` plugin | Built into Tailwind CSS v4 natively, no plugin needed | Tailwind `@container` + `@sm:` `@md:` |
-| Clipboard copy | `clipboard-copy` / `copy-to-clipboard` | 3 lines of browser API code; npm package adds dependency for nothing | `navigator.clipboard.writeText()` |
-| Image sharing | `html2canvas` / `dom-to-image` | Text clipboard is the v1.3 scope; image is a different feature | Plain text summary |
-| Share sheet | Web Share API wrapper libs | Mobile-only, overkill for "copy to clipboard" | Direct clipboard API |
-| Charting | `nivo` / `victory` / `chart.js` | Recharts already integrated; switching adds migration work | Recharts 3.7 (existing) |
-| Animation | `react-confetti` / `lottie-react` | Motion 12 handles all effects; mixing animation libs is bad DX | Motion 12 (existing) |
-| Virtualized list | `@tanstack/react-virtual` / `react-window` | Premature; max ~365 rows per habit for single user | Simple pagination / "Load more" |
-| Mobile UI kit | Ionic / Framework7 / Capacitor | This is responsive web, not a hybrid mobile app | Tailwind responsive + vaul drawers |
-| Date/time display | `date-fns` / `dayjs` / `luxon` | The app already uses native `Date` and `Intl.DateTimeFormat` | Continue with native APIs |
-| Toast library swap | `sonner` | react-hot-toast is already installed and themed | react-hot-toast (existing) |
+### SVG Assets (Shenron, Dragon Balls, UI icons)
+
+Use `vite-plugin-svgr` with the `?react` suffix. SVGs become React components with styleable props.
+
+**vite.config.ts update:**
+
+```typescript
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
+import svgr from 'vite-plugin-svgr';
+
+export default defineConfig({
+  plugins: [react(), tailwindcss(), svgr()],
+  // ... existing server/proxy config
+});
+```
+
+**TypeScript support** — add to `frontend/src/vite-env.d.ts`:
+
+```typescript
+/// <reference types="vite-plugin-svgr/client" />
+```
+
+**Usage:**
+
+```typescript
+import ShenronSvg from '@/assets/shenron.svg?react';
+// Then: <ShenronSvg className="w-48 h-48 text-saiyan-gold" />
+```
+
+Why SVG over PNG for Shenron/Dragon Balls: SVGs scale infinitely (crisp on Retina), can be colored with Tailwind's `text-*` utilities (via `currentColor` fill), animate well with Motion, and compress to <10KB each.
+
+### PNG/WebP Assets (character portraits, backgrounds, avatar transformations)
+
+Large raster assets (DBZ backgrounds, character art) use standard Vite static import. `vite-plugin-image-optimizer` compresses them at build time.
+
+**vite.config.ts update (adding optimizer):**
+
+```typescript
+import { ViteImageOptimizer } from 'vite-plugin-image-optimizer';
+
+export default defineConfig({
+  plugins: [
+    react(),
+    tailwindcss(),
+    svgr(),
+    ViteImageOptimizer({
+      png: { quality: 85 },
+      webp: { lossless: false, quality: 85 },
+      jpg: { quality: 85 },
+    }),
+  ],
+});
+```
+
+**Asset structure:**
+
+```
+frontend/src/assets/
+  avatars/
+    base.webp         # Goku base form
+    super-saiyan.webp
+    ssj2.webp
+    ssj3.webp
+    ssj4.webp         # if sourced
+    ssj-god.webp
+    ssj-blue.webp
+    beast.webp
+  dragon-balls/
+    star1.svg         # Use SVG for orbs so star count can be rendered programmatically
+    star2.svg
+    ...
+  characters/
+    goku-portrait.webp
+    vegeta-portrait.webp
+  backgrounds/
+    space-bg.webp
+  capsule/
+    capsule-corp-box.webp
+```
+
+**Loading pattern for avatars** (conditional on transformation level):
+
+```typescript
+// Use dynamic import or a map, not 7 static imports
+const AVATAR_SRCS: Record<TransformationTier, string> = {
+  base:       new URL('@/assets/avatars/base.webp', import.meta.url).href,
+  super_saiyan: new URL('@/assets/avatars/super-saiyan.webp', import.meta.url).href,
+  // ...
+};
+```
+
+`new URL(..., import.meta.url)` is Vite's native static asset resolution — it works correctly in both dev and production builds, no plugin needed.
+
+**Why WebP over PNG for large art:** WebP is 25-35% smaller than PNG at equivalent quality, supported in all browsers since 2020, and Vite's optimizer can convert PNG→WebP at build time. Avoids shipping 1-2MB PNG files that slow first load.
 
 ---
 
 ## Installation Summary
 
+### Frontend
+
 ```bash
-# No new dependencies needed for v1.3
-# The existing stack handles everything
+# New runtime deps (in frontend/)
+npm install vite-plugin-svgr
+
+# New dev deps (in frontend/)
+npm install -D vite-plugin-image-optimizer sharp
+
+# Global tools (developer machine, not in package.json)
+npm install -g vercel
+npm install -g svgo
 ```
 
-**Total new dependencies: 0 packages**
-**Total new bundle size impact: 0kb**
+### Backend (VPS)
+
+```bash
+# In backend/ on VPS, after activating .venv
+pip install gunicorn python-dotenv
+
+# Or add to requirements.txt:
+# gunicorn>=25.1.0
+# python-dotenv>=1.2.2
+```
 
 ---
 
-## Version Compatibility Notes
+## Alternatives Considered
 
-All existing packages are at current versions as of March 2026. No upgrades needed for v1.3 features.
-
-| Package | Current Version | Status |
-|---------|----------------|--------|
-| `tailwindcss` | 4.2.1 | Container queries built-in, responsive breakpoints ready |
-| `motion` | 12.35.0 | All animation patterns needed are supported |
-| `recharts` | 3.7.0 | `ResponsiveContainer` works (minor console warning in v3, non-blocking) |
-| `vaul` | 1.1.2 | Drawer component already mobile-friendly |
-| `react-router` | 7.13.1 | Dynamic routes for habit detail view |
-| `@floating-ui/react` | 0.27.19 | Available for any new popover needs |
-| `react-hot-toast` | 2.6.0 | Handles clipboard success/error feedback |
+| Recommended | Alternative | Why Not |
+|-------------|-------------|---------|
+| `vite-plugin-svgr` | Inline SVG strings in TypeScript | vite-plugin-svgr gives React component API with className/props; raw strings require manual cleanup and no prop passing |
+| `vite-plugin-svgr` | `@svgr/webpack` | Wrong bundler — this is a Vite project |
+| `vite-plugin-image-optimizer` | Manual `sharp` CLI pre-processing | One-time manual step gets stale when assets change; plugin runs automatically on every build |
+| `vite-plugin-image-optimizer` | `vite-plugin-vsharp` | vite-plugin-image-optimizer handles both raster (via sharp) and SVG (via svgo) in one plugin; vsharp is raster-only |
+| `gunicorn` + uvicorn workers | Bare `uvicorn` with `--workers` flag | Gunicorn provides proper SIGTERM handling, graceful restarts, and restart-on-crash that systemd ExecStart + bare uvicorn cannot match cleanly |
+| `python-dotenv` | `pydantic-settings` with env_file | python-dotenv is simpler for this use case (no auth, no complex settings model); pydantic-settings is overkill for 2-3 env vars |
+| Nginx + certbot | Caddy | Nginx is universal knowledge on Ubuntu VPS; Caddy auto-TLS is elegant but less commonly documented for Hostinger environments |
+| Nginx + certbot | Cloudflare Tunnel | Overkill for a personal single-user app; adds a runtime dependency on Cloudflare infra |
+| WebP assets | PNG assets | WebP is 25-35% smaller; supported everywhere since 2020; no downside for this use case |
 
 ---
 
-## Integration Architecture for v1.3
+## What NOT to Add
 
-### How features map to existing stack
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| `@vercel/static-build` adapter | This is a pure Vite SPA, not a meta-framework. Vercel detects Vite automatically with zero adapter needed. | Nothing — Vercel auto-detects |
+| `next-sitemap` or `react-snap` | No SEO needed for a personal single-user app; SSR/prerendering adds complexity with zero benefit | Nothing |
+| Docker on VPS | Adds container management overhead with no benefit for a single-service personal app | systemd + virtualenv directly on Ubuntu |
+| `pm2` | pm2 is for Node processes; gunicorn with systemd is the Python equivalent and integrates better with Ubuntu | systemd + gunicorn |
+| `Pillow` (Python imaging) | Python-side image processing is wrong layer; images should be pre-processed at build time | `vite-plugin-image-optimizer` + `sharp` at build time |
+| SVG sprites | Modern Vite + svgr handles SVG-as-component without sprite generation; sprites are a pre-bundler workaround | `vite-plugin-svgr` with `?react` suffix |
+| `cloudinary` or `imgix` | Image CDN is overkill for <50 static art assets; Vercel CDN already serves static files with edge caching | Vercel's built-in static file CDN |
+| `lottie-react` for DBZ animations | Motion 12 (already installed) handles all transform/scale/opacity animations; Lottie files for DBZ don't exist in standard libraries | Motion 12 (existing) |
+
+---
+
+## Version Compatibility
+
+| Package | Version | Compatible With | Notes |
+|---------|---------|-----------------|-------|
+| `vite-plugin-svgr` | 4.5.0 | Vite >=2.6.0 (including Vite 7.3) | Uses `?react` suffix; add `/// <reference types="vite-plugin-svgr/client" />` to vite-env.d.ts |
+| `vite-plugin-image-optimizer` | 2.0.3 | Vite >=5, sharp >=0.34.0, svgo >=4 | Vite 7.3 satisfies >=5; must install `sharp` explicitly |
+| `sharp` | 0.34.5 | Node 18+ (LTS), Windows/Linux/macOS | Prebuilt binaries for all platforms; no C++ compile required |
+| `gunicorn` | 25.1.0 | Python 3.10+, uvicorn 0.41.0 | uvicorn-worker is now in separate `uvicorn-worker` package; check if `gunicorn -k uvicorn.workers.UvicornWorker` still works or needs `pip install uvicorn-worker` |
+| `python-dotenv` | 1.2.2 | Python 3.10+ including 3.14 | Explicitly supports Python 3.14 and free-threaded 3.14t |
+| `uvicorn[standard]` | 0.41.0 | Python 3.10+ | Already in requirements.txt; `[standard]` includes uvloop + httptools |
+
+**Critical compatibility note on gunicorn workers:** As of gunicorn 21+, the `UvicornWorker` class moved to the separate `uvicorn-worker` package. Verify by running `gunicorn -k uvicorn.workers.UvicornWorker` after install. If it fails with an import error, add `pip install uvicorn-worker` and use `-k uvicorn_worker.UvicornWorker` instead.
+
+---
+
+## Deployment Flow Summary
 
 ```
-RESPONSIVE DESIGN (Tailwind v4)
-  |
-  +-- Dashboard: grid-cols-1 -> md:grid-cols-2 -> lg:grid-cols-3
-  +-- Analytics: stacked charts on mobile, side-by-side on desktop
-  +-- Settings: single-column forms on mobile (vaul drawers already work)
-  +-- @container queries on card sections for component-level responsiveness
+FRONTEND DEPLOYMENT (Vercel)
+  1. Set VITE_API_URL env var in Vercel dashboard
+  2. Set build command: npm run build  (in frontend/ dir)
+  3. Set output directory: dist
+  4. Create frontend/vercel.json with SPA rewrite rule
+  5. Push to main branch → Vercel auto-deploys
 
-SHAREABLE SUMMARY (Browser Clipboard API)
-  |
-  +-- New "Share" button on Dashboard (lucide-react Share2 icon)
-  +-- buildDailySummary() utility function
-  +-- navigator.clipboard.writeText() on click
-  +-- react-hot-toast for success/error feedback
+BACKEND DEPLOYMENT (Hostinger VPS)
+  1. SSH into VPS
+  2. Clone repo + cd backend/
+  3. python3 -m venv .venv && source .venv/bin/activate
+  4. pip install -r requirements.txt (includes gunicorn, python-dotenv)
+  5. Create .env with CORS_ORIGINS=https://saiyan-tracker.vercel.app
+  6. Create /etc/systemd/system/saiyan-tracker.service
+  7. sudo systemctl enable --now saiyan-tracker
+  8. Configure Nginx + certbot for TLS
 
-HABIT DETAIL VIEW (React Router + existing components)
-  |
-  +-- New route: /habits/:id
-  +-- Reuses: ContributionGraph, streak display, calendar components
-  +-- New: completion history list, target time display
-  +-- Data: existing GET /habits/{id}/stats + /contribution-graph endpoints
-
-ENHANCED ANALYTICS (Recharts + custom components)
-  |
-  +-- Weekly/monthly rates: BarChart or AreaChart in ResponsiveContainer
-  +-- Best/worst days: BarChart grouped by weekday
-  +-- Streak leaderboard: styled list (not a chart)
-  +-- Off-day analytics: PieChart by reason + impact metrics
-
-NEW ANIMATION EVENTS (Motion + uiStore)
-  |
-  +-- Add 'uncheck' (Tier 3) and 'streak_break' (Tier 2) to AnimationEvent
-  +-- New overlay components in components/animations/
-  +-- Wire to existing EVENT_SOUND_MAP
-  +-- Extend existing priority queue -- no architecture changes
+ASSET INTEGRATION (once per art batch)
+  1. Run svgo on SVG files before adding to src/assets/
+  2. Drop PNG/WebP/SVG into src/assets/ subdirectories
+  3. Import SVGs with ?react suffix for animatable components
+  4. Import raster assets via new URL(..., import.meta.url).href
+  5. vite build compresses and emits optimized assets automatically
 ```
-
-### Backend additions needed (flagged, not stack changes)
-
-| Endpoint | Purpose | Complexity |
-|----------|---------|------------|
-| `GET /analytics/off-days` | Off-day impact analysis | Low -- query existing tables |
-| `GET /analytics/daily-breakdown` | Per-weekday completion rates | Low -- aggregate daily_logs |
-| `GET /habits/streak-ranking` | Sorted streak leaderboard | Low -- query habit_streaks |
-| Enhanced `/habits/{id}/check` response | Include streak_break event data | Low -- add field to existing response |
 
 ---
 
 ## Sources
 
-- [Tailwind CSS v4 responsive design docs](https://tailwindcss.com/docs/responsive-design) -- built-in breakpoints, mobile-first -- HIGH
-- [Tailwind CSS v4 container queries](https://www.sitepoint.com/tailwind-css-v4-container-queries-modern-layouts/) -- native support, no plugin -- MEDIUM
-- [Clipboard API: writeText (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/writeText) -- browser support, secure context requirement -- HIGH
-- [Clipboard API: writeText (Can I Use)](https://caniuse.com/mdn-api_clipboard_writetext) -- Baseline Newly Available March 2025 -- HIGH
-- [Recharts ResponsiveContainer docs](https://recharts.github.io/en-US/api/ResponsiveContainer/) -- width/height percentage support -- HIGH
-- [Recharts 3 ResponsiveContainer issue #6716](https://github.com/recharts/recharts/issues/6716) -- console warning, non-blocking -- MEDIUM
-- [Motion for React docs](https://motion.dev/docs/react) -- animation capabilities, spring/keyframe support -- HIGH
+- [Vercel: Vite on Vercel](https://vercel.com/docs/frameworks/frontend/vite) — SPA rewrite rule, VITE_ env var prefix, zero-config deployment — HIGH
+- [Vite: Env Variables and Modes](https://vite.dev/guide/env-and-mode) — VITE_ prefix, import.meta.env, .env.production — HIGH
+- [vite-plugin-svgr npm (v4.5.0)](https://www.npmjs.com/package/vite-plugin-svgr) — `?react` syntax, Vite >=2.6.0 peer dep — HIGH
+- [vite-plugin-image-optimizer npm (v2.0.3)](https://www.npmjs.com/package/vite-plugin-image-optimizer) — Vite >=5, sharp >=0.34.0, svgo >=4 peer deps — HIGH
+- [sharp npm (v0.34.5)](https://sharp.pixelplumbing.com/) — Node image processing — HIGH
+- [FastAPI: CORS Middleware](https://fastapi.tiangolo.com/tutorial/cors/) — CORSMiddleware params, production origin list — HIGH
+- [uvicorn PyPI (v0.41.0)](https://pypi.org/project/uvicorn/) — latest version, Python 3.10+ — HIGH
+- [gunicorn PyPI (v25.1.0)](https://pypi.org/project/gunicorn/) — latest version, uvicorn workers — HIGH
+- [python-dotenv PyPI (v1.2.2)](https://pypi.org/project/python-dotenv/) — Python 3.14 support confirmed — HIGH
+- [systemd FastAPI deployment pattern](https://dev.to/1amkaizen/deploying-a-fastapi-project-to-an-ubuntu-vps-a-complete-guide-for-developers-392) — unit file structure, journalctl logging — MEDIUM
+- [SVGO](https://svgo.dev/) — SVG optimization CLI, v4.0.1 — HIGH
 
 ---
 
-*Stack additions research for: Saiyan Tracker v1.3 -- The Polish Pass*
-*Researched: 2026-03-08*
+*Stack additions research for: Saiyan Tracker v2.0 — Deploy & Visual Overhaul*
+*Researched: 2026-03-11*

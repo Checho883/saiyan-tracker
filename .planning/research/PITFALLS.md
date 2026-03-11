@@ -1,263 +1,348 @@
 # Pitfalls Research
 
-**Domain:** Adding responsive design, habit detail expansion, off-day analytics, shareable summary, feedback gaps, and enhanced data views to an existing gamified DBZ habit tracker (v1.3 QoL)
-**Researched:** 2026-03-08
-**Confidence:** HIGH (based on direct codebase analysis of AppShell, Dashboard, HabitCard, HabitDetailSheet, AnimationPlayer, uiStore, habitStore, index.css @theme tokens, BottomTabBar, Analytics page, HeroSection)
+**Domain:** Deploying a Vite 7 + React 19 frontend to Vercel and a FastAPI + SQLite backend to Hostinger VPS, plus integrating real image assets into an existing DBZ-themed habit tracker
+**Researched:** 2026-03-11
+**Confidence:** HIGH (based on direct codebase analysis + official documentation verification for Vercel, Vite, SQLite WAL, systemd, and image format browser support)
 
 ## Critical Pitfalls
 
-### Pitfall 1: Responsive Retrofit Breaks the Animation Overlay System
+### Pitfall 1: VITE_API_BASE Is Baked in at Build Time — Wrong Value Silently Ships
 
 **What goes wrong:**
-The `AnimationPlayer` renders fixed-position full-screen overlays (`PerfectDayOverlay`, `TransformationOverlay`, `ShenronCeremony`, etc.) that assume a wide viewport. These overlays use absolute pixel positioning, large text, and particle effects designed for desktop. On a 375px-wide phone screen: text clips, particle systems extend beyond viewport causing horizontal scroll, and the dismiss tap target becomes unreachable behind the `BottomTabBar` (which is `fixed bottom-0` with `h-16`). The Dashboard already has `pb-20` padding to account for the tab bar, but animation overlays mount via `AnimationPlayer` at the AppShell level (`AppShell.tsx` line 39) OUTSIDE the padded content area.
+`VITE_API_BASE` in `frontend/src/services/api.ts` line 42 falls back to `http://localhost:8000/api/v1`. Vite replaces `import.meta.env.VITE_API_BASE` at BUILD time — not runtime. If the Vercel project does not have `VITE_API_BASE` set in its Environment Variables before the first deployment, the build bakes in the localhost fallback. Every API call silently hits `localhost:8000` (which is the user's own machine — unreachable from the deployed app). The app renders but every API call fails with a network error. This looks identical to a CORS error on the surface.
 
 **Why it happens:**
-Responsive design is typically applied to page content components (Dashboard, Analytics, Settings). The animation overlay system sits at the app shell level and is easy to forget. Each overlay component was built desktop-first with hardcoded sizes. When the responsive pass touches page layouts but skips `components/animations/`, mobile users get broken overlays on top of a perfectly responsive dashboard.
+Developers test locally where `VITE_API_BASE` is unset and the localhost fallback works. They push to Vercel assuming the env var is already configured, or configure it AFTER the first deployment without triggering a redeploy. Vercel does not warn you that a `VITE_` variable is missing — it silently builds without it.
 
 **How to avoid:**
-- Audit ALL 11 overlay components in `components/animations/` for mobile viewport compatibility: `PerfectDayOverlay`, `CapsuleDropOverlay`, `DragonBallTrajectory`, `TransformationOverlay`, `ShenronCeremony`, `TierChangeBanner`, `ComboSummaryOverlay`, `PowerMilestoneOverlay`, `LevelUpOverlay`, `ZenkaiRecoveryOverlay`, `StreakMilestoneOverlay`.
-- Ensure overlays use `inset-0` (or equivalent full-viewport coverage) and center content with flexbox, not absolute pixel offsets.
-- Add `pb-16` or `mb-16` to overlay dismiss buttons to keep them above the fixed BottomTabBar.
-- Test the "last habit perfect day" scenario on a 375px viewport width -- this triggers the most complex overlay sequence.
+- Set `VITE_API_BASE=https://your-vps-domain.com/api/v1` in Vercel's Settings → Environment Variables BEFORE the first deployment.
+- After adding or changing any `VITE_` variable on Vercel, you MUST trigger a new deployment (push a commit or manually redeploy) — adding the variable alone does not rebuild.
+- In the Vite config, consider making the fallback a clearly broken value (`import.meta.env.VITE_API_BASE ?? 'MISSING_API_BASE'`) so tests immediately fail instead of silently hitting localhost.
+- Verify the baked value after deployment: open DevTools → Sources → find the built `api.ts` chunk → search for `MISSING_API_BASE` or `localhost:8000`.
 
 **Warning signs:**
-- Horizontal scrollbar appears when an overlay is active on mobile.
-- Overlay dismiss/continue button is hidden behind the bottom tab bar.
-- Particle effects or text extend beyond viewport edges.
+- App renders but all API calls return `ERR_CONNECTION_REFUSED` or `ERR_NAME_NOT_RESOLVED`.
+- Network tab shows requests to `localhost:8000` from the deployed Vercel app.
+- Dashboard shows the loading spinner permanently.
 
 **Phase to address:**
-Responsive design phase. Overlay audit must be part of the responsive pass, not deferred to a separate phase.
+Deployment configuration phase (Phase 1). Must be verified before any other deployment testing.
 
 ---
 
-### Pitfall 2: Dashboard Decluttering That Removes Dopamine Touchpoints
+### Pitfall 2: CORS Is Not Configured on the FastAPI Backend — Every Request Fails
 
 **What goes wrong:**
-The Dashboard currently stacks: RoastWelcomeCard, HeroSection (avatar + aura gauge + scouter HUD), StatsPanel (attributes + streaks + dragon balls), HabitList, NudgeBanner, and a FAB. On mobile, this is a LOT of content above the fold before the user reaches the habit list. The instinct is to "declutter" by hiding or collapsing sections. But the core value is "every interaction must feel like something happened." If the aura gauge, scouter HUD, or dragon ball tracker are collapsed/hidden by default on mobile, the user loses the visual feedback loop that makes habit-checking feel rewarding.
+The current `backend/app/main.py` does not include `CORSMiddleware`. In development, the Vite proxy (`vite.config.ts` lines 9-14) proxies `/api` requests through to `localhost:8000`, so CORS is never encountered. In production, the Vercel frontend (`https://saiyan-tracker.vercel.app`) makes direct requests to the VPS backend (`https://your-vps.com/api/v1`). These are different origins. Without `CORSMiddleware`, the browser blocks every request with "CORS policy: No 'Access-Control-Allow-Origin' header."
 
 **Why it happens:**
-Responsive design principles say "reduce visual noise on small screens." ADHD dopamine design says "maximize visible feedback." These goals directly conflict. A developer following mobile-first best practices will hide the "non-essential" sections (dragon balls, attribute grid, streaks) -- but those ARE the dopamine. Hiding them kills the product's core value.
+The Vite dev proxy completely hides CORS in development. The developer never sees a CORS error locally, assumes it is fine, deploys, and then every API call fails in production. The error message is generic enough that developers often spend time debugging the wrong thing.
 
 **How to avoid:**
-- Never auto-hide the AuraGauge or SaiyanAvatar on mobile. These are the PRIMARY feedback mechanisms. Scale them down (120px instead of 160px) but keep them visible.
-- The HeroSection with collapsing MiniHero (via IntersectionObserver, Dashboard.tsx lines 24-41) already solves the "too much above fold" problem elegantly. Do NOT replace this with a different mechanism.
-- StatsPanel content (attributes, streaks, dragon balls) can be reorganized into a horizontal scrollable row on mobile instead of being hidden.
-- The RoastWelcomeCard can be made dismissible on mobile (swipe to dismiss) since it is informational, not feedback.
-- Rule of thumb: if the element changes visually when a habit is checked, it MUST stay visible. If it is static/informational, it can be collapsed or made scrollable.
-
-**Warning signs:**
-- Habit list is the first thing visible on mobile (nothing above it provides context/feedback).
-- Aura gauge or avatar are inside a collapsed accordion on mobile.
-- User checks a habit on mobile and nothing visually changes above the habit card itself.
-- The MiniHero sticky header is removed in favor of a different pattern.
-
-**Phase to address:**
-Responsive design phase. The PRD review for "what stays visible on mobile" must happen BEFORE writing responsive CSS.
-
----
-
-### Pitfall 3: Habit Detail View Fetches on Every Card Render
-
-**What goes wrong:**
-The current `HabitDetailSheet` (`HabitDetailSheet.tsx` lines 28-44) fires `habitsApi.contributionGraph(habitId, 90)` inside a `useEffect` every time the sheet opens. This is fine when the detail sheet is a bottom drawer opened by explicit user action. But if v1.3 expands the detail view into a full page route (e.g., `/habits/:id`) or a persistent panel, the API call fires on mount. If the dashboard also mounts detail data for preview purposes (e.g., showing mini-graphs on each habit card), that is N API calls on dashboard load (one per habit). With 8 habits, that is 8 parallel requests to the SQLite backend, which is single-threaded.
-
-**Why it happens:**
-The v1.3 PRD says "habit detail view (full history, streaks, contribution graph, target time)." The natural implementation is to create a richer detail view. If the richer view is eagerly loaded or mounted as part of the habit list, the data fetching multiplies. SQLite with synchronous SQLAlchemy handles one request at a time -- 8 concurrent contribution graph queries create serial blocking.
-
-**How to avoid:**
-- Keep the detail view as a user-initiated action (tap to open), NOT eagerly rendered. The current bottom sheet pattern is correct.
-- If adding a route-based detail view (`/habits/:id`), fetch data on navigation, not on dashboard mount.
-- Cache contribution graph data in a Zustand store slice with a TTL (e.g., 5 minutes). If the user opens the same habit detail twice within 5 minutes, use cached data.
-- NEVER render mini contribution graphs on HabitCard components. The card already shows streak count -- that is sufficient inline data.
-- If adding new detail data (weekly/monthly rates, best/worst patterns), aggregate on the backend in a single endpoint, not multiple calls.
-
-**Warning signs:**
-- Dashboard load triggers N API calls (one per habit) visible in Network tab.
-- SQLite "database is locked" errors under concurrent requests.
-- Detail view shows loading spinner every time it opens, even for the same habit.
-
-**Phase to address:**
-Habit detail view phase. API design must be a single `/habits/:id/detail` endpoint returning all detail data, not multiple calls.
-
----
-
-### Pitfall 4: Clipboard Sharing Silently Fails on Mobile Browsers
-
-**What goes wrong:**
-The `navigator.clipboard.writeText()` API requires either a secure context (HTTPS) or a user gesture. In development (localhost), it works. On a phone accessing the app via local IP (e.g., `http://192.168.1.x:5173`), `navigator.clipboard` is undefined because the context is not secure. Even on HTTPS, some mobile browsers (older Safari, Firefox) require the copy to happen inside a direct click handler -- not inside an async callback. If the share summary formats text, makes an API call to get stats, THEN copies, the user gesture chain is broken and the copy silently fails.
-
-**Why it happens:**
-Clipboard API works perfectly in dev (localhost is treated as secure). The developer never tests on an actual phone over the network. Or: the copy fires after an await (e.g., formatting the summary requires fetching today's stats), which breaks the user gesture requirement on some browsers.
-
-**How to avoid:**
-- Pre-compute the shareable summary text BEFORE the user taps "Copy." The summary data (completion %, habits done, streak, power level) is already in Zustand stores. Do NOT make an API call at copy time.
-- Use a fallback chain: `navigator.clipboard.writeText()` first, then fall back to the legacy `document.execCommand('copy')` with a temporary textarea element.
-- Show a toast confirming success ("Copied!") or failure ("Couldn't copy -- tap and hold to select text") so the user knows what happened.
-- If targeting PWA later, ensure the service worker does not intercept clipboard operations.
-- Test on actual mobile device over HTTP and HTTPS to verify both paths.
-
-**Warning signs:**
-- Copy button does nothing on mobile (no toast, no clipboard content).
-- Copy works in Chrome desktop but not Safari mobile.
-- Copy works on first tap after page load but fails on subsequent taps.
-
-**Phase to address:**
-Shareable summary phase. Must include fallback mechanism and mobile testing.
-
----
-
-### Pitfall 5: New Animation Events Without Sound Mappings
-
-**What goes wrong:**
-v1.3 introduces new feedback events: uncheck feedback, streak-break acknowledgment, and additional milestone celebrations. The existing system has a tight coupling between animation events and sound: `EVENT_SOUND_MAP` in `useSoundEffect.ts` maps each `AnimationEvent` type to a `SoundId`. If a new event type is added to the `AnimationEvent` union in `uiStore.ts` but not to `EVENT_SOUND_MAP`, the event fires silently. The core value is "every interaction must have audio feedback." A silent event violates this principle.
-
-**Why it happens:**
-Adding a new `AnimationEvent` type requires updating 4 locations: (1) `AnimationEvent` type union in `uiStore.ts`, (2) `PRIORITY_TIERS` record in `uiStore.ts`, (3) `renderOverlay` switch in `AnimationPlayer.tsx`, (4) `EVENT_SOUND_MAP` in `useSoundEffect.ts`. It is easy to update 3 of 4 and miss one. The TypeScript compiler will catch a missing switch case (if using `exhaustive` checks) but will NOT catch a missing `EVENT_SOUND_MAP` entry because that record uses partial typing.
-
-**How to avoid:**
-- Make `EVENT_SOUND_MAP` use `Record<AnimationEvent['type'], SoundId>` (required for all keys) instead of `Partial<Record<...>>`. This way TypeScript will error if a new event type has no sound mapping.
-- Before adding any new event type, decide: does it use an EXISTING sound (reuse from the 13 available) or need a NEW sound? v1.2 already established the pattern of reusing sounds (`power_milestone` -> `explosion`, `level_up` -> `reveal_chime`). Follow this pattern.
-- Candidate mappings for v1.3 events: `uncheck` already has `play('undo')` in HabitCard; `streak_break` could use `power_down`; new milestone celebrations reuse `reveal_chime`.
-- Create a pre-merge checklist: "Does every new AnimationEvent type have entries in PRIORITY_TIERS, renderOverlay, and EVENT_SOUND_MAP?"
-
-**Warning signs:**
-- New overlay plays but no sound accompanies it.
-- TypeScript compiles clean but a runtime console.warn appears for unmapped event type.
-- New event type works in isolation but sounds break when queued with existing events.
-
-**Phase to address:**
-Feedback gaps phase. Must be coordinated with any phase that adds new AnimationEvent types.
-
----
-
-### Pitfall 6: Off-Day Analytics Query Returns Wrong Data for Partial Off-Days
-
-**What goes wrong:**
-The existing off-day system marks entire days as off-days in Settings (specific weekdays). Off-day analytics should show "impact of off-days on streaks, XP, and power level." But the off-day concept has an edge case: a user might check some habits on an off-day before realizing it is an off-day (or the off-day setting might be changed mid-day). The `daily_log` table records the day's actual state. If analytics queries filter `WHERE is_off_day = true`, they miss days where the user partially completed habits AND the day was configured as off. If they use Settings weekday config, they get the CURRENT config, not the historical one (the user might have changed which days are off-days).
-
-**Why it happens:**
-Off-day status is derived from Settings (which weekdays are off), not stored per-day. If the user changes off-day settings (e.g., removes Saturday as an off-day after 3 months), historical analytics retroactively recategorize all past Saturdays as non-off-days. This is a classic "derived vs. stored" data problem.
-
-**How to avoid:**
-- Store `is_off_day: boolean` on the `daily_log` table (or verify it already exists). The off-day status should be snapshotted at the time the log is created, not derived retroactively from current Settings.
-- If `daily_log` does not have this field, add a migration that backfills it from the current off-day schedule (best approximation).
-- Analytics queries should use `daily_log.is_off_day`, never re-derive from Settings config.
-- Show off-day analytics separately: "Your off-day completion rate" vs. "Your active-day completion rate" -- do not mix them.
-
-**Warning signs:**
-- Changing off-day settings retroactively changes historical analytics charts.
-- Off-day analytics shows 0% for days where the user actually completed habits.
-- No `is_off_day` field on daily_log records.
-
-**Phase to address:**
-Off-day analytics phase. The data model must be verified/migrated before building the analytics views.
-
----
-
-### Pitfall 7: Responsive Tailwind Classes Conflict with Existing @theme Token System
-
-**What goes wrong:**
-The app uses Tailwind v4 with `@theme` tokens in `index.css` (28 custom color tokens). Responsive design typically uses Tailwind breakpoint prefixes (`sm:`, `md:`, `lg:`). The existing codebase has ZERO responsive prefixes -- everything is mobile-width by default because it was designed for a single desktop-width layout that happens to be narrow. Adding responsive prefixes retroactively means touching almost every component. The risk is introducing inconsistencies: some components get responsive classes, others do not, creating a mixed experience.
-
-**Why it happens:**
-The app was built as a "phone-width column on desktop" design. It actually looks decent on mobile already because the layout is narrow. The real responsive issues are: (1) the HeroSection `size={160}` AuraGauge is too large on small screens, (2) fixed-position elements (BottomTabBar, FAB, NudgeBanner, MiniHero) overlap on short viewports, (3) Analytics page charts overflow narrow viewports, (4) modals/sheets assume minimum viewport height. These are surgical fixes, not a full responsive rewrite.
-
-**How to avoid:**
-- Do NOT do a "responsive rewrite" of every component. The narrow single-column layout already works on mobile. Focus on the specific breakage points listed above.
-- Use `min-h-dvh` (dynamic viewport height) instead of `min-h-screen` to handle mobile browser chrome (address bar, tab bar). The current `min-h-screen` in AppShell may cause content to be hidden behind iOS Safari's bottom bar.
-- For the AuraGauge, pass size as a prop derived from viewport: `const gaugeSize = useMediaQuery('(min-width: 768px)') ? 160 : 120` or use responsive Tailwind classes on the container.
-- For overlapping fixed elements: audit all `fixed` position elements. On a 568px tall viewport (iPhone SE landscape): BottomTabBar (64px) + FAB (56px + 80px offset from bottom) + MiniHero (when sticky) + NudgeBanner can consume 200px+ of viewport, leaving minimal space for content.
-- For charts: ensure recharts `ResponsiveContainer` is used everywhere (it likely already is, but verify).
-
-**Warning signs:**
-- Every component file gets touched in the responsive PR (scope creep signal).
-- Some pages look responsive, others do not (inconsistent application).
-- iOS Safari users report content hidden behind browser chrome.
-- iPhone SE landscape shows more fixed UI than scrollable content.
-
-**Phase to address:**
-Responsive design phase. Scope should be surgical fixes to specific breakage points, not a full rewrite.
-
----
-
-### Pitfall 8: Weekly/Monthly Completion Rates Computed Client-Side from Raw Data
-
-**What goes wrong:**
-v1.3 includes "weekly/monthly completion rates, streak leaderboard, best/worst day patterns." The naive approach is to fetch all `daily_log` records for the period and compute aggregates in JavaScript. For a month, that is 30 records -- fine. For "all time" after a year, that is 365 records with per-habit breakdowns. The real danger is not performance but ACCURACY: the frontend might calculate completion rate as `completedHabits / totalHabits` using the CURRENT habit count, but the actual rate should use the habit count on EACH historical day (which varies as habits are added/removed/archived).
-
-**Why it happens:**
-The `daily_log` table already stores `habits_due` and `habits_completed` per day -- the correct denominator is snapshotted. But if the frontend computes from habit-level data instead of using daily_log snapshots, the denominator is wrong. A developer might also compute "best day" by looking at habits, not daily_logs.
-
-**How to avoid:**
-- All aggregate analytics MUST be computed from `daily_log` snapshots, never from current habit state.
-- Create a dedicated backend endpoint: `GET /analytics/summary?period=week|month|all` that returns pre-computed aggregates: average completion rate, best day of week, worst day of week, streak leaderboard (sorted habits by current streak).
-- The streak leaderboard is a simple sort of active habits by `streak_current` -- this can be computed from the existing `todayHabits` data in habitStore without a new endpoint.
-- Best/worst day patterns: `GROUP BY day_of_week` on daily_logs, average `completion_rate` per weekday. This MUST be a backend query, not client-side.
-
-**Warning signs:**
-- Analytics show 120% completion rate (denominator mismatch).
-- Adding a new habit retroactively lowers all historical completion rates.
-- "Best day" computation takes visible time on the frontend.
-
-**Phase to address:**
-Enhanced data views phase. Backend aggregation endpoint must exist before frontend views are built.
-
----
-
-### Pitfall 9: Uncheck Feedback Triggers Reverse Animation Chaos
-
-**What goes wrong:**
-v1.3 includes "uncheck feedback" and "streak-break acknowledgment." Currently, unchecking a habit plays `play('undo')` and that is it (`HabitCard.tsx` line 84). If uncheck gets full animation treatment (reverse aura shrink, streak break overlay, power level decrease animation), the animation queue -- which was designed for positive-direction events -- must handle negative-direction events. The priority tier system (`PRIORITY_TIERS` in uiStore.ts) has no concept of "negative" events. An uncheck that fires a `streak_break` event at Tier 2 could get combo-batched with positive events from a previous check, creating nonsensical summaries like "Streak Broken! + Capsule Drop!"
-
-**Why it happens:**
-The animation system was designed for the "things getting better" direction. Every event type is celebratory. Introducing negative events (uncheck, streak break) into the same queue creates semantic conflicts. The combo batching system groups Tier 2 events by count, not by valence.
-
-**How to avoid:**
-- Negative feedback should NOT use the animation queue. Keep it simple and inline:
-  - Uncheck: `play('undo')` + subtle visual pulse on the HabitCard (current behavior is already correct).
-  - Streak break: show a small inline toast or character quote (Vegeta), NOT a full overlay. Use `showCharacterQuote()` which already exists.
-  - Aura gauge decrease: this already happens naturally when the percentage drops (AuraGauge re-renders with new percent).
-- If a streak break acknowledgment overlay IS desired, give it a separate rendering path from the positive animation queue. Use a simple `useState` in Dashboard, not `useUiStore.enqueueAnimation`.
-- The `AnimationPlayer` and combo batching system should remain exclusively for positive/celebratory events.
-
-**Warning signs:**
-- Uncheck triggers a full-screen overlay.
-- Combo summary includes both positive and negative events.
-- Unchecking a habit causes a 3-second animation delay before the UI updates.
-
-**Phase to address:**
-Feedback gaps phase. Explicitly decide: negative feedback is inline-only, positive feedback uses the queue.
-
----
-
-### Pitfall 10: Shareable Summary Text Looks Bad When Pasted
-
-**What goes wrong:**
-The clipboard summary is plain text that will be pasted into messaging apps (WhatsApp, Discord, iMessage). If the summary uses emoji-heavy formatting that looks good in the app but renders as boxes or misaligned text in some messaging apps, or if it includes internal jargon ("Tier: Kaio-ken x10", "Zenkai activated") that makes no sense to recipients, the share feature is useless.
-
-**Why it happens:**
-The developer formats the summary for how it looks in the app's console/preview, not how it renders when pasted into common destinations. Emoji rendering varies across platforms. Line breaks (`\n`) render differently in different apps.
-
-**How to avoid:**
-- Keep the summary simple and universally readable:
+- Add `CORSMiddleware` to `main.py` in the same phase as deployment:
+  ```python
+  from fastapi.middleware.cors import CORSMiddleware
+  app.add_middleware(
+      CORSMiddleware,
+      allow_origins=["https://your-vercel-app.vercel.app"],
+      allow_credentials=False,
+      allow_methods=["*"],
+      allow_headers=["*"],
+  )
   ```
-  Saiyan Tracker - March 8, 2026
-  Completed: 6/6 habits (100%)
-  Current streak: 14 days
-  Power Level: 12,450
-  ```
-- Avoid emoji in the core data lines. One optional emoji at the top is fine.
-- Use `\n` line breaks (not `\r\n`), which work in all modern messaging apps.
-- Do NOT include internal game terms that require context (no "Kaio-ken", "Zenkai", "capsule drops" unless the user opts in).
-- Test by copying and pasting into: (1) WhatsApp, (2) Discord, (3) plain text editor.
+- Do NOT use `allow_origins=["*"]` — be specific. For a single-user app on a known Vercel domain, hardcode the exact origin or load it from an env var.
+- OPTIONS preflight requests must return 200. FastAPI's CORSMiddleware handles this automatically, but verify it with `curl -X OPTIONS https://your-vps.com/api/v1/habits/ -H "Origin: https://your-vercel-app.vercel.app" -v`.
+- If using a custom domain on Vercel, configure CORS for BOTH the `.vercel.app` subdomain AND the custom domain.
 
 **Warning signs:**
-- Summary text has broken formatting when pasted into WhatsApp.
-- Summary includes game mechanics that confuse non-users.
-- Summary is more than 5 lines (too long for casual sharing).
+- DevTools Console shows: "Access to fetch at 'https://your-vps.com' from origin 'https://your-vercel-app.vercel.app' has been blocked by CORS policy."
+- API calls fail in the deployed app but work perfectly in local dev.
+- `curl https://your-vps.com/api/v1/health` succeeds but browser requests fail.
 
 **Phase to address:**
-Shareable summary phase. Format must be tested by actual paste into messaging apps.
+Deployment configuration phase (Phase 1). CORS must be configured and verified before calling the deployment "working."
+
+---
+
+### Pitfall 3: HTTP Backend + HTTPS Frontend = Mixed Content Block
+
+**What goes wrong:**
+If the VPS backend is accessible over HTTP only (no SSL/TLS), and Vercel serves the frontend over HTTPS (mandatory — Vercel always uses HTTPS), browsers block all requests from the HTTPS page to the HTTP API as "mixed content." The browser silently drops the request — no network call is made, no error in the response. It only appears as a console error: "Mixed Content: The page at 'https://...' was loaded over HTTPS, but requested an insecure resource 'http://...'."
+
+**Why it happens:**
+Setting up SSL on a VPS is an extra step. Developers test the API via HTTP locally or with `curl`, it works, they ship it as HTTP and configure `VITE_API_BASE=http://...`. The Vercel deployment is HTTPS by default and immediately blocks all mixed content.
+
+**How to avoid:**
+- The VPS backend MUST be served over HTTPS. Use Let's Encrypt (Certbot) with nginx as a reverse proxy in front of uvicorn.
+- `VITE_API_BASE` must use `https://` in the Vercel environment variable.
+- Never expose uvicorn directly on port 80 or 443 — put nginx in front. Uvicorn listens on `127.0.0.1:8000` (localhost only), nginx proxies `/api/` to it.
+- Verify with: `curl https://your-vps.com/health` should return `{"status": "ok"}`.
+
+**Warning signs:**
+- Console shows "Mixed Content" error.
+- `VITE_API_BASE` starts with `http://` not `https://`.
+- Network tab shows the request not being sent at all (not even a failed request).
+
+**Phase to address:**
+Deployment configuration phase (Phase 1). SSL must be set up on VPS before frontend deployment.
+
+---
+
+### Pitfall 4: SQLite Database Path Is Relative — Breaks When systemd Changes Working Directory
+
+**What goes wrong:**
+`backend/app/core/config.py` sets `DATABASE_URL = "sqlite:///saiyan_tracker.db"`. The `///` means the path is RELATIVE to the current working directory. When uvicorn runs from the terminal in development, the CWD is the `backend/` directory, so the file ends up at `backend/saiyan_tracker.db`. When systemd runs the same command, the working directory depends on the `WorkingDirectory` setting in the service unit. If `WorkingDirectory` is omitted or set to `/`, the database file is created at `/saiyan_tracker.db` (root of the filesystem), which is unwritable, or at an unexpected location. The result: either the app fails to start, or it creates a new empty database and the user loses all data.
+
+**Why it happens:**
+SQLite relative paths work transparently in development because the developer always runs `uvicorn` from the project directory. systemd does not inherit the shell's working directory — it starts from the `WorkingDirectory` specified in the unit file, defaulting to `/` if omitted.
+
+**How to avoid:**
+- Change `config.py` to use an ABSOLUTE path loaded from an environment variable:
+  ```python
+  import os
+  DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:////opt/saiyan-tracker/saiyan_tracker.db")
+  ```
+- Use 4 slashes (`////`) for absolute SQLite paths: `sqlite:////absolute/path/file.db`.
+- Set `WorkingDirectory=/opt/saiyan-tracker/backend` in the systemd unit file as a belt-and-suspenders fallback.
+- Confirm the database path on startup: add a log line in `lifespan()` that prints the resolved absolute path of the database file.
+
+**Warning signs:**
+- App starts but the database is empty (new file created at wrong path).
+- `journalctl -u saiyan-tracker` shows `OperationalError: unable to open database file`.
+- The database file appears at `/saiyan_tracker.db` instead of the expected project directory.
+
+**Phase to address:**
+VPS deployment phase (Phase 2). Must be verified before running the app with real data.
+
+---
+
+### Pitfall 5: SQLite Without WAL Mode Locks Under uvicorn's Async Workers
+
+**What goes wrong:**
+The current `session.py` uses synchronous SQLAlchemy with `create_engine(settings.DATABASE_URL)`. SQLite's default journal mode is DELETE, which uses exclusive write locks. When two API requests arrive simultaneously (which uvicorn with multiple workers can cause), one gets a `sqlite3.OperationalError: database is locked` error. For a single-user app this is rare but not impossible — the frontend makes parallel API calls on startup (power, habits, status, analytics all fetch concurrently in `useInitApp`).
+
+**Why it happens:**
+Single-user apps "never have concurrency issues" — until the frontend initialization fires 4-5 API calls in parallel. The dev server with a single Vite HMR connection never surfaces this. On the deployed app with production uvicorn, parallel requests trigger simultaneous SQLite writes.
+
+**How to avoid:**
+- Enable WAL mode in `session.py` alongside the existing foreign key pragma:
+  ```python
+  cursor.execute("PRAGMA journal_mode=WAL")
+  cursor.execute("PRAGMA busy_timeout=5000")  # wait up to 5s instead of immediate error
+  ```
+- WAL mode allows concurrent readers + 1 writer, eliminating read/write lock conflicts.
+- The `-wal` and `-shm` files that WAL creates require the DATABASE directory (not just the file) to be writable by the app user. Verify with: `ls -la /opt/saiyan-tracker/` — the directory must be owned by the service user.
+- Do NOT use multiple uvicorn workers (`--workers 4`) with SQLite — that creates true multi-process concurrency that SQLite cannot safely handle. Single worker is correct for this stack.
+
+**Warning signs:**
+- `sqlite3.OperationalError: database is locked` in API logs during app startup.
+- Intermittent 500 errors on the first few seconds after opening the app.
+- Frontend shows partial data on initial load (some stores populate, others stay empty).
+
+**Phase to address:**
+VPS deployment phase (Phase 2). Apply WAL mode at the same time as deploying the database.
+
+---
+
+### Pitfall 6: systemd Unit File Missing EnvironmentFile — Secrets Leak into Shell History or Are Absent in Production
+
+**What goes wrong:**
+The backend needs configuration values in production: `DATABASE_URL` (absolute path), `CORS_ORIGINS` (Vercel domain), potentially a `SECRET_KEY` for future use. Developers often set these by exporting them in the shell (`export DATABASE_URL=...`) or hardcoding them in `config.py`. Shell exports do not survive reboots. Hardcoding secrets in source files is a security risk even for personal apps.
+
+**Why it happens:**
+systemd's `Environment=` directive in the unit file requires exact syntax and is visible to anyone who reads the unit file. The `EnvironmentFile=` directive is less well-known but cleaner — it reads key=value pairs from a file that can be `chmod 600` (readable only by root and the service user).
+
+**How to avoid:**
+- Create `/etc/saiyan-tracker/env` with `chmod 600` ownership by the service user:
+  ```
+  DATABASE_URL=sqlite:////opt/saiyan-tracker/saiyan_tracker.db
+  CORS_ORIGINS=https://saiyan-tracker.vercel.app
+  ```
+- Reference it in the unit file: `EnvironmentFile=/etc/saiyan-tracker/env`
+- Never commit the `.env` file or the systemd env file to git.
+- Add `/etc/saiyan-tracker/env` to `.gitignore` documentation (and note it in deployment runbook).
+- After any change to the env file, restart the service: `systemctl restart saiyan-tracker`.
+
+**Warning signs:**
+- Environment variables are `None` in the running app even though they were set in the terminal.
+- `systemctl status saiyan-tracker` shows the service running but API config looks like development defaults.
+- `DATABASE_URL` is hardcoded in `config.py` (it should be read from env).
+
+**Phase to address:**
+VPS deployment phase (Phase 2). Configure env file before starting the service.
+
+---
+
+### Pitfall 7: Large Image Assets Committed to Git Bloat the Repo and Slow Vite Builds
+
+**What goes wrong:**
+The v2.0 visual overhaul involves sourcing 20+ images: 7 Saiyan avatar transformations, 7 Dragon Ball sphere illustrations, Shenron, character portraits (Goku, Vegeta), capsule visuals, and background art. If these are added as raw PNG/JPG files sourced from Pinterest or Vecteezy (typically 500KB–5MB each), the git repository grows by 10–80MB in a single commit. Vite 7 processes files in `src/` at build time — large images imported via `import` statements get processed and fingerprinted, making cold builds significantly slower. Large images in `public/` bypass Vite processing but do not get cache-busting hashes.
+
+**Why it happens:**
+The developer downloads reference images, optimizes "manually" by reducing quality in an image editor, and drops them in the repo. What feels like "already small" (200KB per image) adds up to megabytes across the full set. git history keeps all previous versions — even after deleting a file, the history still holds the original size.
+
+**How to avoid:**
+- Target file sizes BEFORE committing: avatars ≤ 50KB (WebP), Dragon Balls ≤ 30KB each, backgrounds ≤ 150KB. Run through Squoosh or `cwebp` before adding to the repo.
+- Commit images once, already optimized. Do not "optimize later" — git history bloat is permanent without a git filter-branch rewrite.
+- Store avatar/sprite images in `frontend/public/assets/` (not `src/assets/`) so they bypass Vite's module graph and are served as static files. The existing `SaiyanAvatar.tsx` already expects `/assets/avatars/${transformation}.webp` — this matches the `public/` path convention.
+- Images that need no dynamic import logic (backgrounds, character portraits) all go in `public/`. Only images needing cache-busting hashes in CSS/imports go in `src/assets/`.
+- Add a pre-commit note: "No image file > 200KB in this repo."
+
+**Warning signs:**
+- `git diff --stat` shows a commit adding 10MB+.
+- Vite build time increases from ~3s to 30s+ after adding images.
+- `du -sh frontend/public/` exceeds 5MB.
+
+**Phase to address:**
+Asset preparation phase (before visual integration). Establish size budgets before sourcing images.
+
+---
+
+### Pitfall 8: Vite `public/` vs `src/assets/` Confusion Breaks Image Paths at Runtime
+
+**What goes wrong:**
+The existing `SaiyanAvatar.tsx` uses `src="/assets/avatars/base.webp"` — a public-root-relative path. This works in development because Vite serves `frontend/public/` at `/`. In production (Vite build output in `dist/`), Vite copies `public/` contents to `dist/` root, so `/assets/avatars/base.webp` maps to `dist/assets/avatars/base.webp`. This works on Vercel with the default output directory. BUT: if any image is added via ES module import (`import avatarUrl from './avatars/base.webp'`), Vite processes it differently — it gets a hash in the filename (`base.Xk3mN.webp`) and moves it to `dist/assets/`. The hardcoded `/assets/avatars/base.webp` path in `SaiyanAvatar.tsx` will then NOT find the imported-and-hashed image.
+
+**Why it happens:**
+Two valid patterns exist in Vite (public-path strings vs. ES module imports), and mixing them for the same image breaks the fallback logic. `SaiyanAvatar.tsx` uses the string-path pattern with a two-level fallback (`transformation.webp` → `base.webp` → User icon). If someone adds an image via import, the string-path fallback chain stops working.
+
+**How to avoid:**
+- Commit to ONE pattern for all game art assets: public path strings (`/assets/avatars/${name}.webp`). All images go in `frontend/public/assets/`.
+- Never import game art images with ES module `import` syntax in components. The fallback logic in `SaiyanAvatar.tsx`, `DragonBallTracker.tsx`, and `ShenronCeremony.tsx` all depend on string paths.
+- Document this decision in a comment in `SaiyanAvatar.tsx`: "// Images must be in public/assets/ — do not import via ES module."
+- Verify path structure: `frontend/public/assets/avatars/base.webp`, `frontend/public/assets/avatars/ssj.webp`, etc.
+- After `vite build`, run `ls dist/assets/avatars/` to confirm images are present and NOT hashed.
+
+**Warning signs:**
+- Images load in dev but return 404 in the Vercel-deployed build.
+- File appears in `dist/assets/` with a hash (`base.Xk3mN.webp`) but component requests `base.webp`.
+- Fallback to `base.webp` also returns 404, triggering the User icon fallback for all transformations.
+
+**Phase to address:**
+Visual asset integration phase (Phase 3). Establish path convention before adding any images.
+
+---
+
+### Pitfall 9: Vercel Output Directory Misconfiguration Serves the Wrong Folder
+
+**What goes wrong:**
+Vercel auto-detects Vite projects and sets the output directory to `dist`. But this repo has a monorepo structure: the frontend is in `frontend/`, not the repo root. Vercel may try to build from the repo root, fail to find `package.json`, or build the wrong thing. Without explicit configuration, the deployed site shows a blank page or a 404.
+
+**Why it happens:**
+Vercel's auto-detection works for single-package repos. When `package.json` is in a subdirectory (`frontend/`), auto-detection either fails or uses incorrect paths. The repo root `package.json` and `package-lock.json` visible in the git status are likely a side effect — Vercel will be confused about which one to use.
+
+**How to avoid:**
+- In Vercel project settings, explicitly set:
+  - Root Directory: `frontend`
+  - Build Command: `npm run build` (or `vite build`)
+  - Output Directory: `dist`
+- Alternatively, add a `vercel.json` at the repo root:
+  ```json
+  {
+    "buildCommand": "cd frontend && npm run build",
+    "outputDirectory": "frontend/dist",
+    "installCommand": "cd frontend && npm install"
+  }
+  ```
+- After the first deployment, verify the build logs show `vite build` running inside `frontend/`, not the repo root.
+- Test with a simple `vercel --prod` CLI deployment locally before relying on git-push auto-deploy.
+
+**Warning signs:**
+- Vercel build log shows "No package.json found" or attempts to install from the wrong directory.
+- Deployed site returns a blank page with no network requests.
+- Vercel deploys successfully but serves `index.html` that doesn't load any JS (wrong dist folder).
+
+**Phase to address:**
+Deployment configuration phase (Phase 1). Must be confirmed on the first Vercel deployment.
+
+---
+
+### Pitfall 10: WebP Fallback Chain Fails Silently on the First Real Image Error
+
+**What goes wrong:**
+`SaiyanAvatar.tsx` has a two-level fallback: `${transformation}.webp` → `base.webp` → `<User icon>`. This is well-designed but the fallback only helps if SOME images exist. If zero WebP files are present in `public/assets/avatars/` (e.g., Phase 3 images haven't been deployed yet), the component falls back to the User icon for ALL transformations. The visual overhaul milestone has phases — if deployment (Phase 1-2) ships before images (Phase 3), users will see the plain User icon during the interim. That is fine for the developer, but it means the fallback error handler silently "succeeds" (shows the icon) making it easy to forget to verify that actual images loaded when Phase 3 ships.
+
+**Why it happens:**
+The fallback works correctly so no error is thrown. The developer deploys Phase 3 images, checks one transformation, sees the image, and ships. But if image file naming does not exactly match the `transformation` values from the backend (e.g., backend sends `"ssj"` but image file is named `"super_saiyan.webp"`), the `transformation.webp` path fails, falls to `base.webp`, and the user always sees the base form — silently.
+
+**How to avoid:**
+- The transformation values returned by the backend (`base`, `ssj`, `ssj2`, `ssj3`, `ssg`, `ssb`, `ui`) must EXACTLY match the filenames in `public/assets/avatars/`. Verify this by checking the glowColorMap in `SaiyanAvatar.tsx` (lines 9-17) — these are the exact expected keys: `base`, `ssj`, `ssj2`, `ssj3`, `ssg`, `ssb`, `ui`.
+- Add a one-time console assertion in `SaiyanAvatar.tsx` (dev-only, removed for prod) that warns if both `imgError` AND `fallbackError` are true.
+- After deploying Phase 3 images: open DevTools → Network tab → filter for `img` requests → verify every avatar request returns 200, not 404 followed by fallback.
+
+**Warning signs:**
+- Dashboard always shows the User icon regardless of transformation level.
+- Network tab shows `404` on `ssj.webp` followed by `404` on `base.webp`, resulting in the fallback icon.
+- An `imgError=true, fallbackError=true` state occurs unexpectedly often.
+
+**Phase to address:**
+Visual asset integration phase (Phase 3). Verification checklist must include direct Network tab inspection.
+
+---
+
+### Pitfall 11: SVG Files Inlined Unsanitized Allow Script Injection
+
+**What goes wrong:**
+If any of the Dragon Ball art is sourced as SVG (Vecteezy commonly offers SVG format) and the SVG is inlined into React components (e.g., via `dangerouslySetInnerHTML` or by importing as a React component), SVG can contain `<script>` tags, `javascript:` URLs in `href` attributes, or event handlers (`onclick="..."`) that execute as JavaScript. Even from "trusted" sources like Vecteezy, commercial vector assets may include metadata scripts or analytics beacons from the source site.
+
+**Why it happens:**
+SVG looks like an image but is XML markup — it can execute code when rendered inline. Developers treat SVG the same as WebP/PNG and inline it without sanitization. The threat is real: CVE-2025-68461 (Roundcube SVG XSS) and multiple recent 2025 disclosures demonstrate that SVG animation tags can silently execute JavaScript.
+
+**How to avoid:**
+- Prefer WebP/PNG over SVG for all game art assets. The visual quality difference is negligible for raster-style anime art.
+- If SVG is used (e.g., for the Shenron illustration where SVG scaling is needed), use it via `<img src="shenron.svg">` — this isolates the SVG from the DOM's script context. DO NOT use `dangerouslySetInnerHTML`.
+- Never import SVG files as React components (`import Shenron from './shenron.svg?react'`) unless the SVG source is fully audited and trusted.
+- If inline SVG is required for animation paths, sanitize with DOMPurify before rendering:
+  ```typescript
+  import DOMPurify from 'dompurify';
+  <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(svgContent) }} />
+  ```
+- This is a personal-use app so XSS risk is low (no other users). But sourceed SVGs could call home to third-party analytics — strip `<script>` and `<a>` tags regardless.
+
+**Warning signs:**
+- Network tab shows unexpected requests to external domains when an SVG image is displayed.
+- SVG import causes `eslint-plugin-react` to warn about `dangerouslySetInnerHTML`.
+- Browser console shows script errors originating from SVG element context.
+
+**Phase to address:**
+Visual asset integration phase (Phase 3). Applies to any SVG asset, regardless of source.
+
+---
+
+### Pitfall 12: log rotation Not Configured — VPS Disk Fills Up Over Months
+
+**What goes wrong:**
+A systemd service running uvicorn without log rotation sends all stdout/stderr to the systemd journal. By default, the journal is capped at a fraction of disk space, but uvicorn can be verbose. If the service is configured to write to a log FILE instead of the journal (e.g., `ExecStart=... >> /var/log/saiyan-tracker/app.log`), that file grows unbounded. A personal VPS on Hostinger typically has 20-40GB disk — an uncapped log file can fill it over months of daily use. When the disk fills, SQLite writes fail and the app crashes silently.
+
+**Why it happens:**
+Log rotation is an operational concern that feels distant during initial deployment. Developers configure logging to a file for easier `tail -f` debugging and forget to configure `logrotate`.
+
+**How to avoid:**
+- Use the systemd journal by default (do not redirect to file). Access logs with `journalctl -u saiyan-tracker -f`.
+- Set journal size limits in `/etc/systemd/journald.conf`:
+  ```
+  SystemMaxUse=200M
+  SystemKeepFree=1G
+  ```
+- If file logging is preferred, add a logrotate config at `/etc/logrotate.d/saiyan-tracker`:
+  ```
+  /var/log/saiyan-tracker/*.log {
+      daily
+      rotate 7
+      compress
+      missingok
+      notifempty
+  }
+  ```
+- Monitor disk usage monthly with `df -h` — at least until log behavior is confirmed stable.
+
+**Warning signs:**
+- `df -h` shows `/` partition at 90%+ usage.
+- `du -sh /var/log/` shows unexpected size.
+- API calls start returning 500 with `disk I/O error` or `database or disk is full`.
+
+**Phase to address:**
+VPS deployment phase (Phase 2). Configure at deploy time, not reactively.
 
 ---
 
@@ -265,99 +350,115 @@ Shareable summary phase. Format must be tested by actual paste into messaging ap
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Adding responsive classes only to Dashboard, skipping Analytics/Settings | Faster to ship responsive dashboard | Inconsistent experience across tabs; user notices | Never -- all three pages must get responsive treatment in the same phase |
-| Computing analytics aggregates client-side | No new backend endpoint needed | Wrong denominators, slow on large datasets, duplicated logic | Only for streak leaderboard (simple sort of existing data) |
-| Skipping overlay audit during responsive pass | Responsive page layouts ship faster | Overlays break on mobile, discovered by user during celebrations | Never -- overlays are part of the core experience |
-| Hardcoding share summary format without config | Quick implementation | Cannot adjust format without code change | Acceptable for v1.3; make it a utility function for easy future changes |
-| Using `window.innerWidth` checks instead of Tailwind breakpoints | Works immediately | Duplicates breakpoint logic, does not respond to resize | Acceptable ONLY for JavaScript logic (gauge size); use Tailwind for CSS |
+| `allow_origins=["*"]` in CORS | No need to update when Vercel URL changes | Any site can make API calls (low risk for no-auth app, but bad habit) | Never — hardcode the Vercel domain |
+| Relative SQLite path in config.py | Works in dev without changes | Breaks in systemd; creates phantom databases at unexpected paths | Never — use absolute paths from env vars |
+| HTTP (no SSL) for VPS backend | Faster initial setup, no cert management | Mixed content blocks all browser requests from Vercel HTTPS frontend | Never — mixed content is a hard browser block |
+| PNG instead of WebP for game art | No conversion step | 3-5x larger files, slower load times on mobile; still visible on first open | Only for temporary placeholder assets during Phase 2 |
+| Images in `src/assets/` instead of `public/` | Vite hash-busts them automatically | Breaks the string-path fallback pattern in `SaiyanAvatar.tsx` and `DragonBallTracker.tsx` | Never — existing components expect public/ paths |
+| Hardcoding CORS origin in Python source | One less env var to configure | Must redeploy backend to change Vercel URL | Acceptable for v2.0 (Vercel URL is stable), but use env var for future-proofing |
+| Single uvicorn worker (no Gunicorn) | Simpler service unit | Less resilient (worker crash = app crash); fine for single-user | Acceptable for this stack — multiple workers cause SQLite issues anyway |
 
 ## Integration Gotchas
 
 | Integration Point | Common Mistake | Correct Approach |
 |-------------------|----------------|------------------|
-| Responsive + AnimationPlayer overlays | Applying responsive only to page content, forgetting overlay components | Include all 11 overlay components in responsive audit |
-| Habit detail view + existing HabitDetailSheet | Building a new component instead of expanding the existing one | Enhance `HabitDetailSheet.tsx` with additional sections (target time, weekly rate, etc.) |
-| Off-day analytics + daily_log | Deriving off-day status from current Settings config | Use snapshotted `is_off_day` from daily_log, not current Settings |
-| Clipboard copy + async data fetch | Fetching data after user click, breaking gesture chain | Pre-compute summary from Zustand store data, copy synchronously on click |
-| Uncheck feedback + animation queue | Adding negative events to the positive-only animation queue | Keep negative feedback inline (sound + visual pulse), not queued |
-| New analytics views + existing useAnalyticsData hook | Creating separate data-fetching hooks per new view | Extend the existing `useAnalyticsData` hook or create a single new endpoint |
-| Responsive BottomTabBar + safe area | Not accounting for iOS safe area (notch/home indicator) | Add `pb-safe` or `env(safe-area-inset-bottom)` to BottomTabBar |
-| MiniHero sticky + responsive | MiniHero content overflows on narrow screens | Ensure MiniHero uses truncation and responsive text sizing |
+| Vercel + VPS CORS | Adding CORS middleware after deployment and testing from browser | Add CORSMiddleware to main.py before first deployment; test with curl OPTIONS request from a different origin |
+| Vite build + Vercel | Not setting Root Directory to `frontend/` in Vercel project settings | Explicitly configure Root Directory, Build Command, and Output Directory in Vercel dashboard or vercel.json |
+| VITE_ env vars + Vercel | Adding env vars after first deploy without redeploying | Always add env vars before the first deploy; any change requires a new build (push commit or manual redeploy) |
+| SQLite + systemd | Relative database path with no WorkingDirectory set | Use absolute path from DATABASE_URL env var; set WorkingDirectory in unit file as fallback |
+| WebP images + SaiyanAvatar | Naming image files differently from the transformation values expected by the component | Map backend transformation strings exactly: base, ssj, ssj2, ssj3, ssg, ssb, ui |
+| SVG assets + React | Importing SVGs as React components from sourced art files | Use `<img src="...svg">` for sourced SVGs; only use inline SVG for hand-written, audited SVGs |
+| public/ assets + Vite build | Assuming public/ files are processed by Vite (they are not — copied as-is) | Use public/ for all image assets that need stable paths; accept they have no cache-busting hash |
+| systemd + Python venv | ExecStart pointing to system python instead of venv python | Use full path to venv: `ExecStart=/opt/saiyan-tracker/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000` |
 
 ## Performance Traps
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Re-rendering all HabitCards when one detail sheet opens | Dashboard stutters on detail open | Keep `showDetail` state local to each HabitCard (already correct in current code) | If detail state is lifted to parent or put in Zustand |
-| Contribution grid re-fetching on every sheet open | Network tab shows repeated API calls for same habit | Cache contribution data in a Map keyed by habitId with TTL | After user opens same habit detail 3+ times per session |
-| Analytics page computing aggregates on every period change | Visible delay when switching between week/month/all | Backend computes aggregates; frontend only displays | After 6+ months of data |
-| Responsive images/avatars not size-constrained | Layout shift when avatar loads on mobile | Use explicit `width` and `height` attributes; use Tailwind `w-` and `h-` classes | On slow connections where images load progressively |
-| Too many `matchMedia` listeners for responsive logic | Memory leaks, stale listeners | Use a single shared `useMediaQuery` hook; clean up listeners in useEffect return | If every component adds its own listener |
+| Unoptimized images committed to git | Vite build takes 30s+; Vercel build minutes; first page load 5s+ on mobile | Optimize all images before first commit: WebP, ≤50KB for avatars, ≤150KB for backgrounds | Immediately — first production build |
+| All images loading on dashboard mount | Page feels slow; LCP metric poor; low-end phones stall | Use `loading="lazy"` on non-hero images; only the active transformation avatar loads eagerly | On slow connections and low-end Android phones |
+| AVIF without WebP fallback | Older iOS Safari shows broken images (AVIF support <13 iOS) | Use `<picture>` with AVIF + WebP sources or stick to WebP only (near-universal support) | iOS < 16 and Safari < 16 users |
+| Committing SQLite WAL files (`-wal`, `-shm`) to git | git repo grows unexpectedly; conflicts on checkout | Add `*.db-wal` and `*.db-shm` to `.gitignore` (note: `saiyan_tracker.db-journal` is already deleted per git status) | Every deployment push if not gitignored |
+| uvicorn with `--reload` in production | Unnecessary CPU usage watching file changes on VPS | systemd unit uses `uvicorn app.main:app --host 127.0.0.1 --port 8000` with no `--reload` flag | From first production deployment |
+
+## Security Mistakes
+
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| Exposing uvicorn directly on public port 8000 | VPS firewall rules can be misconfigured; port 8000 may be accessible publicly; no TLS | Put nginx in front; uvicorn binds to `127.0.0.1:8000` (loopback only); nginx handles TLS and port 443 |
+| Committing `.env` or systemd env file to git | Secrets (even non-critical ones like database paths) become public if repo is pushed to GitHub | `.env` files must be in `.gitignore`; systemd env file lives in `/etc/`, not the project directory |
+| Inline SVG from sourced assets without sanitization | SVG can contain `<script>` tags or external resource references; analytics beacons call home | Use `<img src>` for all sourced SVGs; use DOMPurify if inline SVG is unavoidable |
+| CORS `allow_origins=["*"]` | Any page on the internet can make requests to the VPS API (low impact for no-auth app, but bad pattern) | Whitelist only the specific Vercel domain |
+| Database file world-readable | sqlite file contains all user habit data; if VPS is compromised, data is immediately readable | `chmod 600 saiyan_tracker.db`; owned by the service user only |
 
 ## UX Pitfalls
 
 | Pitfall | User Impact | Better Approach |
 |---------|-------------|-----------------|
-| Hiding dopamine elements on mobile for "cleanliness" | User loses visual feedback that makes checking habits rewarding | Scale down (smaller avatar, compact stats row) instead of hiding |
-| Habit detail view blocks the dashboard | User cannot check other habits while viewing detail | Use a bottom sheet (current pattern) or slide-over that allows dismissal with swipe |
-| Off-day analytics showing "0% completion" prominently | User feels bad about off-days that were intentionally scheduled | Show off-day stats separately: "You rested 8 days this month" (positive framing) |
-| Share summary requiring multiple taps (format selection, confirm, copy) | User gives up before sharing | Single tap: copy pre-formatted summary, show success toast |
-| Streak-break overlay on uncheck | User regrets unchecking, stops correcting mistakes | Streak-break feedback should be subtle (inline text change), not dramatic |
-| Responsive chart text becoming unreadable | User cannot read axis labels on mobile charts | Use abbreviations for mobile axis labels; ensure minimum 10px font size |
+| App shows loading spinner forever if VITE_API_BASE is wrong | User sees a broken app with no error message | Add a connection error state to `useInitApp` that shows "Cannot reach server" after 10s timeout |
+| Images load one-by-one causing cumulative layout shift | Dashboard "jumps" as each image loads, especially on first visit | Provide explicit `width` and `height` on all `<img>` elements; use CSS placeholders (gradient boxes) while loading |
+| Transformation images missing silently fall back to User icon | User never knows there are supposed to be images; no visual reward for transforming | Keep the User icon fallback BUT add a brief console.warn in dev to signal missing files |
+| Background art makes text unreadable | Anime landscapes have bright areas that wash out white text | Darken backgrounds with CSS overlay: `bg-black/60` or `bg-gradient-to-b from-transparent to-space-900` |
+| High-res art slows mobile first load | ADHD user waits 3-5 seconds; motivation to open app drops | Apply `loading="lazy"` to non-critical art; critical art (active avatar) must be ≤50KB WebP |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Responsive overlays:** All 11 animation overlay components tested on 375px width -- no horizontal scroll, dismiss button above tab bar
-- [ ] **Responsive fixed elements:** BottomTabBar, FAB, MiniHero, NudgeBanner all tested on iPhone SE viewport height (568px) -- content area has at least 350px usable space
-- [ ] **iOS safe areas:** `env(safe-area-inset-bottom)` applied to BottomTabBar and any fixed-bottom elements -- tested on iPhone with notch
-- [ ] **Clipboard fallback:** Copy works on HTTP (not just HTTPS) with textarea fallback -- tested on actual phone
-- [ ] **Off-day data:** `daily_log` records have snapshotted off-day status, not derived from current settings -- verified with SQL query after settings change
-- [ ] **Habit detail caching:** Opening the same habit detail twice does not fire two API calls -- verified in Network tab
-- [ ] **Analytics aggregates:** Completion rates use `daily_log.habits_due` denominator, not current habit count -- verified by adding a new habit and checking historical rates unchanged
-- [ ] **Share text format:** Summary pasted into WhatsApp and Discord renders correctly -- no broken lines, no emoji boxes
-- [ ] **Uncheck feedback:** Unchecking does NOT trigger animation queue events -- only inline sound and visual change
-- [ ] **Chart responsiveness:** All recharts components use `ResponsiveContainer` and render correctly at 375px -- no axis label clipping
-- [ ] **MiniHero sticky:** Works correctly on mobile -- no overlap with content, smooth transition, text fits
+- [ ] **CORS:** Test from actual browser on Vercel domain — `curl` does not simulate CORS; must test via browser DevTools Network tab showing `Access-Control-Allow-Origin` header in response
+- [ ] **VITE_API_BASE baked value:** After deployment, inspect the built JS bundle (DevTools → Sources → search chunk files for the API base URL) — confirm it is the VPS URL, not `localhost:8000`
+- [ ] **HTTPS end-to-end:** Both Vercel URL and VPS URL use `https://`; no mixed content warnings in browser console
+- [ ] **Database absolute path:** `journalctl -u saiyan-tracker | grep database` shows the expected absolute path; `ls -la /opt/saiyan-tracker/` confirms `saiyan_tracker.db` exists and is owned by service user
+- [ ] **WAL mode active:** `sqlite3 saiyan_tracker.db "PRAGMA journal_mode;"` returns `wal` (not `delete`)
+- [ ] **Service auto-starts:** After `sudo reboot`, `systemctl status saiyan-tracker` shows `active (running)` without manual start
+- [ ] **Image paths match transformation values:** Network tab after full page load shows 200 responses for each avatar WebP (`base.webp`, `ssj.webp`, etc.) — no 404s that silently trigger fallback
+- [ ] **Image file sizes:** `du -sh frontend/public/assets/` — total should be under 5MB for all game art
+- [ ] **SVG via `<img>` not inline:** `grep -r "dangerouslySetInnerHTML" frontend/src/components/` — returns nothing SVG-related
+- [ ] **Vercel build uses correct directory:** Vercel deployment logs show `vite build` running inside `frontend/`, output in `frontend/dist/`
+- [ ] **No WAL files in git:** `git ls-files | grep "\.db-"` — returns nothing (WAL and SHM files are gitignored)
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Broken mobile overlays | MEDIUM | Audit each overlay component, add responsive classes and viewport-aware sizing; 1-2 days |
-| Hidden dopamine elements | LOW | Restore visibility, switch from `hidden` to `scale-down` approach; UI-only changes |
-| Wrong analytics denominators | HIGH | Must audit all analytics queries, switch to daily_log snapshots, possibly backfill data; 1+ day |
-| Clipboard silent failure | LOW | Add textarea fallback and toast feedback; 1-2 hour fix |
-| Off-day retroactive recalculation | MEDIUM | Add `is_off_day` column to daily_log, backfill from settings, update queries; migration + query changes |
-| Negative events in animation queue | MEDIUM | Extract negative events from queue, create inline feedback path; refactor animation enqueue logic |
-| Share text formatting | LOW | Adjust format string, test in messaging apps; 30-minute fix |
-| Responsive scope creep | LOW | Revert to surgical-fix approach, list specific breakage points; planning change only |
+| Wrong VITE_API_BASE baked into Vercel build | LOW | Add/correct env var in Vercel dashboard → trigger redeploy (push empty commit or click "Redeploy") |
+| CORS blocking API calls | LOW | Add CORSMiddleware to main.py → push to VPS → restart service |
+| HTTP/HTTPS mixed content | MEDIUM | Install Certbot on VPS → configure nginx for SSL → update VITE_API_BASE to https:// → redeploy Vercel |
+| SQLite at wrong path (empty database) | HIGH | Identify where phantom DB was created → copy real DB to correct path → update config → restart service; data may be lost if phantom DB was being written to |
+| systemd service not restarting after reboot | LOW | `systemctl enable saiyan-tracker` was forgotten → run it → verify with reboot |
+| Oversized images committed to git | MEDIUM | Optimize images → force-push or add replacement commit; git history still holds originals (acceptable for private repo) |
+| SVG inline with embedded scripts | LOW | Replace with `<img src>` pattern — no backend change needed, UI-only fix |
+| log files filling disk | MEDIUM | Configure journald limits or logrotate → delete/truncate existing large log files → monitor disk |
 
 ## Pitfall-to-Phase Mapping
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| Animation overlay mobile breakage | Responsive design phase | All 11 overlays tested at 375px; no horizontal scroll |
-| Dashboard decluttering kills dopamine | Responsive design phase | Aura gauge and avatar visible without scrolling on mobile |
-| Fixed element overlap on short viewports | Responsive design phase | iPhone SE landscape has 350px+ usable content area |
-| iOS safe area gaps | Responsive design phase | BottomTabBar sits above home indicator on iPhone |
-| Tailwind responsive scope creep | Responsive design phase | PR touches specific breakage points, not every component |
-| Habit detail over-fetching | Habit detail view phase | Opening detail sheet fires max 1 API call per habit per session |
-| Wrong analytics denominators | Enhanced data views phase | Adding a new habit does not change historical rates |
-| Off-day retroactive recalculation | Off-day analytics phase | Changing settings does not change past analytics |
-| Clipboard silent failure | Shareable summary phase | Copy works on HTTP localhost AND actual mobile device |
-| Share text readability | Shareable summary phase | Pasted into WhatsApp/Discord without formatting issues |
-| Negative events in animation queue | Feedback gaps phase | Unchecking does not trigger animation queue |
-| Missing sound mappings | Feedback gaps phase | Every new event type has an EVENT_SOUND_MAP entry |
-| Client-side aggregate computation | Enhanced data views phase | Backend returns pre-computed aggregates |
+| VITE_API_BASE baked wrong | Phase 1: Vercel deployment config | Inspect built bundle for correct API URL |
+| CORS not configured | Phase 1: FastAPI CORS middleware | Browser network tab shows `Access-Control-Allow-Origin` header |
+| Mixed content (HTTP backend) | Phase 1: VPS nginx + SSL setup | `https://your-vps.com/health` returns 200 |
+| Vercel output directory wrong | Phase 1: Vercel project settings | Vercel build log shows vite building from `frontend/` |
+| SQLite relative path breaks | Phase 2: VPS database config | journalctl confirms absolute DB path |
+| SQLite no WAL mode | Phase 2: VPS session.py pragmas | `PRAGMA journal_mode` returns `wal` |
+| systemd env file missing | Phase 2: VPS service unit config | Env vars present in running service |
+| Log rotation not configured | Phase 2: VPS operational setup | journald size limits set; disk usage stable |
+| Oversized images in git | Phase 3 pre-work: asset optimization | All images ≤200KB; `du -sh public/assets/` under 5MB |
+| Wrong Vite path convention (src vs public) | Phase 3: asset integration | `dist/` contains images without hash in filenames |
+| SVG XSS from sourced assets | Phase 3: asset integration | No `dangerouslySetInnerHTML` with SVG in any component |
+| Image name/transformation mismatch | Phase 3: asset integration | Network tab shows 200 for all avatar requests |
+| WebP fallback chain fails silently | Phase 3: verification | DevTools confirms each transformation loads the correct image |
 
 ## Sources
 
-- Direct codebase analysis: `AppShell.tsx`, `Dashboard.tsx`, `HabitCard.tsx`, `HabitDetailSheet.tsx`, `AnimationPlayer.tsx`, `uiStore.ts` (PRIORITY_TIERS, AnimationEvent union), `habitStore.ts` (checkHabit distribution logic), `index.css` (@theme tokens), `BottomTabBar.tsx`, `HeroSection.tsx`, `Analytics.tsx`, `MiniHero.tsx`
-- Tailwind v4 responsive design: uses standard breakpoint prefixes (`sm:`, `md:`, `lg:`) -- HIGH confidence (from @theme usage in codebase)
-- Clipboard API secure context requirement: [MDN Clipboard API](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard_API) -- HIGH confidence
-- iOS safe area insets: `env(safe-area-inset-bottom)` for fixed-position elements -- HIGH confidence
-- Dynamic viewport units (`dvh`): supported in all modern browsers for handling mobile browser chrome -- HIGH confidence
+- Direct codebase analysis: `backend/app/core/config.py` (relative DATABASE_URL), `backend/app/database/session.py` (synchronous SQLAlchemy, foreign key pragma but no WAL pragma), `backend/app/main.py` (no CORSMiddleware), `frontend/vite.config.ts` (dev proxy only), `frontend/src/services/api.ts` (VITE_API_BASE fallback to localhost), `frontend/src/components/dashboard/SaiyanAvatar.tsx` (string-path image convention, two-level fallback)
+- Vercel environment variables documentation: build-time evaluation, redeploy requirement — [Vercel Env Vars](https://vercel.com/docs/environment-variables) — HIGH confidence
+- Vercel Vite deployment guide — [Vite on Vercel](https://vercel.com/docs/frameworks/frontend/vite) — HIGH confidence
+- Vite static asset handling (public/ vs src/assets/) — [Vite Asset Handling](https://vite.dev/guide/assets) — HIGH confidence
+- SQLite WAL mode and file permission requirements — [SQLite WAL Documentation](https://sqlite.org/wal.html) — HIGH confidence
+- SQLite WAL requires directory write permissions for -shm/-wal files — [SQLite Forum: WAL permissions](https://sqlite.org/forum/info/87824f1ed837cdbb) — HIGH confidence
+- WebP/AVIF browser support status 2025-2026 — [AVIF Browser Support 2026](https://orquitool.com/en/blog/avif-browser-support-2026-compatibility-webp-switch/) — MEDIUM confidence
+- SVG XSS via inline rendering (CVE-2025-68461 and related) — [SVG XSS via Roundcube](https://cyberwarzone.com/2026/01/04/roundcube-cve-2025-68461-svg-xss-vulnerability-enables-silent-email-account-takeover-through-malicious-animate-tags/) — HIGH confidence
+- FastAPI systemd deployment patterns — [nginx + Uvicorn + FastAPI + systemd](https://miltschek.de/article_2023-10-21_nginx+++Uvicorn+++FastAPI+++systemd.html) — MEDIUM confidence
+- CORS community discussions on Vercel — [Vercel CORS community](https://github.com/vercel/community/discussions/65) — MEDIUM confidence
 
 ---
-*Pitfalls research for: Saiyan Tracker v1.3 -- QoL features (responsive, detail views, analytics, sharing, feedback gaps)*
-*Researched: 2026-03-08*
+*Pitfalls research for: Saiyan Tracker v2.0 — Deploy & Visual Overhaul (Vercel + VPS + image assets)*
+*Researched: 2026-03-11*
