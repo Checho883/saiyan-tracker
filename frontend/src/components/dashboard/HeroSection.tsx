@@ -1,5 +1,7 @@
 import { useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import toast from 'react-hot-toast';
+import { ClipboardCopy } from 'lucide-react';
 import { usePowerStore } from '../../store/powerStore';
 import { useRewardStore } from '../../store/rewardStore';
 import { useUiStore } from '../../store/uiStore';
@@ -9,6 +11,7 @@ import { SaiyanAvatar } from './SaiyanAvatar';
 import { AuraGauge } from './AuraGauge';
 import { ScouterHUD } from './ScouterHUD';
 import { TierChangeBanner } from '../animations/TierChangeBanner';
+import { buildDailySummary } from '../../utils/shareSummary';
 
 const progressColorMap: Record<AuraTier, string> = {
   base: 'var(--color-saiyan-500)',
@@ -37,6 +40,16 @@ export function HeroSection() {
   const animationQueue = useUiStore((s) => s.animationQueue);
   const dequeueAnimation = useUiStore((s) => s.dequeueAnimation);
   const tierEvent = animationQueue.find((e) => e.type === 'tier_change');
+
+  const handleShare = useCallback(async () => {
+    const summary = buildDailySummary();
+    try {
+      await navigator.clipboard.writeText(summary);
+      toast.success('Scouter data copied!', { duration: 2000, position: 'top-center' });
+    } catch {
+      toast.error('Copy failed — try again', { duration: 2000, position: 'top-center' });
+    }
+  }, []);
 
   const handleTierDismiss = useCallback(() => {
     // Dequeue the tier_change event after banner auto-dismisses
@@ -85,6 +98,15 @@ export function HeroSection() {
             {displayName}
           </span>
         )}
+
+        {/* Share button */}
+        <button
+          onClick={(e) => { e.stopPropagation(); handleShare(); }}
+          className="p-1.5 rounded-lg hover:bg-space-700 transition-colors flex-shrink-0"
+          aria-label="Share daily summary"
+        >
+          <ClipboardCopy className="w-4 h-4 text-text-muted" />
+        </button>
       </div>
 
       {/* === FULL HERO (desktop md+) === */}
@@ -115,6 +137,7 @@ export function HeroSection() {
           transformationName={transformationName}
           nextTransformation={nextTransformation}
           nextThreshold={nextThreshold}
+          onShare={handleShare}
         />
       </div>
 

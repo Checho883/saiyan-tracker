@@ -1,8 +1,11 @@
+import { ClipboardCopy } from 'lucide-react';
+
 interface ScouterHUDProps {
   powerLevel: number;
   transformationName: string;
   nextTransformation: string | null;
   nextThreshold: number | null;
+  onShare?: () => void;
 }
 
 export function ScouterHUD({
@@ -10,6 +13,7 @@ export function ScouterHUD({
   transformationName,
   nextTransformation,
   nextThreshold,
+  onShare,
 }: ScouterHUDProps) {
   const progressPercent =
     nextThreshold && nextThreshold > 0
@@ -18,9 +22,20 @@ export function ScouterHUD({
 
   return (
     <div className="flex flex-col items-center gap-1">
-      <span className="text-3xl font-mono font-bold text-saiyan-500">
-        {powerLevel.toLocaleString()}
-      </span>
+      <div className="flex items-center gap-2">
+        <span className="text-3xl font-mono font-bold text-saiyan-500">
+          {powerLevel.toLocaleString()}
+        </span>
+        {onShare && (
+          <button
+            onClick={onShare}
+            className="p-1.5 rounded-lg hover:bg-space-700 transition-colors"
+            aria-label="Share daily summary"
+          >
+            <ClipboardCopy className="w-4 h-4 text-text-muted" />
+          </button>
+        )}
+      </div>
       <span className="text-sm text-text-secondary">{transformationName}</span>
 
       {nextThreshold != null && (
