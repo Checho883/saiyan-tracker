@@ -6,7 +6,7 @@ import { usePowerStore } from './powerStore';
 import { useUiStore } from './uiStore';
 import { createElement } from 'react';
 
-const POWER_MILESTONES = [1000, 5000, 10000, 50000];
+const POWER_MILESTONES = [100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000];
 
 function showDailySummary(dailyLog: DailyLogSummary) {
   toast.custom(

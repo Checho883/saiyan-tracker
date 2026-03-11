@@ -13,7 +13,7 @@ const EVENT_SOUND_MAP: Record<AnimationEvent['type'], SoundId> = {
   transformation: 'transform',
   shenron: 'thunder_roar',
   xp_popup: 'scouter_beep', // Habit check triggers xp_popup; plays scouter beep
-  power_milestone: 'explosion', // Big celebration at 1K/5K/10K/50K power
+  power_milestone: 'explosion', // Default sound; legendary tier (100K) overrides with thunder_roar in PowerMilestoneOverlay
   level_up: 'reveal_chime', // Attribute level-up achievement tone
   zenkai_recovery: 'power_up', // Recovery energy surge after streak break
   streak_milestone: 'reveal_chime', // Badge reveal for streak achievements

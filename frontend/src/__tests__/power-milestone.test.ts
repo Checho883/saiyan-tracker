@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useUiStore, PRIORITY_TIERS } from '../store/uiStore';
+import { getEscalationTier } from '../components/animations/PowerMilestoneOverlay';
 
 describe('Power Milestone - uiStore', () => {
   beforeEach(() => {
@@ -38,8 +39,13 @@ describe('Power Milestone - uiStore', () => {
 });
 
 describe('Power Milestone - detection logic', () => {
+  const MILESTONES = [100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000];
+
+  it('POWER_MILESTONES has 10 entries', () => {
+    expect(MILESTONES).toHaveLength(10);
+  });
+
   it('detects milestone crossing from below to at-or-above', () => {
-    const MILESTONES = [1000, 5000, 10000, 50000];
     const prevPower = 950;
     const newPower = 1050;
     const crossed = MILESTONES.find((m) => prevPower < m && newPower >= m);
@@ -47,7 +53,6 @@ describe('Power Milestone - detection logic', () => {
   });
 
   it('does not detect milestone when already past', () => {
-    const MILESTONES = [1000, 5000, 10000, 50000];
     const prevPower = 1050;
     const newPower = 1100;
     const crossed = MILESTONES.find((m) => prevPower < m && newPower >= m);
@@ -55,7 +60,6 @@ describe('Power Milestone - detection logic', () => {
   });
 
   it('detects exact milestone hit', () => {
-    const MILESTONES = [1000, 5000, 10000, 50000];
     const prevPower = 999;
     const newPower = 1000;
     const crossed = MILESTONES.find((m) => prevPower < m && newPower >= m);
@@ -63,10 +67,51 @@ describe('Power Milestone - detection logic', () => {
   });
 
   it('detects higher milestones', () => {
-    const MILESTONES = [1000, 5000, 10000, 50000];
     const prevPower = 4800;
     const newPower = 5200;
     const crossed = MILESTONES.find((m) => prevPower < m && newPower >= m);
     expect(crossed).toBe(5000);
+  });
+
+  it('detects low milestone at 100', () => {
+    const prevPower = 80;
+    const newPower = 110;
+    const crossed = MILESTONES.find((m) => prevPower < m && newPower >= m);
+    expect(crossed).toBe(100);
+  });
+
+  it('detects 100K milestone', () => {
+    const prevPower = 99500;
+    const newPower = 100500;
+    const crossed = MILESTONES.find((m) => prevPower < m && newPower >= m);
+    expect(crossed).toBe(100000);
+  });
+});
+
+describe('Power Milestone - escalation tiers', () => {
+  it('returns standard for milestones below 5000', () => {
+    expect(getEscalationTier(100)).toBe('standard');
+    expect(getEscalationTier(250)).toBe('standard');
+    expect(getEscalationTier(500)).toBe('standard');
+    expect(getEscalationTier(1000)).toBe('standard');
+    expect(getEscalationTier(2500)).toBe('standard');
+    expect(getEscalationTier(4999)).toBe('standard');
+  });
+
+  it('returns shake for 5000-24999', () => {
+    expect(getEscalationTier(5000)).toBe('shake');
+    expect(getEscalationTier(10000)).toBe('shake');
+    expect(getEscalationTier(24999)).toBe('shake');
+  });
+
+  it('returns epic for 25000-99999', () => {
+    expect(getEscalationTier(25000)).toBe('epic');
+    expect(getEscalationTier(50000)).toBe('epic');
+    expect(getEscalationTier(99999)).toBe('epic');
+  });
+
+  it('returns legendary for 100000+', () => {
+    expect(getEscalationTier(100000)).toBe('legendary');
+    expect(getEscalationTier(200000)).toBe('legendary');
   });
 });
