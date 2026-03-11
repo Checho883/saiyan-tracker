@@ -80,39 +80,39 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEPLOY-01 | — | Pending |
-| DEPLOY-02 | — | Pending |
-| DEPLOY-03 | — | Pending |
-| DEPLOY-04 | — | Pending |
-| DEPLOY-05 | — | Pending |
-| DEPLOY-06 | — | Pending |
-| DEPLOY-07 | — | Pending |
-| DEPLOY-08 | — | Pending |
-| DEPLOY-09 | — | Pending |
-| DEPLOY-10 | — | Pending |
-| DEPLOY-11 | — | Pending |
-| DEPLOY-12 | — | Pending |
-| ART-01 | — | Pending |
-| ART-02 | — | Pending |
-| ART-03 | — | Pending |
-| ART-04 | — | Pending |
-| ART-05 | — | Pending |
-| ART-06 | — | Pending |
-| ART-07 | — | Pending |
-| ART-08 | — | Pending |
-| ART-09 | — | Pending |
-| ART-10 | — | Pending |
-| ART-11 | — | Pending |
-| ART-12 | — | Pending |
-| ART-13 | — | Pending |
-| ART-14 | — | Pending |
-| ART-15 | — | Pending |
+| DEPLOY-01 | Phase 23 | Pending |
+| DEPLOY-02 | Phase 23 | Pending |
+| DEPLOY-03 | Phase 23 | Pending |
+| DEPLOY-04 | Phase 23 | Pending |
+| DEPLOY-05 | Phase 23 | Pending |
+| DEPLOY-06 | Phase 23 | Pending |
+| DEPLOY-07 | Phase 23 | Pending |
+| DEPLOY-08 | Phase 24 | Pending |
+| DEPLOY-09 | Phase 24 | Pending |
+| DEPLOY-10 | Phase 24 | Pending |
+| DEPLOY-11 | Phase 24 | Pending |
+| DEPLOY-12 | Phase 24 | Pending |
+| ART-01 | Phase 25 | Pending |
+| ART-02 | Phase 25 | Pending |
+| ART-03 | Phase 25 | Pending |
+| ART-04 | Phase 25 | Pending |
+| ART-05 | Phase 25 | Pending |
+| ART-06 | Phase 25 | Pending |
+| ART-07 | Phase 25 | Pending |
+| ART-08 | Phase 25 | Pending |
+| ART-09 | Phase 25 | Pending |
+| ART-10 | Phase 25 | Pending |
+| ART-11 | Phase 26 | Pending |
+| ART-12 | Phase 26 | Pending |
+| ART-13 | Phase 26 | Pending |
+| ART-14 | Phase 26 | Pending |
+| ART-15 | Phase 25 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 27 total
-- Mapped to phases: 0
-- Unmapped: 27 (awaiting roadmap)
+- Mapped to phases: 27
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-11*
-*Last updated: 2026-03-11 after initial definition*
+*Last updated: 2026-03-11 after roadmap creation*

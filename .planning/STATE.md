@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Deploy & Visual Overhaul
-status: defining_requirements
+status: ready_to_plan
 last_updated: "2026-03-11"
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -18,14 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-11)
 
 **Core value:** Every habit check must feel like something happened -- a sound, a visual pulse, a number going up. If the app is silent and still, it has failed.
-**Current focus:** v2.0 Deploy & Visual Overhaul — deployment + anime-faithful art pass
+**Current focus:** Phase 23 — Deployment Configuration
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-11 — Milestone v2.0 started
+Phase: 23 (1 of 4 in v2.0) — Deployment Configuration
+Plan: Ready to plan
+Status: Ready to plan
+Last activity: 2026-03-11 — Roadmap created for v2.0
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -67,9 +69,10 @@ None.
 
 ### Blockers/Concerns
 
-None.
+- Root-level `package.json` and `package-lock.json` may interfere with Vercel build detection -- resolve in Phase 23
+- Current `avatar_path` values in seeded quotes DB unknown -- inspect early in Phase 25
 
 ## Session Continuity
 
 Last session: 2026-03-11
-Stopped at: v2.0 milestone started, defining requirements
+Stopped at: Roadmap created for v2.0, ready to plan Phase 23
