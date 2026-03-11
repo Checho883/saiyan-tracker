@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: The Polish Pass
-status: completed
+milestone: v2.0
+milestone_name: Deploy & Visual Overhaul
+status: defining_requirements
 last_updated: "2026-03-11"
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 11
-  completed_plans: 11
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -18,12 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-11)
 
 **Core value:** Every habit check must feel like something happened -- a sound, a visual pulse, a number going up. If the app is silent and still, it has failed.
-**Current focus:** Planning next milestone
+**Current focus:** v2.0 Deploy & Visual Overhaul — deployment + anime-faithful art pass
 
 ## Current Position
 
-Milestone v1.3 The Polish Pass — SHIPPED 2026-03-11
-All 22 phases across 4 milestones complete.
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-11 — Milestone v2.0 started
 
 ## Performance Metrics
 
@@ -65,9 +67,9 @@ None.
 
 ### Blockers/Concerns
 
-None — all v1.3 blockers resolved.
+None.
 
 ## Session Continuity
 
 Last session: 2026-03-11
-Stopped at: v1.3 milestone completed
+Stopped at: v2.0 milestone started, defining requirements

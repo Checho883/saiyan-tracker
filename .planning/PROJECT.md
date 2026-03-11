@@ -59,7 +59,21 @@ Every habit check must feel like something happened — a sound, a visual pulse,
 
 ### Active
 
-(No active milestone — planning next)
+## Current Milestone: v2.0 Deploy & Visual Overhaul
+
+**Goal:** Deploy the app for real use (Vercel + Hostinger VPS) and replace all CSS/emoji placeholders with anime-faithful Dragon Ball Z art.
+
+**Target features:**
+- Frontend deployment to Vercel (static Vite build)
+- Backend deployment to Hostinger VPS (FastAPI + SQLite, systemd auto-start)
+- Environment configuration (API base URL, database path, CORS)
+- Saiyan avatar transformation images (7 forms: Base through Beast)
+- Dragon Ball sphere illustrations (replace styled circles with real orbs)
+- Shenron illustration for wish ceremony (replace emoji)
+- Character portraits for Goku/Vegeta quotes and roasts
+- Capsule Corp styled loot box visuals
+- Background/splash art (dark space theme with DBZ landscapes)
+- All art in anime-faithful style sourced from reference collection
 
 ### Out of Scope
 
@@ -76,6 +90,8 @@ Every habit check must feel like something happened — a sound, a visual pulse,
 
 ## Context
 
+Starting v2.0 after shipping v1.3. App is feature-complete but runs only in dev mode and uses CSS/emoji placeholders for all visual assets.
+Deployment target: Vercel (frontend) + Hostinger VPS (backend with SQLite). Art sourced from Vecteezy vectors, wallpaper sites, and Pinterest — all for personal use only.
 Shipped v1.3 The Polish Pass with ~230K LOC total (12K TypeScript + 218K Python).
 Tech stack: React 19 + Vite 7 + TypeScript + Zustand + Motion + Tailwind CSS v4 (frontend), Python 3.14 + FastAPI + SQLAlchemy 2.0 + SQLite (backend).
 4 milestones shipped: v1.0 (backend, 7 plans), v1.1 (frontend, 16 plans), v1.2 (PRD completion, 18 plans), v1.3 (polish, 11 plans).
@@ -122,5 +138,9 @@ Previously orphaned endpoints (habits/{id}/stats, habits/{id}/calendar) now wire
 | Escalating celebration tiers | 10 milestones from 100 to 100K with increasing visual intensity — v1.3 | ✓ Good |
 | Clipboard share over image export | Simple, fast, no external dependencies; image export deferred to v2 — v1.3 | ✓ Good |
 
+| Vercel + Hostinger VPS | Free frontend hosting, always-on backend with real URL, SQLite stays simple | — Pending |
+| Anime-faithful art style | Consistent with DBZ source material, highest visual impact | — Pending |
+| Art sourced from reference sites | Personal use only, curated from Vecteezy/wallpaper/Pinterest collection | — Pending |
+
 ---
-*Last updated: 2026-03-11 after v1.3 milestone completed*
+*Last updated: 2026-03-11 after v2.0 milestone started*
