@@ -11,6 +11,7 @@ import { DeleteConfirmDialog } from '../components/habit/DeleteConfirmDialog';
 import { EmptyState } from '../components/common/EmptyState';
 import { NudgeBanner } from '../components/dashboard/NudgeBanner';
 import { RoastWelcomeCard } from '../components/dashboard/RoastWelcomeCard';
+import { StreakBreakCard } from '../components/dashboard/StreakBreakCard';
 import { AnimatePresence } from 'motion/react';
 
 export default function Dashboard() {
@@ -92,6 +93,9 @@ export default function Dashboard() {
 
       {/* Roast/Welcome Card */}
       <RoastWelcomeCard />
+
+      {/* Streak Break Card */}
+      <StreakBreakCard />
 
       {/* Hero Section */}
       <HeroSection />
