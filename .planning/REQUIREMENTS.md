@@ -18,10 +18,10 @@ Requirements for The Polish Pass. Each maps to roadmap phases.
 
 ### Feedback
 
-- [ ] **FDBK-01**: User hears a sound and sees a negative XP popup when unchecking a habit
-- [ ] **FDBK-02**: User sees aura gauge shrink when unchecking a habit
-- [ ] **FDBK-03**: User sees a streak-break notice on first dashboard load after a streak breaks (shows old streak, Zenkai halved value)
-- [ ] **FDBK-04**: User sees a celebration when passing power level milestones that currently go unnoticed
+- [x] **FDBK-01**: User hears a sound and sees a negative XP popup when unchecking a habit
+- [x] **FDBK-02**: User sees aura gauge shrink when unchecking a habit
+- [x] **FDBK-03**: User sees a streak-break notice on first dashboard load after a streak breaks (shows old streak, Zenkai halved value)
+- [x] **FDBK-04**: User sees a celebration when passing power level milestones that currently go unnoticed
 
 ### Habit Detail
 
@@ -38,7 +38,7 @@ Requirements for The Polish Pass. Each maps to roadmap phases.
 
 ### Sharing
 
-- [ ] **SHAR-01**: User can copy a DBZ-themed daily summary to clipboard with one tap from the dashboard
+- [x] **SHAR-01**: User can copy a DBZ-themed daily summary to clipboard with one tap from the dashboard
 
 ## v2 Requirements
 
