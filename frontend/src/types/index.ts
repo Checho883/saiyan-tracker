@@ -383,7 +383,15 @@ export interface RoastInfo {
   gap_days: number;
 }
 
+export interface StreakBreak {
+  habit_id: string;
+  habit_title: string;
+  old_streak: number;
+  halved_value: number;
+}
+
 export interface StatusResponse {
   welcome_back: StatusQuote | null;
   roast: RoastInfo | null;
+  streak_breaks: StreakBreak[];
 }

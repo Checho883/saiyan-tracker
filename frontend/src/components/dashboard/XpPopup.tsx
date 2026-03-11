@@ -12,20 +12,26 @@ interface XpPopupProps {
   amount: number;
   attribute: Attribute;
   onDone: () => void;
+  negative?: boolean;
 }
 
-export function XpPopup({ amount, attribute, onDone }: XpPopupProps) {
+export function XpPopup({ amount, attribute, onDone, negative = false }: XpPopupProps) {
   useEffect(() => {
     const timer = setTimeout(onDone, 1000);
     return () => clearTimeout(timer);
   }, [onDone]);
 
+  const colorClass = negative ? 'text-danger' : textColorMap[attribute];
+  const positionClass = negative ? '-bottom-2' : '-top-2';
+  const animation = negative ? 'xp-sink 1s ease-out forwards' : 'xp-float 1s ease-out forwards';
+  const prefix = negative ? '-' : '+';
+
   return (
     <span
-      className={`absolute -top-2 right-4 text-sm font-bold pointer-events-none ${textColorMap[attribute]}`}
-      style={{ animation: 'xp-float 1s ease-out forwards' }}
+      className={`absolute ${positionClass} right-4 text-sm font-bold pointer-events-none ${colorClass}`}
+      style={{ animation }}
     >
-      +{amount} {attribute.toUpperCase()} XP
+      {prefix}{amount} {attribute.toUpperCase()} XP
     </span>
   );
 }

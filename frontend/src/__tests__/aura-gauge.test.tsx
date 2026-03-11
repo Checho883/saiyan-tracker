@@ -35,4 +35,11 @@ describe('AuraGauge (05-02)', () => {
     render(<AuraGauge percent={100} tier="kaioken_x20" />);
     expect(screen.getByText('Kaio-ken x20')).toBeInTheDocument();
   });
+
+  test('progress circle transition is 500ms', () => {
+    render(<AuraGauge percent={50} tier="base" />);
+    const progressCircle = document.querySelector('[data-testid="aura-progress"]') as SVGElement;
+    expect(progressCircle).toBeInTheDocument();
+    expect(progressCircle.style.transition).toContain('500ms');
+  });
 });

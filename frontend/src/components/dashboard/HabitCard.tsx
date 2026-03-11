@@ -41,6 +41,7 @@ export function HabitCard({ habit }: HabitCardProps) {
   const { play } = useAudio();
   const [showXp, setShowXp] = useState(false);
   const [xpAmount, setXpAmount] = useState(0);
+  const [xpNegative, setXpNegative] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -82,10 +83,16 @@ export function HabitCard({ habit }: HabitCardProps) {
       // Play undo sound when unchecking (check sound handled by useSoundEffect via xp_popup event)
       if (!result.is_checking) {
         play('undo');
+        if (result.attribute_xp_awarded > 0) {
+          setXpAmount(result.attribute_xp_awarded);
+          setXpNegative(true);
+          setShowXp(true);
+        }
       }
 
       if (result.is_checking && result.attribute_xp_awarded > 0) {
         setXpAmount(result.attribute_xp_awarded);
+        setXpNegative(false);
         setShowXp(true);
       }
 
@@ -227,6 +234,7 @@ export function HabitCard({ habit }: HabitCardProps) {
           amount={xpAmount}
           attribute={habit.attribute}
           onDone={() => setShowXp(false)}
+          negative={xpNegative}
         />
       )}
 

@@ -57,7 +57,7 @@ export function AuraGauge({ percent, tier, size = 140, hideText = false }: AuraG
         strokeDasharray={circumference}
         strokeDashoffset={offset}
         style={{
-          transition: 'stroke-dashoffset 700ms ease-out',
+          transition: 'stroke-dashoffset 500ms ease-out',
           transform: 'rotate(-90deg)',
           transformOrigin: `${center}px ${center}px`,
         }}
