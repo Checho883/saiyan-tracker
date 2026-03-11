@@ -133,11 +133,11 @@ Plans:
   3. User sees a streak-break acknowledgment card on first dashboard load after a streak breaks, showing the old streak value and Zenkai halved value
   4. User sees a celebration overlay when passing power level milestones that were previously unnoticed (milestones beyond the existing round-number set)
   5. User can tap a share button on the dashboard to copy a DBZ-themed daily summary to clipboard, with a success/failure toast confirmation
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 22-01: TBD
-- [ ] 22-02: TBD
+- [ ] 22-01-PLAN.md — Negative XP popup, AuraGauge shrink, StreakBreakCard, type sync
+- [ ] 22-02-PLAN.md — Expanded milestones with escalation tiers, shareable daily summary
 
 ## Progress
 
