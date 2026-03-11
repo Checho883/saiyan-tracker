@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A Dragon Ball Z-themed daily habit tracker built exclusively for Sergio. It weaponizes ADHD dopamine-seeking behavior through percentage-based daily completion, sound effects on every interaction, randomized loot boxes, screen-shaking 100% explosions, and a Dragon Ball collection macro-reward loop. No tasks, no punishment — only habits and positive reinforcement. The full stack is complete: 15 database models with game logic, achievement/streak detection, and roast escalation; REST API with 12+ endpoints; React 19 frontend with dashboard, priority-tiered animation queue, 13 real audio sounds, drag-and-drop reordering, contribution graphs, and a full settings suite. Every PRD feature is implemented and verified.
+A Dragon Ball Z-themed daily habit tracker built exclusively for Sergio. It weaponizes ADHD dopamine-seeking behavior through percentage-based daily completion, sound effects on every interaction, randomized loot boxes, screen-shaking 100% explosions, and a Dragon Ball collection macro-reward loop. No tasks, no punishment — only habits and positive reinforcement. The full stack is complete and polished: 15 database models with game logic, achievement/streak detection, and roast escalation; REST API with 16+ endpoints (including analytics); React 19 frontend with responsive mobile-first dashboard, habit detail bottom sheets, enhanced analytics views, priority-tiered animation queue, 13 real audio sounds, drag-and-drop reordering, contribution graphs, shareable daily summary, and a full settings suite. Every PRD feature is implemented, verified, and usable on both desktop and mobile.
 
 ## Core Value
 
@@ -50,21 +50,16 @@ Every habit check must feel like something happened — a sound, a visual pulse,
 - ✓ Circular day-of-week frequency selector — v1.2
 - ✓ 13 real synthesized audio sounds (MP3 + WebM sprite) — v1.2
 - ✓ All 11 AnimationEvent types wired to SoundIds in EVENT_SOUND_MAP — v1.2
+- ✓ Full responsive design with mobile-first hero, 48px+ touch targets, bottom tab bar — v1.3
+- ✓ Backend analytics pipeline: off-day summary, completion trends, habit stats, streak-break detection — v1.3
+- ✓ Habit detail bottom sheet with completion rates, attribute XP, calendar grid, metadata — v1.3
+- ✓ Enhanced analytics: off-day impact, completion trends with deltas, streak rankings, best/worst days — v1.3
+- ✓ Negative feedback loop: red XP popup on uncheck, aura shrink, streak-break acknowledgment card — v1.3
+- ✓ Shareable daily summary with clipboard copy, 10 escalating milestone celebration tiers — v1.3
 
 ### Active
 
-#### Current Milestone: v1.3 The Polish Pass
-
-**Goal:** Make the existing app feel great on every device, fill feedback gaps, and add the most-wanted views (habit detail, off-day analytics, shareable summary).
-
-**Target features:**
-- Habit detail view (full history, streaks, contribution graph, target time)
-- Off-day analytics (impact on streaks, XP, power level)
-- Shareable daily summary (copy-to-clipboard recap)
-- Full responsive/mobile design (daily phone use)
-- Dashboard decluttering and spacing/alignment polish
-- Uncheck feedback, streak-break acknowledgment, milestone celebrations
-- Weekly/monthly completion rates, streak leaderboard, best/worst day patterns
+(No active milestone — planning next)
 
 ### Out of Scope
 
@@ -73,10 +68,7 @@ Every habit check must feel like something happened — a sound, a visual pulse,
 - Mobile app — web-first (PWA later in v2)
 - Real-time sync — local SQLite, no cloud
 - Social features — solo tracker, no leaderboards with others
-- Habit detail view / target time display — deferred to future milestone
-- Off-day analytics rollup — deferred to future milestone
 - Onboarding / first-run wizard — deferred to future milestone
-- Shareable daily summary (copy-to-clipboard) — deferred to future milestone
 - Push/browser notifications — hostile UX for ADHD users (nagging)
 - Undo streak break / manual streak editing — undermines Zenkai recovery
 - Batch "complete all" button — destroys per-check dopamine loop
@@ -84,12 +76,12 @@ Every habit check must feel like something happened — a sound, a visual pulse,
 
 ## Context
 
-Shipped v1.2 PRD Complete with ~325K LOC total (TypeScript + Python).
+Shipped v1.3 The Polish Pass with ~230K LOC total (12K TypeScript + 218K Python).
 Tech stack: React 19 + Vite 7 + TypeScript + Zustand + Motion + Tailwind CSS v4 (frontend), Python 3.14 + FastAPI + SQLAlchemy 2.0 + SQLite (backend).
-3 milestones shipped: v1.0 (backend, 7 plans), v1.1 (frontend, 16 plans), v1.2 (PRD completion, 18 plans).
-24/24 v1.2 requirements verified complete, 456 tests passing (176 frontend + 280 backend).
-All PRD features implemented: achievement system, streak milestones, roast escalation, contribution graphs, drag-and-drop, calendar popovers, archived/temporary habits, real audio sprites.
-Known tech debt: 2 orphaned backend endpoints (GET /habits/{id}/calendar, GET /habits/{id}/stats — frontend uses different data paths).
+4 milestones shipped: v1.0 (backend, 7 plans), v1.1 (frontend, 16 plans), v1.2 (PRD completion, 18 plans), v1.3 (polish, 11 plans).
+18/18 v1.3 requirements verified complete, 231 tests passing.
+All PRD features implemented and polished: responsive mobile-first design, habit detail views, enhanced analytics, negative feedback loops, shareable daily summary, 10-tier milestone celebrations.
+Previously orphaned endpoints (habits/{id}/stats, habits/{id}/calendar) now wired end-to-end through HabitDetailSheet.
 
 ## Constraints
 
@@ -124,6 +116,11 @@ Known tech debt: 2 orphaned backend endpoints (GET /habits/{id}/calendar, GET /h
 | Reuse existing SoundIds for new events | power_milestone→explosion, level_up→reveal_chime, zenkai→power_up, streak→reveal_chime — v1.2 | ✓ Good |
 | ffmpeg-synthesized sounds | 13 sounds generated locally (no external downloads), MP3+WebM dual format — v1.2 | ✓ Good |
 | @dnd-kit for drag-and-drop | Dedicated handle prevents accidental check trigger, restrictToVerticalAxis modifier — v1.2 | ✓ Good |
+| 768px max-width container | Constrains dashboard for readability without losing mobile flexibility — v1.3 | ✓ Good |
+| Bottom sheet for habit detail | Non-disruptive drill-down, preserves dashboard context, mobile-friendly — v1.3 | ✓ Good |
+| Streak-break card with dismiss | Acknowledges negative events without blocking; respects ADHD sensitivity — v1.3 | ✓ Good |
+| Escalating celebration tiers | 10 milestones from 100 to 100K with increasing visual intensity — v1.3 | ✓ Good |
+| Clipboard share over image export | Simple, fast, no external dependencies; image export deferred to v2 — v1.3 | ✓ Good |
 
 ---
-*Last updated: 2026-03-08 after v1.3 milestone started*
+*Last updated: 2026-03-11 after v1.3 milestone completed*

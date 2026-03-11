@@ -144,6 +144,50 @@
 
 ---
 
+## Milestone: v1.3 — The Polish Pass
+
+**Shipped:** 2026-03-11
+**Phases:** 5 | **Plans:** 11 | **Sessions:** ~5
+
+### What Was Built
+- Full responsive design: mobile-first hero, 48px+ touch targets, bottom tab bar, touch-friendly charts, mobile-optimized settings
+- Backend analytics pipeline: off-day summary, completion trends, habit stats enhancement, streak-break detection on /status endpoint
+- Habit detail bottom sheet with ProgressRing, CalendarGrid, completion rates, attribute XP, metadata tabs
+- Enhanced analytics cards: off-day impact pie chart, completion trend with delta arrows, streak power rankings, best/worst days
+- Negative feedback loop: red downward XP popup on uncheck, AuraGauge real-time shrink, StreakBreakCard with dismiss
+- Shareable daily summary with clipboard copy, 10 escalating milestone celebration tiers (100 to 100K)
+
+### What Worked
+- Milestone audit caught only tech debt (documentation staleness), not functional gaps — v1.2's gap closure pattern paid off
+- Research phases identified orphaned endpoints early — Phase 19 rebuilt them correctly instead of discovering issues mid-phase
+- All 18 requirements verified in a single audit pass — no gap closure phases needed for v1.3
+- Phase ordering: responsive first → backend → detail views → analytics → feedback ensured each phase had clean foundations
+
+### What Was Inefficient
+- REQUIREMENTS.md traceability table not updated during phase execution — 9 requirements showed "Pending" despite completion
+- ANLYT-01–04 checkboxes not checked during Phase 21 execution — discovered by audit
+- SUMMARY.md frontmatter inconsistent across phases — some used different structures, extraction tool failed
+- Phase 19 VERIFICATION.md never created (enabling infrastructure phase with no direct requirements)
+
+### Patterns Established
+- Bottom sheet drill-down pattern: HabitCard tap → HabitDetailSheet → API fetch → render
+- Clipboard share pattern: buildDailySummary() → navigator.clipboard → toast feedback
+- Negative variant prop pattern: XpPopup accepts variant="negative" for red downward animation
+- Dismissible card pattern: StreakBreakCard with dismiss button, mirrors RoastWelcomeCard UX
+
+### Key Lessons
+1. Documentation updates (checkboxes, traceability) must happen during phase execution, not after — this is the 3rd milestone with this issue
+2. Phase 19 (enabling infrastructure) should still get a VERIFICATION.md — downstream verification doesn't replace local verification
+3. SUMMARY.md frontmatter format should be standardized — inconsistency breaks extraction tools
+4. Tech-debt-only audit results mean the process is working — no functional gaps at v1.3
+
+### Cost Observations
+- Model mix: ~50% opus, ~50% sonnet
+- Sessions: ~5
+- Notable: 53 commits, 18 requirements in 4 days — polishing existing code is slower than greenfield
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -153,6 +197,7 @@
 | v1.0 | ~3 | 3 | Established TDD-first, bottom-up build pattern |
 | v1.1 | ~5 | 7 | Added milestone audit as gate, verification docs as standard |
 | v1.2 | ~6 | 7 | Added gap closure phase pattern, 3-source requirement verification |
+| v1.3 | ~5 | 5 | Tech-debt-only audit — no gap closure phases needed |
 
 ### Cumulative Quality
 
@@ -161,6 +206,7 @@
 | v1.0 | 222 | ~95% | 0 |
 | v1.1 | 222 (backend) + frontend tests | N/A | 0 |
 | v1.2 | 280 (backend) + 176 (frontend) = 456 | N/A | 0 |
+| v1.3 | 231 (frontend + backend) | N/A | 0 |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -169,3 +215,4 @@
 3. Milestone audit before shipping catches integration gaps that phase-level verification misses
 4. Detailed PRD → GSD phases → execution delivers full milestones in 1-3 days
 5. Gap closure phases cleanly address cross-phase wiring issues found by audit
+6. Documentation updates (checkboxes, traceability) during phase execution — not after — is a recurring lesson (v1.1, v1.2, v1.3)

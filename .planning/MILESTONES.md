@@ -1,5 +1,27 @@
 # Milestones
 
+## v1.3 The Polish Pass (Shipped: 2026-03-11)
+
+**Phases completed:** 5 phases, 11 plans
+**Requirements:** 18/18 complete
+
+**Key accomplishments:**
+- Full responsive design: mobile-first hero, 48px+ touch targets, bottom tab bar, touch-friendly chart tooltips, mobile-optimized settings and forms
+- Backend analytics pipeline: off-day summary, completion trends, habit stats enhancement, streak-break detection on /status endpoint
+- Habit detail bottom sheet: tap any habit for weekly/monthly completion rates, attribute XP, metadata, ProgressRing and CalendarGrid components
+- Enhanced analytics: off-day impact card with pie chart, completion trend cards with delta arrows, streak power rankings, best/worst day highlights
+- Negative feedback loop: XP popup with red downward animation on uncheck, AuraGauge real-time shrink, StreakBreakCard with Zenkai acknowledgment
+- Shareable daily summary: one-tap clipboard copy with DBZ theme, 10 escalating milestone celebration tiers (100 to 100K)
+
+**Stats:**
+- Commits: 53
+- Timeline: 4 days (2026-03-08 → 2026-03-11)
+- Git range: feat(18-01) → feat(22-02)
+- Tests: 231 passing (frontend + backend)
+- Tech debt: 7 documentation items (all resolved during completion)
+
+---
+
 ## v1.2 PRD Complete (Shipped: 2026-03-08)
 
 **Phases completed:** 7 phases, 18 plans
