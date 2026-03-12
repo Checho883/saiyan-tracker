@@ -1,0 +1,18 @@
+[Unit]
+Description=Saiyan Tracker FastAPI Backend
+After=network.target
+
+[Service]
+Type=simple
+User=saiyan
+Group=saiyan
+WorkingDirectory=/home/user/saiyan-tracker/backend
+EnvironmentFile=/etc/saiyan-tracker.env
+ExecStart=/home/user/saiyan-tracker/venv/bin/uvicorn app.main:app --uds /run/saiyan-tracker/saiyan-tracker.sock
+Restart=on-failure
+RestartSec=5
+UMask=0117
+RuntimeDirectory=saiyan-tracker
+
+[Install]
+WantedBy=multi-user.target
