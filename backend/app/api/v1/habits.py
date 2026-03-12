@@ -88,7 +88,7 @@ def select_quote_for_context(db: Session, result: dict) -> QuoteDetail | None:
         character=quote.character,
         quote_text=quote.quote_text,
         source_saga=quote.source_saga,
-        avatar_path=f"/avatars/{quote.character}.png",
+        avatar_path=f"/assets/avatars/{quote.character}.webp",
     )
 
 
@@ -454,7 +454,7 @@ def check_habit_endpoint(
                     "character": milestone_quote.character,
                     "quote_text": milestone_quote.quote_text,
                     "source_saga": milestone_quote.source_saga,
-                    "avatar_path": f"/avatars/{milestone_quote.character}.png",
+                    "avatar_path": f"/assets/avatars/{milestone_quote.character}.webp",
                 }
 
     # Shape streak

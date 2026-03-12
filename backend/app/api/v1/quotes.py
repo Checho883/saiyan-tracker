@@ -26,5 +26,5 @@ def get_random_quote(
         character=quote.character,
         quote_text=quote.quote_text,
         source_saga=quote.source_saga,
-        avatar_path=f"/avatars/{quote.character}.png",
+        avatar_path=f"/assets/avatars/{quote.character}.webp",
     )

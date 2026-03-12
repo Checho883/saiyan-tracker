@@ -12,7 +12,8 @@ class TestQuoteRandom:
         assert "quote_text" in data
         assert "source_saga" in data
         assert "avatar_path" in data
-        assert data["avatar_path"].startswith("/avatars/")
+        assert data["avatar_path"].startswith("/assets/avatars/")
+        assert data["avatar_path"].endswith(".webp")
 
     def test_random_quote_with_trigger(self, client, seeded_db):
         resp = client.get("/api/v1/quotes/random?trigger_event=habit_complete")

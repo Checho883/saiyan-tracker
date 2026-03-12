@@ -105,7 +105,7 @@ def get_welcome_status(db: Session, user_id: UUID, today_str: str) -> dict:
             "character": welcome_quote.character,
             "quote_text": welcome_quote.quote_text,
             "source_saga": welcome_quote.source_saga,
-            "avatar_path": f"/avatars/{welcome_quote.character}.png",
+            "avatar_path": f"/assets/avatars/{welcome_quote.character}.webp",
         }
 
     roast_data = None
@@ -115,7 +115,7 @@ def get_welcome_status(db: Session, user_id: UUID, today_str: str) -> dict:
                 "character": roast_quote.character,
                 "quote_text": roast_quote.quote_text,
                 "source_saga": roast_quote.source_saga,
-                "avatar_path": f"/avatars/{roast_quote.character}.png",
+                "avatar_path": f"/assets/avatars/{roast_quote.character}.webp",
             },
             "severity": gap_info["severity"],
             "gap_days": gap_info["effective_gap"],
