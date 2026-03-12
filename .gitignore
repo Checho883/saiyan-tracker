@@ -17,6 +17,7 @@ venv/
 Include/
 Lib/
 Scripts/
+!frontend/scripts/
 pyvenv.cfg
 
 # Environment
