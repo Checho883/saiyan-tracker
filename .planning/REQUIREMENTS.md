@@ -28,18 +28,18 @@
 
 ### Art — Saiyan Avatar Transformations
 
-- [ ] **ART-01**: Base form Goku WebP image at `/assets/avatars/base.webp`
-- [ ] **ART-02**: Super Saiyan (SSJ) Goku WebP at `/assets/avatars/ssj.webp`
-- [ ] **ART-03**: Super Saiyan 2 (SSJ2) Goku WebP at `/assets/avatars/ssj2.webp`
-- [ ] **ART-04**: Super Saiyan 3 (SSJ3) Goku WebP at `/assets/avatars/ssj3.webp`
-- [ ] **ART-05**: Super Saiyan God (SSG) Goku WebP at `/assets/avatars/ssg.webp`
-- [ ] **ART-06**: Super Saiyan Blue (SSB) Goku WebP at `/assets/avatars/ssb.webp`
-- [ ] **ART-07**: Ultra Instinct (UI) Goku WebP at `/assets/avatars/ui.webp`
+- [x] **ART-01**: Base form Goku WebP image at `/assets/avatars/base.webp`
+- [x] **ART-02**: Super Saiyan (SSJ) Goku WebP at `/assets/avatars/ssj.webp`
+- [x] **ART-03**: Super Saiyan 2 (SSJ2) Goku WebP at `/assets/avatars/ssj2.webp`
+- [x] **ART-04**: Super Saiyan 3 (SSJ3) Goku WebP at `/assets/avatars/ssj3.webp`
+- [x] **ART-05**: Super Saiyan God (SSG) Goku WebP at `/assets/avatars/ssg.webp`
+- [x] **ART-06**: Super Saiyan Blue (SSB) Goku WebP at `/assets/avatars/ssb.webp`
+- [x] **ART-07**: Ultra Instinct (UI) Goku WebP at `/assets/avatars/ui.webp`
 
 ### Art — Character Portraits
 
-- [ ] **ART-08**: Goku portrait image for quote toasts and welcome cards
-- [ ] **ART-09**: Vegeta portrait image for roast cards and quote toasts
+- [x] **ART-08**: Goku portrait image for quote toasts and welcome cards
+- [x] **ART-09**: Vegeta portrait image for roast cards and quote toasts
 - [ ] **ART-10**: Backend seed data `avatar_path` fields updated to match production asset paths
 
 ### Art — Shenron & Dragon Balls
@@ -92,15 +92,15 @@
 | DEPLOY-10 | Phase 24 | Pending |
 | DEPLOY-11 | Phase 24 | Pending |
 | DEPLOY-12 | Phase 24 | Pending |
-| ART-01 | Phase 25 | Pending |
-| ART-02 | Phase 25 | Pending |
-| ART-03 | Phase 25 | Pending |
-| ART-04 | Phase 25 | Pending |
-| ART-05 | Phase 25 | Pending |
-| ART-06 | Phase 25 | Pending |
-| ART-07 | Phase 25 | Pending |
-| ART-08 | Phase 25 | Pending |
-| ART-09 | Phase 25 | Pending |
+| ART-01 | Phase 25 | Complete |
+| ART-02 | Phase 25 | Complete |
+| ART-03 | Phase 25 | Complete |
+| ART-04 | Phase 25 | Complete |
+| ART-05 | Phase 25 | Complete |
+| ART-06 | Phase 25 | Complete |
+| ART-07 | Phase 25 | Complete |
+| ART-08 | Phase 25 | Complete |
+| ART-09 | Phase 25 | Complete |
 | ART-10 | Phase 25 | Pending |
 | ART-11 | Phase 26 | Pending |
 | ART-12 | Phase 26 | Pending |
