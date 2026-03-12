@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-11)
 
 **Core value:** Every habit check must feel like something happened -- a sound, a visual pulse, a number going up. If the app is silent and still, it has failed.
-**Current focus:** Phase 23 — Deployment Configuration
+**Current focus:** Phase 24 — VPS Infrastructure
 
 ## Current Position
 
-Phase: 23 (1 of 4 in v2.0) — Deployment Configuration
+Phase: 24 (2 of 4 in v2.0) — VPS Infrastructure
 Plan: 2/2 complete — awaiting verification
 Status: Executing (all plans complete)
-Last activity: 2026-03-12 — Phase 23 plans executed
+Last activity: 2026-03-12 — Phase 24 plans executed
 
 Progress: [██████████] 100% (plans)
 
@@ -75,4 +75,4 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-12
-Stopped at: Phase 23 plans executed, awaiting verification
+Stopped at: Phase 24 plans executed, awaiting verification
