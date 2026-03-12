@@ -1,5 +1,6 @@
 sqlalchemy>=2.0
 fastapi[standard]
 uvicorn[standard]
+pydantic-settings>=2.0
 pytest
 httpx
