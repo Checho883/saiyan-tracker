@@ -160,5 +160,5 @@ Plans:
 | 22. Feedback Gaps + Shareable Summary | v1.3 | 2/2 | Complete | 2026-03-11 |
 | 23. Deployment Configuration | 2/2 | Complete    | 2026-03-12 | - |
 | 24. VPS Infrastructure | 2/2 | Complete   | 2026-03-12 | - |
-| 25. Core Visual Assets | v2.0 | 0/? | Not started | - |
+| 25. Core Visual Assets | 1/2 | In Progress|  | - |
 | 26. Component Art Integration | v2.0 | 0/? | Not started | - |
