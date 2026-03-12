@@ -64,7 +64,7 @@ This roadmap delivers a Dragon Ball Z-themed habit tracker optimized for ADHD do
 
 **Milestone Goal:** Deploy the app for real use (Vercel + Hostinger VPS) and replace all CSS/emoji placeholders with anime-faithful Dragon Ball Z art.
 
-- [ ] **Phase 23: Deployment Configuration** - Backend env vars, CORS, dotenv, Vercel config, and frontend API base wiring
+- [x] **Phase 23: Deployment Configuration** - Backend env vars, CORS, dotenv, Vercel config, and frontend API base wiring (completed 2026-03-12)
 - [ ] **Phase 24: VPS Infrastructure** - systemd, Nginx reverse proxy, TLS, SQLite WAL mode, and production env file
 - [ ] **Phase 25: Core Visual Assets** - Saiyan avatar transformations, character portraits, seed data update, and SVG sanitization baseline
 - [ ] **Phase 26: Component Art Integration** - Shenron SVG, Dragon Ball orbs, Capsule Corp art, and background theme
@@ -158,7 +158,7 @@ Plans:
 | 20. Habit Detail View | v1.3 | 2/2 | Complete | 2026-03-08 |
 | 21. Enhanced Analytics Views | v1.3 | 2/2 | Complete | 2026-03-08 |
 | 22. Feedback Gaps + Shareable Summary | v1.3 | 2/2 | Complete | 2026-03-11 |
-| 23. Deployment Configuration | v2.0 | 0/? | Not started | - |
+| 23. Deployment Configuration | 2/2 | Complete   | 2026-03-12 | - |
 | 24. VPS Infrastructure | v2.0 | 0/? | Not started | - |
 | 25. Core Visual Assets | v2.0 | 0/? | Not started | - |
 | 26. Component Art Integration | v2.0 | 0/? | Not started | - |
