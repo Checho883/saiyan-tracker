@@ -44,6 +44,10 @@ Thumbs.db
 # Testing
 coverage/
 
+# Raw source images (large, unprocessed)
+frontend/public/assets/raw/*
+!frontend/public/assets/raw/.gitkeep
+
 # Logs
 *.log
 npm-debug.log*
