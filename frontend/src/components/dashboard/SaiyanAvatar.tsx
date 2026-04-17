@@ -39,7 +39,7 @@ export function SaiyanAvatar({ transformation, className = '' }: SaiyanAvatarPro
       src={imgError ? '/assets/avatars/base.webp' : `/assets/avatars/${transformation}.webp`}
       alt={`Saiyan ${transformation}`}
       className={`rounded-full border-2 border-space-600 object-cover ${className}`}
-      style={{ boxShadow: glow, width: 96, height: 96 }}
+      style={{ boxShadow: glow, width: 96, height: 96, objectPosition: '50% 25%' }}
       onError={() => {
         if (imgError) {
           setFallbackError(true);

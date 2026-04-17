@@ -48,15 +48,24 @@ export function StreakBreakCard() {
             <X className="w-4 h-4" />
           </button>
 
-          {/* Header */}
-          <p className="text-text-primary text-sm font-semibold mb-1">
-            {breakCount} streak{breakCount !== 1 ? 's' : ''} broken
-          </p>
-
-          {/* Encouraging quote */}
-          <p className="text-text-secondary text-xs italic mb-3">
-            &ldquo;A Saiyan grows stronger after every defeat.&rdquo;
-          </p>
+          {/* Header with Roshi character art */}
+          <div className="flex items-start gap-3 mb-3 pr-6">
+            <img
+              src="/assets/characters/roshi-angry.webp"
+              alt="Master Roshi, unimpressed"
+              className="w-14 h-14 rounded-full border-2 border-orange-500/60 object-cover shrink-0"
+              style={{ objectPosition: '50% 30%' }}
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+            />
+            <div className="min-w-0">
+              <p className="text-text-primary text-sm font-semibold mb-1">
+                {breakCount} streak{breakCount !== 1 ? 's' : ''} broken
+              </p>
+              <p className="text-text-secondary text-xs italic">
+                &ldquo;A Saiyan grows stronger after every defeat.&rdquo;
+              </p>
+            </div>
+          </div>
 
           {/* Break details */}
           <ul className="space-y-1 mb-3">
